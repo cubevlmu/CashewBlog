@@ -1,0 +1,6 @@
+enabled: true
+min_request_interval: 120ms
+window_size: 1m0s
+max_requests_per_ip: 120
+duplicate_ttl: 2s
+max_body_bytes: 65536

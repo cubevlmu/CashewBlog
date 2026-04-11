@@ -1,0 +1,206 @@
+﻿@baseUrl = http://127.0.0.1:8080
+
+### 01.01 public settings
+GET {{baseUrl}}/api/v1/settings/public
+X-Forwarded-For: 10.250.2.1
+
+> {%
+  client.test("public settings returns site data", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.site, "missing site settings");
+  });
+%}
+
+### 01.02 public home site
+GET {{baseUrl}}/api/v1/site/home
+X-Forwarded-For: 10.250.2.2
+
+> {%
+  client.test("home site returns home data", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.home, "missing home data");
+  });
+%}
+
+### 01.03 public blog list
+GET {{baseUrl}}/api/v1/blogs?page=1&page_size=10
+X-Forwarded-For: 10.250.2.3
+
+> {%
+  client.test("public blogs returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+    client.assert(response.body.data.list.length > 0, "expected at least one public blog");
+  });
+  if (response.status === 200 && response.body.data.list.length > 0) {
+    client.global.set("publicBlogId", response.body.data.list[0].id);
+    client.global.set("publicBlogSlug", response.body.data.list[0].slug);
+  }
+%}
+
+### 01.04 public blog detail by id
+GET {{baseUrl}}/api/v1/blogs/{{publicBlogId}}
+X-Forwarded-For: 10.250.2.4
+
+> {%
+  client.test("public blog detail returns blog", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.blog.id == client.global.get("publicBlogId"), "unexpected blog id");
+  });
+%}
+
+### 01.05 public blog detail by slug
+GET {{baseUrl}}/api/v1/blogs/slug/{{publicBlogSlug}}
+X-Forwarded-For: 10.250.2.5
+
+> {%
+  client.test("public blog by slug returns blog", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.blog.slug === client.global.get("publicBlogSlug"), "unexpected slug");
+  });
+%}
+
+### 01.06 public blog context by slug
+GET {{baseUrl}}/api/v1/blogs/slug/{{publicBlogSlug}}/context
+X-Forwarded-For: 10.250.2.6
+
+> {%
+  client.test("public blog context returns comments", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.comments), "comments should be an array");
+  });
+%}
+
+### 01.07 public blog comments
+GET {{baseUrl}}/api/v1/blogs/{{publicBlogId}}/comments?page=1&page_size=10
+X-Forwarded-For: 10.250.2.7
+
+> {%
+  client.test("public comments returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.08 public home posts
+GET {{baseUrl}}/api/v1/home/posts?page=1&page_size=10
+X-Forwarded-For: 10.250.2.8
+
+> {%
+  client.test("home posts returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.09 public search
+GET {{baseUrl}}/api/v1/search?q=Product&page=1&page_size=10
+X-Forwarded-For: 10.250.2.9
+
+> {%
+  client.test("search returns keyword and list", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.keyword === "Product", "unexpected keyword");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.10 public tag list
+GET {{baseUrl}}/api/v1/tags?page=1&page_size=20
+X-Forwarded-For: 10.250.2.10
+
+> {%
+  client.test("tags returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.11 public tag detail
+GET {{baseUrl}}/api/v1/tags/1
+X-Forwarded-For: 10.250.2.11
+
+> {%
+  client.test("tag detail returns tag", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.tag.id === 1, "unexpected tag id");
+  });
+%}
+
+### 01.12 public tag blogs by id
+GET {{baseUrl}}/api/v1/tags/1/blogs?page=1&page_size=10
+X-Forwarded-For: 10.250.2.12
+
+> {%
+  client.test("tag blogs by id returns a list", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.13 public tag blogs by slug
+GET {{baseUrl}}/api/v1/tags/slug/go/blogs?page=1&page_size=10
+X-Forwarded-For: 10.250.2.13
+
+> {%
+  client.test("tag blogs by slug returns a list", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.14 public category list
+GET {{baseUrl}}/api/v1/categories?page=1&page_size=20
+X-Forwarded-For: 10.250.2.14
+
+> {%
+  client.test("categories returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.15 public category detail
+GET {{baseUrl}}/api/v1/categories/1
+X-Forwarded-For: 10.250.2.15
+
+> {%
+  client.test("category detail returns category", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.category.id === 1, "unexpected category id");
+  });
+%}
+
+### 01.16 public category blogs by id
+GET {{baseUrl}}/api/v1/categories/1/blogs?page=1&page_size=10
+X-Forwarded-For: 10.250.2.16
+
+> {%
+  client.test("category blogs by id returns a list", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.17 public category blogs by slug
+GET {{baseUrl}}/api/v1/categories/slug/backend/blogs?page=1&page_size=10
+X-Forwarded-For: 10.250.2.17
+
+> {%
+  client.test("category blogs by slug returns a list", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 01.18 public author blogs by username
+GET {{baseUrl}}/api/v1/users/admin/blogs?page=1&page_size=10
+X-Forwarded-For: 10.250.2.18
+
+> {%
+  client.test("author blogs returns a list", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.user.username === "admin", "unexpected author");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}

@@ -1,0 +1,177 @@
+﻿@baseUrl = http://127.0.0.1:8080
+
+### 06.01 admin dashboard
+GET {{baseUrl}}/api/v1/admin/dashboard
+X-Forwarded-For: 10.250.7.1
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("dashboard returns summary", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(typeof response.body.data.blog_count !== "undefined", "missing blog_count");
+  });
+%}
+
+### 06.02 admin stats
+GET {{baseUrl}}/api/v1/admin/stats
+X-Forwarded-For: 10.250.7.2
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("stats returns trend data", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.blog_trend), "blog_trend should be an array");
+  });
+%}
+
+### 06.03 admin logs
+GET {{baseUrl}}/api/v1/admin/logs?page=1&page_size=20
+X-Forwarded-For: 10.250.7.3
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("logs returns a page-like payload", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 06.04 admin blogs
+GET {{baseUrl}}/api/v1/admin/blogs?page=1&page_size=10&state=public
+X-Forwarded-For: 10.250.7.4
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("admin blogs returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 06.05 admin update restored e2e blog state
+# Requires `03-blog-crud.http` to have set blogId.
+PATCH {{baseUrl}}/api/v1/admin/blogs/{{blogId}}/state
+X-Forwarded-For: 10.250.7.5
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "state": "private"
+}
+
+> {%
+  client.test("admin blog state update returns private", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.state === "private", "unexpected state");
+  });
+%}
+
+### 06.06 admin site home update
+PATCH {{baseUrl}}/api/v1/admin/site/home
+X-Forwarded-For: 10.250.7.6
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "banner_title": "CashewBlog",
+  "banner_subtitle": "A seeded demo blog API project",
+  "banner_image": "",
+  "typing_animation": true
+}
+
+> {%
+  client.test("site home update returns home", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.home, "missing home data");
+  });
+%}
+
+### 06.07 admin settings list
+GET {{baseUrl}}/api/v1/admin/settings?page=1&page_size=20
+X-Forwarded-For: 10.250.7.7
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("settings list returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 06.08 admin setting detail
+GET {{baseUrl}}/api/v1/admin/settings/site_name
+X-Forwarded-For: 10.250.7.8
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("setting detail returns item", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.item.key === "site_name", "unexpected key");
+  });
+%}
+
+### 06.09 admin put setting
+PUT {{baseUrl}}/api/v1/admin/settings/e2e.setting.{{runId}}
+X-Forwarded-For: 10.250.7.9
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "value": "created",
+  "type": "string",
+  "group": "e2e",
+  "description": "created by e2e"
+}
+
+> {%
+  client.test("setting put returns item", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.item.key === "e2e.setting." + client.global.get("runId"), "unexpected key");
+  });
+%}
+
+### 06.10 admin patch settings
+PATCH {{baseUrl}}/api/v1/admin/settings
+X-Forwarded-For: 10.250.7.10
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "key": "e2e.setting.{{runId}}",
+      "value": "updated"
+    }
+  ]
+}
+
+> {%
+  client.test("settings patch updates at least one item", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.updated_count >= 1, "expected updated_count >= 1");
+  });
+%}
+
+### 06.11 admin get updated setting
+GET {{baseUrl}}/api/v1/admin/settings/e2e.setting.{{runId}}
+X-Forwarded-For: 10.250.7.11
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("updated setting returns updated value", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.item.value === "updated", "unexpected value");
+  });
+%}
+
+### 06.12 admin delete setting
+DELETE {{baseUrl}}/api/v1/admin/settings/e2e.setting.{{runId}}
+X-Forwarded-For: 10.250.7.12
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("setting delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}

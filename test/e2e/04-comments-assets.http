@@ -1,0 +1,191 @@
+﻿@baseUrl = http://127.0.0.1:8080
+
+### 04.01 create top-level comment on seed blog
+POST {{baseUrl}}/api/v1/blogs/{{publicBlogId}}/comments
+X-Forwarded-For: 10.250.5.1
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "content": "E2E top-level comment {{runId}}"
+}
+
+> {%
+  client.test("comment create returns 201", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.comment.id, "missing comment id");
+  });
+  client.global.set("commentId", response.body.data.comment.id);
+%}
+
+### 04.02 reply to comment
+POST {{baseUrl}}/api/v1/blogs/{{publicBlogId}}/comments/{{commentId}}/reply
+X-Forwarded-For: 10.250.5.2
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "content": "E2E reply comment {{runId}}"
+}
+
+> {%
+  client.test("reply create returns 201", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.comment.id, "missing reply id");
+  });
+  client.global.set("replyCommentId", response.body.data.comment.id);
+%}
+
+### 04.03 update own comment
+PATCH {{baseUrl}}/api/v1/comments/{{commentId}}
+X-Forwarded-For: 10.250.5.3
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "content": "E2E top-level comment updated {{runId}}"
+}
+
+> {%
+  client.test("comment update returns comment", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.comment.id == client.global.get("commentId"), "unexpected comment id");
+  });
+%}
+
+### 04.04 admin hide comment
+PATCH {{baseUrl}}/api/v1/comments/{{commentId}}/state
+X-Forwarded-For: 10.250.5.4
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "state": "hidden"
+}
+
+> {%
+  client.test("admin comment state update returns hidden", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.state === "hidden", "unexpected state");
+  });
+%}
+
+### 04.05 delete reply comment
+DELETE {{baseUrl}}/api/v1/comments/{{replyCommentId}}
+X-Forwarded-For: 10.250.5.5
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("reply comment delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}
+
+### 04.06 delete top-level comment
+DELETE {{baseUrl}}/api/v1/comments/{{commentId}}
+X-Forwarded-For: 10.250.5.6
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("comment delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}
+
+### 04.07 upload asset
+POST {{baseUrl}}/api/v1/assets/upload
+X-Forwarded-For: 10.250.5.7
+Authorization: Bearer {{userAccessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="e2e-note.txt"
+Content-Type: text/plain
+
+< ../testdata/e2e-note.txt
+--WebAppBoundary--
+
+> {%
+  client.test("asset upload returns asset", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.asset.id, "missing asset id");
+  });
+  client.global.set("assetId", response.body.data.asset.id);
+%}
+
+### 04.08 upload file
+POST {{baseUrl}}/api/v1/assets/files
+X-Forwarded-For: 10.250.5.8
+Authorization: Bearer {{userAccessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="e2e-note.txt"
+Content-Type: text/plain
+
+< ../testdata/e2e-note.txt
+--WebAppBoundary--
+
+> {%
+  client.test("file upload endpoint returns asset", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.asset.id, "missing asset id");
+  });
+%}
+
+### 04.09 image upload rejects a text file
+POST {{baseUrl}}/api/v1/assets/images
+X-Forwarded-For: 10.250.5.9
+Authorization: Bearer {{userAccessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="e2e-not-image.txt"
+Content-Type: text/plain
+
+This is not an image {{runId}}.
+--WebAppBoundary--
+
+> {%
+  client.test("image upload rejects non-image file", function () {
+    client.assert(response.status === 400, "expected HTTP 400");
+  });
+%}
+
+### 04.10 list current user's assets
+GET {{baseUrl}}/api/v1/assets?page=1&page_size=10&type=file
+X-Forwarded-For: 10.250.5.10
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("asset list returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 04.11 get current user's asset
+GET {{baseUrl}}/api/v1/assets/{{assetId}}
+X-Forwarded-For: 10.250.5.11
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("asset detail returns asset", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.asset.id == client.global.get("assetId"), "unexpected asset id");
+  });
+%}
+
+### 04.12 delete current user's asset
+DELETE {{baseUrl}}/api/v1/assets/{{assetId}}
+X-Forwarded-For: 10.250.5.12
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("asset delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}

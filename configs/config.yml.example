@@ -1,0 +1,8 @@
+env: development
+log_level: info
+log_path: blog/logs/app.log
+addr: 127.0.0.1:8080
+jwt_secret: change-me
+jwt_issuer: CashewBlog
+access_ttl: 30m0s
+refresh_ttl: 720h0m0s

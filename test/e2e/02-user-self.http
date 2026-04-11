@@ -1,0 +1,129 @@
+﻿@baseUrl = http://127.0.0.1:8080
+@sha256_123456 = 8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
+@sha256_TempPass123 = 56d37b1dea780e1c6a6d77c117c96e6e2a4a5693aaa4258e94aabb39d5c6b2c8
+
+### 02.01 admin current user profile
+# NOTE: router currently protects GET /users/me with admin authorization.
+GET {{baseUrl}}/api/v1/users/me
+X-Forwarded-For: 10.250.3.1
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("admin users/me returns profile", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.user.username === "admin", "unexpected user");
+  });
+%}
+
+### 02.02 update current user profile
+PATCH {{baseUrl}}/api/v1/users/me
+X-Forwarded-For: 10.250.3.2
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "nickname": "Default User",
+  "email": "user@cashew.local",
+  "gender": "unknown",
+  "bio": "e2e profile update",
+  "website": "https://example.test",
+  "avatar_id": 3
+}
+
+> {%
+  client.test("profile update returns user", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.user.email === "user@cashew.local", "unexpected email");
+  });
+%}
+
+### 02.03 update current user avatar
+PATCH {{baseUrl}}/api/v1/users/me/avatar
+X-Forwarded-For: 10.250.3.3
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "avatar_id": 3
+}
+
+> {%
+  client.test("avatar update returns avatar", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.avatar.id === 3, "unexpected avatar id");
+  });
+%}
+
+### 02.04 change user password to temporary value
+PATCH {{baseUrl}}/api/v1/users/me/password
+X-Forwarded-For: 10.250.3.4
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "current_password": "{{sha256_123456}}",
+  "next_password": "{{sha256_TempPass123}}"
+}
+
+> {%
+  client.test("password changes to temporary value", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.updated === true, "expected updated=true");
+  });
+%}
+
+### 02.05 login with temporary password
+POST {{baseUrl}}/api/v1/auth/login
+X-Forwarded-For: 10.250.3.5
+Content-Type: application/json
+
+{
+  "username": "user",
+  "password": "{{sha256_TempPass123}}"
+}
+
+> {%
+  client.test("temporary password login works", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.access_token, "missing access token");
+  });
+  client.global.set("userAccessToken", response.body.data.access_token);
+  client.global.set("userRefreshToken", response.body.data.refresh_token);
+%}
+
+### 02.06 change user password back to seed value
+PATCH {{baseUrl}}/api/v1/users/me/password
+X-Forwarded-For: 10.250.3.6
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "current_password": "{{sha256_TempPass123}}",
+  "next_password": "{{sha256_123456}}"
+}
+
+> {%
+  client.test("password changes back to seed value", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.updated === true, "expected updated=true");
+  });
+%}
+
+### 02.07 login again with seed password
+POST {{baseUrl}}/api/v1/auth/login
+X-Forwarded-For: 10.250.3.7
+Content-Type: application/json
+
+{
+  "username": "user",
+  "password": "{{sha256_123456}}"
+}
+
+> {%
+  client.test("seed password login works after reset", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.access_token, "missing access token");
+  });
+  client.global.set("userAccessToken", response.body.data.access_token);
+  client.global.set("userRefreshToken", response.body.data.refresh_token);
+%}

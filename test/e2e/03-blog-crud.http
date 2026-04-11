@@ -1,0 +1,208 @@
+﻿@baseUrl = http://127.0.0.1:8080
+
+### 03.01 create blog through /blogs
+POST {{baseUrl}}/api/v1/blogs
+X-Forwarded-For: 10.250.4.1
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "E2E Blog {{runId}}",
+  "slug": "e2e-blog-{{runId}}",
+  "summary": "Created by e2e blog API tests.",
+  "content_markdown": "# E2E Blog\n\nCreated by an API test.",
+  "title_image_id": 3,
+  "category_id": 2,
+  "tag_ids": [4],
+  "allow_comment": true,
+  "is_top": false,
+  "state": "draft"
+}
+
+> {%
+  client.test("blog create returns 201", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.blog.id, "missing blog id");
+  });
+  client.global.set("blogId", response.body.data.blog.id);
+%}
+
+### 03.02 update blog through /blogs/:id
+PUT {{baseUrl}}/api/v1/blogs/{{blogId}}
+X-Forwarded-For: 10.250.4.2
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "E2E Blog Updated {{runId}}",
+  "slug": "e2e-blog-updated-{{runId}}",
+  "summary": "Updated by e2e blog API tests.",
+  "content_markdown": "# E2E Blog Updated\n\nUpdated by an API test.",
+  "title_image_id": 3,
+  "category_id": 2,
+  "tag_ids": [4],
+  "allow_comment": true,
+  "is_top": false,
+  "state": "draft"
+}
+
+> {%
+  client.test("blog update returns blog", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.blog.id == client.global.get("blogId"), "unexpected blog id");
+  });
+%}
+
+### 03.03 update blog state to pending
+PATCH {{baseUrl}}/api/v1/blogs/{{blogId}}/state
+X-Forwarded-For: 10.250.4.3
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "state": "pending"
+}
+
+> {%
+  client.test("blog state update returns pending", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.state === "pending", "unexpected state");
+  });
+%}
+
+### 03.04 publish blog
+POST {{baseUrl}}/api/v1/blogs/{{blogId}}/publish
+X-Forwarded-For: 10.250.4.4
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("admin publish returns public", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.state === "public", "unexpected state");
+  });
+%}
+
+### 03.05 unpublish blog
+POST {{baseUrl}}/api/v1/blogs/{{blogId}}/unpublish
+X-Forwarded-For: 10.250.4.5
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("admin unpublish returns private", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.state === "private", "unexpected state");
+  });
+%}
+
+### 03.06 current user's blog list
+GET {{baseUrl}}/api/v1/me/blogs?page=1&page_size=10
+X-Forwarded-For: 10.250.4.6
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("me blog list returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 03.07 current user's blog detail
+GET {{baseUrl}}/api/v1/me/blogs/{{blogId}}
+X-Forwarded-For: 10.250.4.7
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("me blog detail returns blog", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.blog.id == client.global.get("blogId"), "unexpected blog id");
+  });
+%}
+
+### 03.08 create blog through /me/blogs
+POST {{baseUrl}}/api/v1/me/blogs
+X-Forwarded-For: 10.250.4.8
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "E2E Me Blog {{runId}}",
+  "slug": "e2e-me-blog-{{runId}}",
+  "summary": "Created by e2e me blog API tests.",
+  "content_markdown": "# E2E Me Blog\n\nCreated by an API test.",
+  "title_image_id": 3,
+  "category_id": 2,
+  "tag_ids": [4],
+  "allow_comment": true,
+  "is_top": false,
+  "state": "draft"
+}
+
+> {%
+  client.test("me blog create returns 201", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.blog.id, "missing blog id");
+  });
+  client.global.set("meBlogId", response.body.data.blog.id);
+%}
+
+### 03.09 update blog through /me/blogs/:id
+PUT {{baseUrl}}/api/v1/me/blogs/{{meBlogId}}
+X-Forwarded-For: 10.250.4.9
+Authorization: Bearer {{userAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "E2E Me Blog Updated {{runId}}",
+  "slug": "e2e-me-blog-updated-{{runId}}",
+  "summary": "Updated by e2e me blog API tests.",
+  "content_markdown": "# E2E Me Blog Updated\n\nUpdated by an API test.",
+  "title_image_id": 3,
+  "category_id": 2,
+  "tag_ids": [4],
+  "allow_comment": true,
+  "is_top": false,
+  "state": "draft"
+}
+
+> {%
+  client.test("me blog update returns blog", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.blog.id == client.global.get("meBlogId"), "unexpected blog id");
+  });
+%}
+
+### 03.10 delete blog through /me/blogs/:id
+DELETE {{baseUrl}}/api/v1/me/blogs/{{meBlogId}}
+X-Forwarded-For: 10.250.4.10
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("me blog delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}
+
+### 03.11 delete blog through /blogs/:id
+DELETE {{baseUrl}}/api/v1/blogs/{{blogId}}
+X-Forwarded-For: 10.250.4.11
+Authorization: Bearer {{userAccessToken}}
+
+> {%
+  client.test("blog delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}
+
+### 03.12 admin restore deleted blog
+POST {{baseUrl}}/api/v1/admin/blogs/{{blogId}}/restore
+X-Forwarded-For: 10.250.4.12
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("admin restore returns restored", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.restored === true, "expected restored=true");
+  });
+%}

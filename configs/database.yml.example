@@ -1,0 +1,16 @@
+mode: sqlite
+cleanup_interval: 30m0s
+sqlite:
+  path: blog/data/cashew.db
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: change-me
+  database: cashew_blog
+  charset: utf8mb4
+  loc: Local
+  parse_time: true
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 1h0m0s

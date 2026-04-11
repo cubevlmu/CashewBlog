@@ -1,0 +1,253 @@
+﻿@baseUrl = http://127.0.0.1:8080
+
+### 05.01 admin user list through /admin/users
+GET {{baseUrl}}/api/v1/admin/users?page=1&page_size=20&keyword=user
+X-Forwarded-For: 10.250.6.1
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("admin users route returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 05.02 admin user list through /users
+GET {{baseUrl}}/api/v1/users?page=1&page_size=20&role=user
+X-Forwarded-For: 10.250.6.2
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("users route returns a page", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(Array.isArray(response.body.data.list), "list should be an array");
+  });
+%}
+
+### 05.03 admin user detail
+GET {{baseUrl}}/api/v1/users/1
+X-Forwarded-For: 10.250.6.3
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("user detail returns admin", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.user.username === "admin", "unexpected user");
+  });
+%}
+
+### 05.04 admin create user
+POST {{baseUrl}}/api/v1/users
+X-Forwarded-For: 10.250.6.4
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "username": "e2e-user-{{runId}}",
+  "nickname": "E2E User {{runId}}",
+  "email": "e2e-user-{{runId}}@example.test",
+  "role": "user",
+  "gender": "other",
+  "bio": "created by e2e",
+  "website": "https://example.test",
+  "avatar_id": 1,
+  "password": "Password123!"
+}
+
+> {%
+  client.test("user create returns 201", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.user.id, "missing user id");
+  });
+  client.global.set("adminUserId", response.body.data.user.id);
+%}
+
+### 05.05 admin update user
+PATCH {{baseUrl}}/api/v1/users/{{adminUserId}}
+X-Forwarded-For: 10.250.6.5
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "nickname": "E2E User Updated {{runId}}",
+  "email": "e2e-user-updated-{{runId}}@example.test",
+  "role": "user",
+  "gender": "female",
+  "bio": "updated by e2e",
+  "website": "https://updated.example.test",
+  "avatar_id": 1
+}
+
+> {%
+  client.test("user update returns user", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.user.id == client.global.get("adminUserId"), "unexpected user id");
+  });
+%}
+
+### 05.06 admin update user state through /admin/users
+PATCH {{baseUrl}}/api/v1/admin/users/{{adminUserId}}/state
+X-Forwarded-For: 10.250.6.6
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "state": "verified"
+}
+
+> {%
+  client.test("admin user state route returns verified", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.state === "verified", "unexpected state");
+  });
+%}
+
+### 05.07 admin update user role
+PATCH {{baseUrl}}/api/v1/users/{{adminUserId}}/role
+X-Forwarded-For: 10.250.6.7
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "role": "admin"
+}
+
+> {%
+  client.test("user role update returns admin", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.role === "admin", "unexpected role");
+  });
+%}
+
+### 05.08 admin update user state through /users
+PATCH {{baseUrl}}/api/v1/users/{{adminUserId}}/state
+X-Forwarded-For: 10.250.6.8
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "state": "banned"
+}
+
+> {%
+  client.test("user state update returns banned", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.state === "banned", "unexpected state");
+  });
+%}
+
+### 05.09 admin delete user
+DELETE {{baseUrl}}/api/v1/users/{{adminUserId}}
+X-Forwarded-For: 10.250.6.9
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("user delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}
+
+### 05.10 admin create tag
+POST {{baseUrl}}/api/v1/tags
+X-Forwarded-For: 10.250.6.10
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "E2E Tag {{runId}}",
+  "slug": "e2e-tag-{{runId}}",
+  "color": "#00add8"
+}
+
+> {%
+  client.test("tag create returns 201", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.tag.id, "missing tag id");
+  });
+  client.global.set("tagId", response.body.data.tag.id);
+%}
+
+### 05.11 admin update tag
+PATCH {{baseUrl}}/api/v1/tags/{{tagId}}
+X-Forwarded-For: 10.250.6.11
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "E2E Tag Updated {{runId}}",
+  "slug": "e2e-tag-updated-{{runId}}",
+  "color": "#009688"
+}
+
+> {%
+  client.test("tag update returns tag", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.tag.id == client.global.get("tagId"), "unexpected tag id");
+  });
+%}
+
+### 05.12 admin delete tag
+DELETE {{baseUrl}}/api/v1/tags/{{tagId}}
+X-Forwarded-For: 10.250.6.12
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("tag delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}
+
+### 05.13 admin create category
+POST {{baseUrl}}/api/v1/categories
+X-Forwarded-For: 10.250.6.13
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "E2E Category {{runId}}",
+  "slug": "e2e-category-{{runId}}",
+  "parent_id": null,
+  "desc": "created by e2e"
+}
+
+> {%
+  client.test("category create returns 201", function () {
+    client.assert(response.status === 201, "expected HTTP 201");
+    client.assert(!!response.body.data.category.id, "missing category id");
+  });
+  client.global.set("categoryId", response.body.data.category.id);
+%}
+
+### 05.14 admin update category
+PATCH {{baseUrl}}/api/v1/categories/{{categoryId}}
+X-Forwarded-For: 10.250.6.14
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "E2E Category Updated {{runId}}",
+  "slug": "e2e-category-updated-{{runId}}",
+  "parent_id": null,
+  "desc": "updated by e2e"
+}
+
+> {%
+  client.test("category update returns category", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.category.id == client.global.get("categoryId"), "unexpected category id");
+  });
+%}
+
+### 05.15 admin delete category
+DELETE {{baseUrl}}/api/v1/categories/{{categoryId}}
+X-Forwarded-For: 10.250.6.15
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("category delete returns deleted", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(response.body.data.deleted === true, "expected deleted=true");
+  });
+%}

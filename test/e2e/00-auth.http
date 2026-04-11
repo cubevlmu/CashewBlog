@@ -1,0 +1,99 @@
+﻿@baseUrl = http://127.0.0.1:8080
+@sha256_123456 = 8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
+
+### 00.01 health
+GET {{baseUrl}}/api/v1/health
+X-Forwarded-For: 10.250.1.1
+
+> {%
+  client.test("health returns 200", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+  });
+%}
+
+### 00.02 admin login
+POST {{baseUrl}}/api/v1/auth/login
+X-Forwarded-For: 10.250.1.2
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "{{sha256_123456}}"
+}
+
+> {%
+  client.test("admin login returns token", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.access_token, "missing access token");
+  });
+  if (response.status === 200 && response.body.data) {
+    client.global.set("runId", String(Date.now()));
+    client.global.set("adminAccessToken", response.body.data.access_token);
+    client.global.set("adminRefreshToken", response.body.data.refresh_token);
+  }
+%}
+
+### 00.03 user login
+POST {{baseUrl}}/api/v1/auth/login
+X-Forwarded-For: 10.250.1.3
+Content-Type: application/json
+
+{
+  "username": "user",
+  "password": "{{sha256_123456}}"
+}
+
+> {%
+  client.test("user login returns token", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.access_token, "missing access token");
+  });
+  if (response.status === 200 && response.body.data) {
+    client.global.set("userAccessToken", response.body.data.access_token);
+    client.global.set("userRefreshToken", response.body.data.refresh_token);
+  }
+%}
+
+### 00.04 refresh admin token
+POST {{baseUrl}}/api/v1/auth/refresh
+X-Forwarded-For: 10.250.1.4
+Content-Type: application/json
+
+{
+  "refresh_token": "{{adminRefreshToken}}"
+}
+
+> {%
+  client.test("admin refresh returns a new token pair", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.access_token, "missing access token");
+  });
+  if (response.status === 200 && response.body.data) {
+    client.global.set("adminAccessToken", response.body.data.access_token);
+    client.global.set("adminRefreshToken", response.body.data.refresh_token);
+  }
+%}
+
+### 00.05 current auth info
+GET {{baseUrl}}/api/v1/me
+X-Forwarded-For: 10.250.1.5
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("me returns user id", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.user_id, "missing user id");
+  });
+%}
+
+### 00.06 current auth info alias
+GET {{baseUrl}}/api/v1/auth/me
+X-Forwarded-For: 10.250.1.6
+Authorization: Bearer {{adminAccessToken}}
+
+> {%
+  client.test("auth me alias returns user id", function () {
+    client.assert(response.status === 200, "expected HTTP 200");
+    client.assert(!!response.body.data.user_id, "missing user id");
+  });
+%}
