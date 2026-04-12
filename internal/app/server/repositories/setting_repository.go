@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -18,8 +19,8 @@ var ErrSettingNotFound = errors.New("setting not found")
 type SettingRepository struct {
 	db *gorm.DB
 
-	mu    sync.RWMutex
-	cache map[string]database.Setting
+	mu     sync.RWMutex
+	cache  map[string]database.Setting
 	loaded bool
 }
 
@@ -92,6 +93,35 @@ func (r *SettingRepository) GetByKey(ctx context.Context, key string) (*database
 		return &item, nil
 	}
 	return nil, nil
+}
+
+// ListByRoot loads cached settings whose keys are direct descendants of root, such as a.b and a.c for root a.
+func (r *SettingRepository) ListByRoot(ctx context.Context, root string) ([]database.Setting, error) {
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("setting repository not initialized")
+	}
+
+	root = strings.Trim(strings.TrimSpace(root), ".")
+	if root == "" {
+		return []database.Setting{}, nil
+	}
+
+	items, err := r.cachedSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	prefix := root + "."
+	result := make([]database.Setting, 0)
+	for _, item := range items {
+		if strings.HasPrefix(item.Key, prefix) {
+			result = append(result, item)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Key < result[j].Key
+	})
+	return result, nil
 }
 
 // UpdateValues updates existing setting values by key and fails when any key is missing.

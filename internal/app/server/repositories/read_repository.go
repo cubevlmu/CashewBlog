@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -12,7 +13,26 @@ import (
 )
 
 type ReadRepository struct {
-	db *gorm.DB
+	db              *gorm.DB
+	dashboardRecent *dashboardRecentCache
+}
+
+type DashboardRecentPost struct {
+	Title  string    `json:"title"`
+	Author string    `json:"author"`
+	Time   time.Time `json:"time"`
+}
+
+type DashboardRecentComment struct {
+	Content   string    `json:"content"`
+	Publisher string    `json:"publisher"`
+	Time      time.Time `json:"time"`
+}
+
+type dashboardRecentCache struct {
+	mu       sync.RWMutex
+	posts    []DashboardRecentPost
+	comments []DashboardRecentComment
 }
 
 // TagListFilter describes supported tag-list query conditions.
@@ -51,7 +71,9 @@ func NewReadRepository(db *gorm.DB) *ReadRepository {
 	if db == nil {
 		return nil
 	}
-	return &ReadRepository{db: db}
+	repo := &ReadRepository{db: db, dashboardRecent: &dashboardRecentCache{}}
+	_ = repo.RefreshAdminDashboardRecent(context.Background())
+	return repo
 }
 
 // DB exposes the underlying gorm handle for rare integration cases.
@@ -205,7 +227,7 @@ func (r *ReadRepository) LoadTagsByBlogIDs(ctx context.Context, blogIDs []uint) 
 	var rows []row
 	if err := r.db.WithContext(ctx).
 		Table("blog_tags").
-		Select("blog_tags.blog_id, tags.id, tags.name, tags.slug, tags.color, tags.created_at").
+		Select("blog_tags.blog_id, tags.id, tags.name, tags.slug, tags.desc, tags.color, tags.created_at").
 		Joins("JOIN tags ON tags.id = blog_tags.tag_id").
 		Where("blog_tags.blog_id IN ?", uniqueUint(blogIDs)).
 		Find(&rows).Error; err != nil {
@@ -285,6 +307,180 @@ func (r *ReadRepository) CountDashboardSummary(ctx context.Context, today time.T
 	return stats, nil
 }
 
+// CountUserDashboardSummary aggregates dashboard counters scoped to one author.
+func (r *ReadRepository) CountUserDashboardSummary(ctx context.Context, userID uint, today time.Time) (map[string]int64, error) {
+	stats := map[string]int64{
+		"user_count": 1,
+	}
+
+	counts := []struct {
+		key   string
+		model interface{}
+		where func(*gorm.DB) *gorm.DB
+	}{
+		{"blog_count", &database.Blog{}, func(db *gorm.DB) *gorm.DB { return db.Where("author = ?", userID) }},
+		{"public_blog_count", &database.Blog{}, func(db *gorm.DB) *gorm.DB {
+			return db.Where("author = ? AND state = ?", userID, database.BlogStatePublic)
+		}},
+		{"draft_blog_count", &database.Blog{}, func(db *gorm.DB) *gorm.DB {
+			return db.Where("author = ? AND state = ?", userID, database.BlogStateDraft)
+		}},
+		{"asset_count", &database.Asset{}, func(db *gorm.DB) *gorm.DB { return db.Where("uploader = ?", userID) }},
+	}
+	for _, item := range counts {
+		var count int64
+		if err := item.where(r.db.WithContext(ctx).Model(item.model)).Count(&count).Error; err != nil {
+			return nil, err
+		}
+		stats[item.key] = count
+	}
+
+	var commentCount int64
+	if err := r.db.WithContext(ctx).Model(&database.Comment{}).
+		Joins("JOIN blogs ON blogs.id = comments.blog_id").
+		Where("blogs.author = ? AND blogs.deleted_at IS NULL", userID).
+		Count(&commentCount).Error; err != nil {
+		return nil, err
+	}
+	stats["comment_count"] = commentCount
+
+	var tagCount int64
+	if err := r.db.WithContext(ctx).Table("blog_tags").
+		Joins("JOIN blogs ON blogs.id = blog_tags.blog_id").
+		Where("blogs.author = ? AND blogs.deleted_at IS NULL", userID).
+		Distinct("blog_tags.tag_id").
+		Count(&tagCount).Error; err != nil {
+		return nil, err
+	}
+	stats["tag_count"] = tagCount
+
+	var categoryCount int64
+	if err := r.db.WithContext(ctx).Model(&database.Blog{}).
+		Where("author = ? AND category IS NOT NULL", userID).
+		Distinct("category").
+		Count(&categoryCount).Error; err != nil {
+		return nil, err
+	}
+	stats["category_count"] = categoryCount
+
+	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	var todayComments int64
+	if err := r.db.WithContext(ctx).Model(&database.Comment{}).
+		Joins("JOIN blogs ON blogs.id = comments.blog_id").
+		Where("blogs.author = ? AND blogs.deleted_at IS NULL", userID).
+		Where("comments.created_at >= ? AND comments.created_at < ?", startOfDay, endOfDay).
+		Count(&todayComments).Error; err != nil {
+		return nil, err
+	}
+	stats["today_comments"] = todayComments
+
+	type sumRow struct {
+		Total int64
+	}
+	var row sumRow
+	if err := r.db.WithContext(ctx).Model(&database.Blog{}).
+		Select("COALESCE(SUM(view_count), 0) AS total").
+		Where("author = ? AND updated_at >= ? AND updated_at < ?", userID, startOfDay, endOfDay).
+		Scan(&row).Error; err != nil {
+		return nil, err
+	}
+	stats["today_views"] = row.Total
+
+	return stats, nil
+}
+
+// AdminDashboardRecent returns the cached newest dashboard posts and comments.
+func (r *ReadRepository) AdminDashboardRecent() ([]DashboardRecentPost, []DashboardRecentComment) {
+	if r == nil || r.dashboardRecent == nil {
+		return []DashboardRecentPost{}, []DashboardRecentComment{}
+	}
+	r.dashboardRecent.mu.RLock()
+	defer r.dashboardRecent.mu.RUnlock()
+
+	posts := append([]DashboardRecentPost(nil), r.dashboardRecent.posts...)
+	comments := append([]DashboardRecentComment(nil), r.dashboardRecent.comments...)
+	return posts, comments
+}
+
+// RefreshAdminDashboardRecent rebuilds the cached newest admin dashboard posts and comments.
+func (r *ReadRepository) RefreshAdminDashboardRecent(ctx context.Context) error {
+	if r == nil || r.db == nil {
+		return fmt.Errorf("read repository not initialized")
+	}
+	posts, err := r.listDashboardRecentPosts(ctx, nil, 3)
+	if err != nil {
+		return err
+	}
+	comments, err := r.listDashboardRecentComments(ctx, nil, 3)
+	if err != nil {
+		return err
+	}
+	if r.dashboardRecent == nil {
+		r.dashboardRecent = &dashboardRecentCache{}
+	}
+	r.dashboardRecent.mu.Lock()
+	r.dashboardRecent.posts = append([]DashboardRecentPost(nil), posts...)
+	r.dashboardRecent.comments = append([]DashboardRecentComment(nil), comments...)
+	r.dashboardRecent.mu.Unlock()
+	return nil
+}
+
+// ListUserDashboardRecent queries the newest posts and comments for one author's dashboard without using cache.
+func (r *ReadRepository) ListUserDashboardRecent(ctx context.Context, userID uint) ([]DashboardRecentPost, []DashboardRecentComment, error) {
+	posts, err := r.listDashboardRecentPosts(ctx, &userID, 3)
+	if err != nil {
+		return nil, nil, err
+	}
+	comments, err := r.listDashboardRecentComments(ctx, &userID, 3)
+	if err != nil {
+		return nil, nil, err
+	}
+	return posts, comments, nil
+}
+
+func (r *ReadRepository) listDashboardRecentPosts(ctx context.Context, authorID *uint, limit int) ([]DashboardRecentPost, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+	query := r.db.WithContext(ctx).
+		Table("blogs").
+		Select("blogs.title AS title, COALESCE(NULLIF(users.nickname, ''), users.username) AS author, blogs.created_at AS time").
+		Joins("LEFT JOIN users ON users.id = blogs.author").
+		Where("blogs.deleted_at IS NULL AND blogs.state <> ?", database.BlogStateDeleted)
+	if authorID != nil {
+		query = query.Where("blogs.author = ?", *authorID)
+	}
+
+	var items []DashboardRecentPost
+	if err := query.Order("blogs.created_at DESC").Limit(limit).Scan(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *ReadRepository) listDashboardRecentComments(ctx context.Context, blogAuthorID *uint, limit int) ([]DashboardRecentComment, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+	query := r.db.WithContext(ctx).
+		Table("comments").
+		Select("comments.content AS content, COALESCE(NULLIF(users.nickname, ''), users.username) AS publisher, comments.created_at AS time").
+		Joins("LEFT JOIN users ON users.id = comments.user_id").
+		Where("comments.deleted_at IS NULL AND comments.state <> ?", database.CommentStateDeleted)
+	if blogAuthorID != nil {
+		query = query.Joins("JOIN blogs ON blogs.id = comments.blog_id").
+			Where("blogs.author = ? AND blogs.deleted_at IS NULL", *blogAuthorID)
+	}
+
+	var items []DashboardRecentComment
+	if err := query.Order("comments.created_at DESC").Limit(limit).Scan(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 // CountTrend returns daily counts for the last `days` days.
 func (r *ReadRepository) CountTrend(ctx context.Context, model interface{}, dateColumn string, days int) ([]map[string]interface{}, error) {
 	if days <= 0 {
@@ -355,7 +551,7 @@ func paginateQueryWithOrder[T any](query *gorm.DB, page int, pageSize int, apply
 	}
 
 	var items []T
-	if err := pageQuery.Offset((page-1)*pageSize).Limit(pageSize).Find(&items).Error; err != nil {
+	if err := pageQuery.Offset((page - 1) * pageSize).Limit(pageSize).Find(&items).Error; err != nil {
 		return nil, 0, err
 	}
 	return items, total, nil

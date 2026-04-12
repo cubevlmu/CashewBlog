@@ -53,7 +53,7 @@ const homeConfig = reactive(useAdminHomeConfigPage())
           <label class="admin-form-field">
             <span>背景图</span>
             <input v-model="homeConfig.form.heroImage" class="admin-input" type="text" />
-            <small>当前支持 Bing 图源或自定义图片地址。</small>
+            <small>填写 --bing-- 使用 Bing 图 API，或填写自定义图片地址。</small>
           </label>
           <label class="admin-form-field admin-profile-editor__field--full">
             <span>副标题</span>

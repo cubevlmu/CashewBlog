@@ -1,18 +1,22 @@
 import { mapCommentToAdminCommentRecord } from '@/mappers/adminApi'
 import { requestJson } from '@/data/core/http'
 import type { AdminCommentRecord } from '@/types/admin'
-import type { ApiBlogListItem, ApiCommentItem, ApiPageData } from '@/types/api'
+import type { ApiAdminCommentItem, ApiPageData } from '@/types/api'
 
 export async function getAdminComments() {
-  const blogs = await requestJson<ApiPageData<ApiBlogListItem>>('/api/v1/admin/blogs?page=1&page_size=100')
-  const commentGroups = await Promise.all(
-    blogs.list.map(async (blog) => {
-      const data = await requestJson<ApiPageData<ApiCommentItem>>(`/api/v1/blogs/${blog.id}/comments?page=1&page_size=100`)
-      return data.list.map((comment) => mapCommentToAdminCommentRecord(comment, blog.title))
-    }),
-  )
+  const data = await requestJson<ApiPageData<ApiAdminCommentItem>>('/api/v1/admin/comments?page=1&page_size=100')
+  const commentsById = new Map(data.list.map((comment) => [comment.id, comment]))
 
-  return commentGroups.flat()
+  return data.list.map((comment) => {
+    const parent = comment.parent_id ? commentsById.get(comment.parent_id) : null
+    const replyTo = parent
+      ? parent.user?.nickname || parent.user?.username || `评论 #${parent.id}`
+      : comment.parent_id
+        ? `评论 #${comment.parent_id}`
+        : undefined
+
+    return mapCommentToAdminCommentRecord(comment, comment.blog?.title || '', replyTo)
+  })
 }
 
 export async function updateAdminCommentsState(ids: number[], state: AdminCommentRecord['state']) {

@@ -98,6 +98,19 @@ func (s *Store) Set(key string, value any) {
 	}
 }
 
+// Clear removes all cached keys.
+func (s *Store) Clear() {
+	if s == nil || !s.enabled {
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.ll.Init()
+	s.items = make(map[string]*list.Element, s.maxEntries)
+}
+
 // DeletePrefix removes cached keys under the same prefix.
 func (s *Store) DeletePrefix(prefix string) {
 	if s == nil || !s.enabled {

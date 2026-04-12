@@ -1,6 +1,7 @@
 export interface ApiResponse<T> {
-  code: number
-  message: string
+  status?: number
+  code?: number
+  message?: string
   data: T
 }
 
@@ -14,21 +15,23 @@ export interface ApiPageData<T> {
 export type UserState = 'registered' | 'verified' | 'banned' | 'deleted'
 export type UserRole = 'user' | 'admin' | 'super_admin'
 export type Gender = 'unknown' | 'male' | 'female' | 'other'
-export type BlogState = 'draft' | 'public' | 'private' | 'deleted'
+export type BlogState = 'draft' | 'pending' | 'public' | 'private' | 'deleted'
 export type CommentState = 'normal' | 'hidden' | 'deleted'
 export type AssetState = 'normal' | 'hidden' | 'deleted'
 export type SettingType = 'bool' | 'int' | 'string' | 'json'
 
 export interface ApiAssetRef {
   id: number
-  url: string
+  url?: string
 }
+
+export type ApiAssetValue = ApiAssetRef | ApiAssetItem | number
 
 export interface ApiUserSummary {
   id: number
   username: string
   nickname: string
-  avatar?: ApiAssetRef | null
+  avatar?: ApiAssetValue | null
   gender?: Gender
   bio?: string
   website?: string
@@ -50,6 +53,7 @@ export interface ApiTagItem {
   id: number
   name: string
   slug: string
+  desc?: string
   color?: string
   post_count?: number
   created_at: string
@@ -77,7 +81,7 @@ export interface ApiAssetItem {
   original_file_name: string
   mime_type: string
   file_extension: string
-  url: string
+  url?: string
   file_hash: string
   file_size: number
   width?: number
@@ -125,6 +129,14 @@ export interface ApiCommentItem {
   updated_at: string
 }
 
+export interface ApiAdminCommentItem extends ApiCommentItem {
+  blog?: {
+    id: number
+    title: string
+    slug: string
+  }
+}
+
 export interface ApiPublicSettings {
   site: {
     title: string
@@ -145,6 +157,9 @@ export interface ApiPublicSettings {
       text: string
       link: string
     }>
+  }
+  announcement?: {
+    content?: string
   }
   intro?: {
     blog_name?: string
@@ -181,8 +196,18 @@ export interface ApiLoginData {
   user: ApiUserSummary
 }
 
+export interface ApiRefreshData {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+}
+
 export interface ApiAuthMeData {
   user: ApiUserProfile
+}
+
+export interface ApiAuthStatusData {
+  user_id: number
 }
 
 export interface ApiBlogContextData {
@@ -228,4 +253,31 @@ export interface ApiDashboardData {
   asset_count: number
   today_views: number
   today_comments: number
+  recent_posts?: ApiDashboardRecentPost[]
+  recent_comments?: ApiDashboardRecentComment[]
+}
+
+export interface ApiDashboardRecentPost {
+  title: string
+  author: string
+  time: string
+}
+
+export interface ApiDashboardRecentComment {
+  content: string
+  publisher: string
+  time: string
+}
+
+export interface ApiSettingItem {
+  key: string
+  value: string
+  type: SettingType
+  group: string
+  description?: string
+}
+
+export interface ApiSettingsRootData {
+  root: string
+  items: ApiSettingItem[]
 }

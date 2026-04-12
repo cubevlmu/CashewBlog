@@ -1,4 +1,5 @@
 import { mapCategoryToTaxonomyItem, mapTagToTaxonomyItem } from '@/mappers/taxonomyApi'
+import { assetUrl } from '@/mappers/assetUrl'
 import type { ArticleComment, ArticleContext, HomePostCard } from '@/types/content'
 import type { HomePostsResponse, PagedPostListResponse, SearchResponse } from '@/types/responses'
 import type {
@@ -15,7 +16,7 @@ function fallbackAvatar() {
 }
 
 function pickAvatar(user?: ApiUserSummary | null) {
-  return user?.avatar?.url || fallbackAvatar()
+  return assetUrl(user?.avatar) || fallbackAvatar()
 }
 
 function estimateWordCount(blog: Pick<ApiBlogListItem, 'summary'> & Partial<Pick<ApiBlogDetail, 'content_markdown'>>) {
@@ -29,12 +30,19 @@ function estimateReadingTime(wordCount: number) {
 
 export function mapBlogToHomePostCard(blog: ApiBlogListItem | ApiBlogDetail): HomePostCard {
   const wordCount = estimateWordCount(blog)
+  const authorName = blog.author?.nickname || blog.author?.username || '匿名作者'
 
   return {
     id: blog.id,
     title: blog.title,
     slug: blog.slug,
-    coverImage: blog.title_image?.url || '',
+    coverImage: assetUrl(blog.title_image),
+    author: {
+      id: blog.author?.id ?? 0,
+      username: blog.author?.username ?? '',
+      displayName: authorName,
+      avatar: pickAvatar(blog.author),
+    },
     desc: blog.summary,
     content: 'content_markdown' in blog ? blog.content_markdown : undefined,
     publishedAt: blog.published_at || blog.updated_at || blog.created_at,

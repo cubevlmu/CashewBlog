@@ -1,4 +1,4 @@
-import { deleteAdminAssets, getAdminAssetById, getAdminAssets } from '@/api/adminAssets'
+import { deleteAdminAssets, getAdminAssetById, getAdminAssets, getAdminUploadLimitBytes, uploadAdminAsset } from '@/api/adminAssets'
 import { deleteAdminComments, getAdminComments, updateAdminCommentsState } from '@/api/adminComments'
 import { getAdminDashboardSummary } from '@/api/adminDashboard'
 import {
@@ -41,6 +41,7 @@ export {
   deleteAdminUsers,
   getAdminAssetById,
   getAdminAssets,
+  getAdminUploadLimitBytes,
   getAdminCategories,
   getAdminComments,
   getAdminDashboardSummary,
@@ -57,5 +58,6 @@ export {
   updateAdminPostState,
   updateAdminTag,
   updateAdminUser,
+  uploadAdminAsset,
   updateMyBlog,
 }

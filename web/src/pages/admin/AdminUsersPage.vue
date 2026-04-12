@@ -21,27 +21,30 @@ const users = reactive(useAdminUsersPage())
       <button v-if="users.authState.isAdmin" class="button button--primary" type="button" @click="users.openCreate">注册账户</button>
     </header>
 
-    <AdminUsersTable
-      :loading="users.loading"
-      :error-message="users.errorMessage"
-      :users="users.pagedUsers"
-      :selected-ids="users.selectedIds"
-      :total-count="users.totalCount"
-      :page="users.page"
-      :total-pages="users.totalPages"
-      :is-admin="users.authState.isAdmin"
-      :role-label="users.roleLabel"
-      :format-last-login="users.formatLastLogin"
-      :article-summary="users.articleSummary"
-      @retry="users.load"
-      @toggle-select-all="users.toggleSelectAll"
-      @toggle-selection="users.toggleSelection"
-      @update-sort="users.updateSort"
-      @open-edit="users.openEdit"
-      @open-detail="users.openDetail"
-      @request-delete="users.requestDelete"
-      @change-page="users.goToPage"
-    />
+    <section class="panel admin-taxonomy-table">
+      <AdminUsersTable
+        :panelized="false"
+        :loading="users.loading"
+        :error-message="users.errorMessage"
+        :users="users.pagedUsers"
+        :selected-ids="users.selectedIds"
+        :total-count="users.totalCount"
+        :page="users.page"
+        :total-pages="users.totalPages"
+        :is-admin="users.authState.isAdmin"
+        :role-label="users.roleLabel"
+        :format-last-login="users.formatLastLogin"
+        :article-summary="users.articleSummary"
+        @retry="users.load"
+        @toggle-select-all="users.toggleSelectAll"
+        @toggle-selection="users.toggleSelection"
+        @update-sort="users.updateSort"
+        @open-edit="users.openEdit"
+        @open-detail="users.openDetail"
+        @request-delete="users.requestDelete"
+        @change-page="users.goToPage"
+      />
+    </section>
 
     <AppDialog v-model="users.editOpen" width="560px" panel-class="admin-dialog">
       <template #header>

@@ -1,4 +1,4 @@
-import { getMyBlogDetail } from '@/api/meBlogs'
+import { getEditableBlogDetail } from '@/api/meBlogs'
 import { mapApiBlogDetailToEditorForm } from '@/mappers/editor'
 import {
   createArticleComment,
@@ -68,6 +68,6 @@ export function loadEditorSelectOptions() {
 }
 
 export async function loadEditableBlog(id: number) {
-  const detail = await getMyBlogDetail(id)
+  const detail = await getEditableBlogDetail(id)
   return mapApiBlogDetailToEditorForm(detail?.blog)
 }

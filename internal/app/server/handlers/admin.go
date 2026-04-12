@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 
-	"CashewBlog/internal/app/server/webutil"
+	"CashewBlog/internal/app/server/middleware"
 	"CashewBlog/internal/app/server/services"
+	"CashewBlog/internal/app/server/webutil"
 )
 
 type AdminHandler struct {
@@ -15,6 +18,27 @@ type AdminHandler struct {
 // GetDashboard returns the admin dashboard summary counters from database data.
 func (h *AdminHandler) GetDashboard(c *gin.Context) {
 	result, err := h.Read.GetAdminDashboard(c.Request.Context(), webutil.CacheKey(c, "admin_dashboard"))
+	if err != nil {
+		webutil.RespondError(c, 500, 50000, err.Error())
+		return
+	}
+	webutil.RespondOK(c, result)
+}
+
+// GetMyDashboard returns dashboard counters scoped to the authenticated user.
+func (h *AdminHandler) GetMyDashboard(c *gin.Context) {
+	userID, _, ok := middleware.UserFromContext(c)
+	if !ok {
+		webutil.RespondError(c, 401, 40100, "unauthorized")
+		return
+	}
+	uid, err := strconv.ParseUint(userID, 10, 64)
+	if err != nil {
+		webutil.RespondError(c, 401, 40100, "invalid user")
+		return
+	}
+
+	result, err := h.Read.GetUserDashboard(c.Request.Context(), uint(uid), webutil.CacheKey(c, "my_dashboard"))
 	if err != nil {
 		webutil.RespondError(c, 500, 50000, err.Error())
 		return

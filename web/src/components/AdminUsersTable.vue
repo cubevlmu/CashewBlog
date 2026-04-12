@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AdminDataTable from '@/components/AdminDataTable.vue'
 import AdminPaginationControls from '@/components/AdminPaginationControls.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import type { AdminUserRecord } from '@/types/admin'
 
 defineProps<{
@@ -15,6 +16,7 @@ defineProps<{
   roleLabel: (role: AdminUserRecord['role']) => string
   formatLastLogin: (value: string) => string
   articleSummary: (user: AdminUserRecord) => string
+  panelized?: boolean
 }>()
 
 defineEmits<{
@@ -36,6 +38,7 @@ defineEmits<{
     :has-rows="users.length > 0"
     empty-text="当前没有用户。"
     :colspan="7"
+    :panelized="panelized"
     @retry="$emit('retry')"
   >
     <template #toolbar>
@@ -94,7 +97,7 @@ defineEmits<{
         </td>
         <td>
           <div class="admin-author">
-            <img :src="user.avatar" :alt="user.displayName" />
+            <UserAvatar :src="user.avatar" :alt="user.displayName" />
             <div>
               <strong>{{ user.displayName }}</strong>
               <span>@{{ user.username }}</span>

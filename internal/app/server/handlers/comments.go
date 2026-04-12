@@ -13,6 +13,7 @@ import (
 	"CashewBlog/internal/app/server/repositories"
 	"CashewBlog/internal/app/server/services"
 	"CashewBlog/internal/app/server/webutil"
+	authpkg "CashewBlog/internal/pkg/auth"
 	"CashewBlog/internal/pkg/database"
 )
 
@@ -44,7 +45,50 @@ func (h *CommentHandler) ListBlogComments(c *gin.Context) {
 	}
 	filter.State = state
 
-	result, err := h.Read.ListBlogComments(c.Request.Context(), filter, webutil.CacheKey(c, "blog_comments"))
+	result, err := h.Read.ListBlogComments(c.Request.Context(), filter)
+	if err != nil {
+		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
+		return
+	}
+
+	webutil.RespondPage(c, result.List, result.Total, result.Page, result.PageSize)
+}
+
+// ListAdminComments handles GET /api/v1/admin/comments.
+// It loads a paginated moderation list across blogs for admin callers.
+func (h *CommentHandler) ListAdminComments(c *gin.Context) {
+	userID, role, ok := middleware.UserFromContext(c)
+	if !ok {
+		webutil.RespondError(c, http.StatusUnauthorized, 40100, "unauthorized")
+		return
+	}
+
+	page, pageSize := webutil.ParsePageParams(c)
+	filter := repositories.AdminCommentListFilter{
+		Page:     page,
+		PageSize: pageSize,
+		Keyword:  webutil.LikeKeyword(c.Query("keyword")),
+		BlogID:   webutil.ParseOptionalUint(c.Query("blog_id")),
+		UserID:   webutil.ParseOptionalUint(c.Query("user_id")),
+	}
+	if role != authpkg.RoleAdmin {
+		uid, err := strconv.ParseUint(userID, 10, 64)
+		if err != nil {
+			webutil.RespondError(c, http.StatusUnauthorized, 40100, "invalid user")
+			return
+		}
+		authorID := uint(uid)
+		filter.BlogAuthorID = &authorID
+	}
+
+	state, ok := parseCommentState(c.Query("state"))
+	if !ok {
+		webutil.RespondError(c, http.StatusBadRequest, 40000, "invalid state")
+		return
+	}
+	filter.State = state
+
+	result, err := h.Read.ListAdminComments(c.Request.Context(), filter)
 	if err != nil {
 		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
 		return
@@ -107,6 +151,7 @@ func (h *CommentHandler) UpdateComment(c *gin.Context) {
 		h.respondCommentError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	item, err := h.Read.GetCommentItem(c.Request.Context(), comment)
 	if err != nil {
@@ -148,13 +193,26 @@ func (h *CommentHandler) DeleteComment(c *gin.Context) {
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{"deleted": true, "id": id})
 }
 
 // UpdateCommentState handles PATCH /api/v1/comments/:id/state.
-// It updates one comment's moderation state for admin callers and returns the updated id and state.
+// It updates one comment's moderation state for admins or the owning blog's author.
 func (h *CommentHandler) UpdateCommentState(c *gin.Context) {
+	userID, role, ok := middleware.UserFromContext(c)
+	if !ok {
+		webutil.RespondError(c, http.StatusUnauthorized, 40100, "unauthorized")
+		return
+	}
+
+	uid, err := strconv.ParseUint(userID, 10, 64)
+	if err != nil {
+		webutil.RespondError(c, http.StatusUnauthorized, 40100, "invalid user")
+		return
+	}
+
 	id, err := webutil.ParseUintParam(c, "id")
 	if err != nil {
 		webutil.RespondError(c, http.StatusBadRequest, 40000, err.Error())
@@ -174,13 +232,16 @@ func (h *CommentHandler) UpdateCommentState(c *gin.Context) {
 	}
 
 	comment, err := h.Comments.UpdateStateByID(c.Request.Context(), repositories.UpdateCommentStateInput{
-		ID:    id,
-		State: *state,
+		ID:          id,
+		RequesterID: uint(uid),
+		Role:        role,
+		State:       *state,
 	})
 	if err != nil {
 		h.respondCommentError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{
 		"id":    comment.ID,
@@ -242,6 +303,7 @@ func (h *CommentHandler) createComment(c *gin.Context, blogParam string, parentP
 		h.respondCommentError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	item, err := h.Read.GetCommentItem(c.Request.Context(), comment)
 	if err != nil {

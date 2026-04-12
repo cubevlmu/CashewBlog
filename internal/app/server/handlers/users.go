@@ -154,6 +154,7 @@ func (h *UserHandler) UpdateCurrentUser(c *gin.Context) {
 		respondUserWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 	h.respondUserProfile(c, user, "current_user_profile_updated")
 }
 
@@ -190,6 +191,7 @@ func (h *UserHandler) UpdateCurrentUserPassword(c *gin.Context) {
 		respondUserWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{"updated": true})
 }
@@ -220,6 +222,7 @@ func (h *UserHandler) UpdateCurrentUserAvatar(c *gin.Context) {
 		respondUserWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 	profile, err := h.loadUserProfile(c, user, "current_user_avatar_updated")
 	if err != nil {
 		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
@@ -279,6 +282,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		respondUserWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 	profile, err := h.loadUserProfile(c, user, "admin_user_created")
 	if err != nil {
 		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
@@ -338,6 +342,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		respondUserWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 	h.respondUserProfile(c, user, "admin_user_updated")
 }
 
@@ -359,6 +364,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{"deleted": true, "id": id})
 }
@@ -388,6 +394,7 @@ func (h *UserHandler) UpdateUserState(c *gin.Context) {
 		respondUserWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{
 		"id":    user.ID,
@@ -436,6 +443,7 @@ func (h *UserHandler) UpdateUserRole(c *gin.Context) {
 		respondUserWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{
 		"id":   user.ID,

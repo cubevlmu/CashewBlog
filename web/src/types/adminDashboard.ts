@@ -5,6 +5,18 @@ export interface AdminDashboardStat {
 
 export interface AdminDashboardSummary {
   stats: AdminDashboardStat[]
-  recentPosts: string[]
-  recentComments: string[]
+  recentPosts: AdminDashboardRecentPost[]
+  recentComments: AdminDashboardRecentComment[]
+}
+
+export interface AdminDashboardRecentPost {
+  title: string
+  author: string
+  time: string
+}
+
+export interface AdminDashboardRecentComment {
+  content: string
+  publisher: string
+  time: string
 }

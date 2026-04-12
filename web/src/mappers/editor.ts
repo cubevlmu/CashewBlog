@@ -1,4 +1,5 @@
 import { mapBlogToAdminEditorRecord } from '@/mappers/adminApi'
+import { assetUrl } from '@/mappers/assetUrl'
 import type { ApiBlogDetail, ApiCategoryItem, ApiTagItem } from '@/types/api'
 import type { AdminCategoryRecord, AdminPostEditorRecord, AdminTagRecord } from '@/types/admin'
 import type { EditorForm } from '@/types/forms'
@@ -31,13 +32,13 @@ export function mapApiBlogDetailToEditorForm(blog?: ApiBlogDetail | null): Edito
     slug: blog.slug,
     summary: blog.summary,
     contentMarkdown: blog.content_markdown,
-    coverImage: blog.title_image?.url ?? '',
+    coverImage: assetUrl(blog.title_image),
     titleImageId: blog.title_image?.id ?? null,
     categoryId: blog.category?.id ?? null,
     tagIds: blog.tags.map((tag) => tag.id),
     allowComment: blog.allow_comment,
     isTop: blog.is_top,
-    state: blog.state === 'public' ? 'public' : blog.state === 'private' ? 'private' : 'draft',
+    state: blog.state === 'public' ? 'public' : blog.state === 'private' || blog.state === 'pending' ? 'private' : 'draft',
   }
 }
 
@@ -69,7 +70,7 @@ export function mapApiTagToAdminTagOption(tag: ApiTagItem): AdminTagRecord {
     id: tag.id,
     name: tag.name,
     slug: tag.slug,
-    desc: '',
+    desc: tag.desc || '',
     postCount: tag.post_count ?? 0,
   }
 }

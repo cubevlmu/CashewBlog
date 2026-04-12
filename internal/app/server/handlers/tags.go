@@ -108,14 +108,16 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 	tag, err := h.Tags.Create(c.Request.Context(), repositories.CreateTagInput{
 		Name:  name,
 		Slug:  slug,
+		Desc:  req.Desc,
 		Color: req.Color,
 	})
 	if err != nil {
 		respondTagWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
-	webutil.RespondCreated(c, gin.H{"tag": serverapi.TagItemFromModel(tag)})
+	webutil.RespondCreated(c, gin.H{"tag": h.tagItem(tag)})
 }
 
 // UpdateTag handles PATCH /api/v1/tags/:id.
@@ -144,14 +146,16 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 		ID:    tagID,
 		Name:  name,
 		Slug:  slug,
+		Desc:  req.Desc,
 		Color: req.Color,
 	})
 	if err != nil {
 		respondTagWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
-	webutil.RespondOK(c, gin.H{"tag": serverapi.TagItemFromModel(tag)})
+	webutil.RespondOK(c, gin.H{"tag": h.tagItem(tag)})
 }
 
 // DeleteTag handles DELETE /api/v1/tags/:id.
@@ -167,6 +171,7 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 		respondTagWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{"deleted": true, "id": tagID})
 }
@@ -211,6 +216,14 @@ func (h *TagHandler) respondTagBlogs(c *gin.Context, loadTag func() (gin.H, erro
 // fmtTagCacheSuffix formats a tag id suffix for read cache keys.
 func fmtTagCacheSuffix(tagID uint) string {
 	return "|tag_id=" + strconv.FormatUint(uint64(tagID), 10)
+}
+
+func (h *TagHandler) tagItem(tag *database.Tag) serverapi.TagItem {
+	item := serverapi.TagItemFromModel(tag)
+	if tag != nil && h.Tags != nil {
+		item.PostCount = h.Tags.ArticleCount(tag.ID)
+	}
+	return item
 }
 
 // respondTagWriteError maps repository tag errors to the standard API error payload.

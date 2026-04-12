@@ -19,7 +19,8 @@ var (
 )
 
 type CommentRepository struct {
-	db *gorm.DB
+	db   *gorm.DB
+	read *ReadRepository
 }
 
 // CommentListFilter describes supported comment-list query conditions.
@@ -28,6 +29,17 @@ type CommentListFilter struct {
 	PageSize int
 	BlogID   uint
 	State    *int
+}
+
+// AdminCommentListFilter describes admin comment-list query conditions.
+type AdminCommentListFilter struct {
+	Page         int
+	PageSize     int
+	Keyword      string
+	BlogID       *uint
+	BlogAuthorID *uint
+	UserID       *uint
+	State        *int
 }
 
 type CreateCommentInput struct {
@@ -46,8 +58,10 @@ type UpdateCommentInput struct {
 }
 
 type UpdateCommentStateInput struct {
-	ID    uint
-	State int
+	ID          uint
+	RequesterID uint
+	Role        string
+	State       int
 }
 
 func NewCommentRepository(db *gorm.DB) *CommentRepository {
@@ -55,6 +69,14 @@ func NewCommentRepository(db *gorm.DB) *CommentRepository {
 		return nil
 	}
 	return &CommentRepository{db: db}
+}
+
+// BindReadRepository lets comment writes refresh read-side dashboard caches.
+func (r *CommentRepository) BindReadRepository(read *ReadRepository) {
+	if r == nil {
+		return
+	}
+	r.read = read
 }
 
 // Create inserts one comment under a blog after validating blog and parent state.
@@ -109,6 +131,9 @@ func (r *CommentRepository) Create(ctx context.Context, in CreateCommentInput) (
 	if err != nil {
 		return nil, err
 	}
+	if err := r.refreshDashboardRecent(ctx); err != nil {
+		return nil, err
+	}
 	return comment, nil
 }
 
@@ -146,6 +171,34 @@ func (r *CommentRepository) ListAllByBlogID(ctx context.Context, blogID uint, st
 	return items, nil
 }
 
+// ListAdmin returns paginated comments for moderation.
+func (r *CommentRepository) ListAdmin(ctx context.Context, filter AdminCommentListFilter) ([]database.Comment, int64, error) {
+	if r == nil || r.db == nil {
+		return nil, 0, fmt.Errorf("comment repository not initialized")
+	}
+
+	query := r.db.WithContext(ctx).Model(&database.Comment{})
+	if filter.BlogAuthorID != nil {
+		query = query.Joins("JOIN blogs ON blogs.id = comments.blog_id").Where("blogs.author = ?", *filter.BlogAuthorID)
+	}
+	if filter.State != nil {
+		if *filter.State == database.CommentStateDeleted {
+			query = query.Unscoped()
+		}
+		query = query.Where("comments.state = ?", *filter.State)
+	}
+	if filter.BlogID != nil {
+		query = query.Where("comments.blog_id = ?", *filter.BlogID)
+	}
+	if filter.UserID != nil {
+		query = query.Where("comments.user_id = ?", *filter.UserID)
+	}
+	if filter.Keyword != "" {
+		query = query.Where("comments.content LIKE ?", filter.Keyword)
+	}
+	return paginateQuery[database.Comment](query, filter.Page, filter.PageSize, "comments.id DESC")
+}
+
 // UpdateByID updates a comment after applying author/admin ownership checks.
 func (r *CommentRepository) UpdateByID(ctx context.Context, in UpdateCommentInput) (*database.Comment, error) {
 	if r == nil || r.db == nil {
@@ -180,6 +233,9 @@ func (r *CommentRepository) UpdateByID(ctx context.Context, in UpdateCommentInpu
 	if err != nil {
 		return nil, err
 	}
+	if err := r.refreshDashboardRecent(ctx); err != nil {
+		return nil, err
+	}
 	return &comment, nil
 }
 
@@ -189,7 +245,7 @@ func (r *CommentRepository) DeleteByID(ctx context.Context, id uint, requesterID
 		return fmt.Errorf("comment repository not initialized")
 	}
 
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var comment database.Comment
 		if err := tx.Where("id = ?", id).First(&comment).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -198,8 +254,14 @@ func (r *CommentRepository) DeleteByID(ctx context.Context, id uint, requesterID
 			return err
 		}
 
-		if role != authpkg.RoleAdmin && comment.UserID != requesterID {
-			return ErrCommentForbidden
+		if role != authpkg.RoleAdmin {
+			var blog database.Blog
+			if err := tx.Where("id = ? AND author = ?", comment.BlogID, requesterID).First(&blog).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return ErrCommentForbidden
+				}
+				return err
+			}
 		}
 
 		now := time.Now()
@@ -222,7 +284,10 @@ func (r *CommentRepository) DeleteByID(ctx context.Context, id uint, requesterID
 			return err
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	return r.refreshDashboardRecent(ctx)
 }
 
 // UpdateStateByID updates one comment's moderation state and keeps blog comment counts in sync.
@@ -238,6 +303,16 @@ func (r *CommentRepository) UpdateStateByID(ctx context.Context, in UpdateCommen
 				return ErrCommentNotFound
 			}
 			return err
+		}
+
+		if in.Role != authpkg.RoleAdmin {
+			var blog database.Blog
+			if err := tx.Where("id = ? AND author = ?", comment.BlogID, in.RequesterID).First(&blog).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return ErrCommentForbidden
+				}
+				return err
+			}
 		}
 
 		now := time.Now()
@@ -281,5 +356,15 @@ func (r *CommentRepository) UpdateStateByID(ctx context.Context, in UpdateCommen
 	if err != nil {
 		return nil, err
 	}
+	if err := r.refreshDashboardRecent(ctx); err != nil {
+		return nil, err
+	}
 	return &comment, nil
+}
+
+func (r *CommentRepository) refreshDashboardRecent(ctx context.Context) error {
+	if r == nil || r.read == nil {
+		return nil
+	}
+	return r.read.RefreshAdminDashboardRecent(ctx)
 }

@@ -2,6 +2,8 @@ package database
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -181,16 +183,16 @@ func seedDefaultTags(db *gorm.DB, now time.Time) (map[string]uint, error) {
 }
 
 func seedDefaultUserAvatars(db *gorm.DB, adminID uint, userID uint, assetIDs map[string]uint, now time.Time) error {
-	adminAvatarID := assetIDs["admin-avatar.png"]
-	userAvatarID := assetIDs["user-avatar.png"]
+	adminAvatarID := assetIDs["admin-avatar.svg"]
+	userAvatarID := assetIDs["user-avatar.svg"]
 
-	if err := db.Model(&User{}).Where("id = ? AND avatar IS NULL", adminID).Updates(map[string]any{
+	if err := db.Model(&User{}).Where("id = ?", adminID).Updates(map[string]any{
 		"avatar":     adminAvatarID,
 		"updated_at": now,
 	}).Error; err != nil {
 		return err
 	}
-	if err := db.Model(&User{}).Where("id = ? AND avatar IS NULL", userID).Updates(map[string]any{
+	if err := db.Model(&User{}).Where("id = ?", userID).Updates(map[string]any{
 		"avatar":     userAvatarID,
 		"updated_at": now,
 	}).Error; err != nil {
@@ -225,78 +227,126 @@ func seedDefaultCategories(db *gorm.DB, now time.Time) (map[string]uint, error) 
 }
 
 func seedDefaultAssets(db *gorm.DB, adminID uint, userID uint, now time.Time) (map[string]uint, error) {
-	defaultAssets := []Asset{
+	type seedAsset struct {
+		Asset
+		Data []byte
+	}
+
+	defaultAssets := []seedAsset{
 		{
-			FileName:         "admin-avatar.png",
-			OriginalFileName: "admin-avatar.png",
-			MimeType:         "image/png",
-			FileExtension:    ".png",
-			FilePath:         "admin-avatar.png",
-			FileHash:         cryptoutil.SHA256Hex("seed:admin-avatar"),
-			FileSize:         2048,
-			Width:            256,
-			Height:           256,
-			Uploader:         adminID,
-			State:            AssetStateNormal,
-			CreatedAt:        now,
-			UpdatedAt:        now,
+			Asset: Asset{
+				FileName:         "admin-avatar.svg",
+				OriginalFileName: "admin-avatar.svg",
+				MimeType:         "image/svg+xml",
+				FileExtension:    ".svg",
+				FilePath:         "admin-avatar.svg",
+				FileHash:         cryptoutil.SHA256Hex(seedAdminAvatarSVG),
+				FileSize:         int64(len(seedAdminAvatarSVG)),
+				Width:            256,
+				Height:           256,
+				Uploader:         adminID,
+				State:            AssetStateNormal,
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			},
+			Data: []byte(seedAdminAvatarSVG),
 		},
 		{
-			FileName:         "default-cover.png",
-			OriginalFileName: "default-cover.png",
-			MimeType:         "image/png",
-			FileExtension:    ".png",
-			FilePath:         "default-cover.png",
-			FileHash:         cryptoutil.SHA256Hex("seed:default-cover"),
-			FileSize:         8192,
-			Width:            1280,
-			Height:           720,
-			Uploader:         adminID,
-			State:            AssetStateNormal,
-			CreatedAt:        now,
-			UpdatedAt:        now,
+			Asset: Asset{
+				FileName:         "default-cover.svg",
+				OriginalFileName: "default-cover.svg",
+				MimeType:         "image/svg+xml",
+				FileExtension:    ".svg",
+				FilePath:         "default-cover.svg",
+				FileHash:         cryptoutil.SHA256Hex(seedDefaultCoverSVG),
+				FileSize:         int64(len(seedDefaultCoverSVG)),
+				Width:            1280,
+				Height:           720,
+				Uploader:         adminID,
+				State:            AssetStateNormal,
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			},
+			Data: []byte(seedDefaultCoverSVG),
 		},
 		{
-			FileName:         "user-avatar.png",
-			OriginalFileName: "user-avatar.png",
-			MimeType:         "image/png",
-			FileExtension:    ".png",
-			FilePath:         "user-avatar.png",
-			FileHash:         cryptoutil.SHA256Hex("seed:user-avatar"),
-			FileSize:         1980,
-			Width:            256,
-			Height:           256,
-			Uploader:         userID,
-			State:            AssetStateNormal,
-			CreatedAt:        now,
-			UpdatedAt:        now,
+			Asset: Asset{
+				FileName:         "user-avatar.svg",
+				OriginalFileName: "user-avatar.svg",
+				MimeType:         "image/svg+xml",
+				FileExtension:    ".svg",
+				FilePath:         "user-avatar.svg",
+				FileHash:         cryptoutil.SHA256Hex(seedUserAvatarSVG),
+				FileSize:         int64(len(seedUserAvatarSVG)),
+				Width:            256,
+				Height:           256,
+				Uploader:         userID,
+				State:            AssetStateNormal,
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			},
+			Data: []byte(seedUserAvatarSVG),
 		},
 	}
 
 	result := make(map[string]uint, len(defaultAssets))
 	for _, item := range defaultAssets {
+		if err := writeSeedAssetFile(item.FileName, item.Data); err != nil {
+			return nil, err
+		}
+
 		var asset Asset
 		err := db.Where("file_hash = ?", item.FileHash).First(&asset).Error
 		if err == nil {
+			if err := db.Model(&asset).Updates(map[string]any{
+				"file_name":          item.FileName,
+				"original_file_name": item.OriginalFileName,
+				"mime_type":          item.MimeType,
+				"file_extension":     item.FileExtension,
+				"file_path":          item.FilePath,
+				"file_size":          item.FileSize,
+				"width":              item.Width,
+				"height":             item.Height,
+				"uploader":           item.Uploader,
+				"state":              item.State,
+				"updated_at":         now,
+			}).Error; err != nil {
+				return nil, err
+			}
 			result[item.FileName] = asset.ID
 			continue
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		}
-		if err := db.Create(&item).Error; err != nil {
+		asset = item.Asset
+		if err := db.Create(&asset).Error; err != nil {
 			return nil, err
 		}
-		result[item.FileName] = item.ID
+		result[item.FileName] = asset.ID
 	}
 
 	return result, nil
 }
 
+func writeSeedAssetFile(fileName string, data []byte) error {
+	dir := filepath.Join("blog", "assets")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, filepath.Base(fileName)), data, 0o644)
+}
+
+const seedAdminAvatarSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><rect width="256" height="256" rx="42" fill="#16302b"/><circle cx="128" cy="94" r="46" fill="#f6d365"/><path d="M48 222c10-52 44-78 80-78s70 26 80 78" fill="#7bd389"/><path d="M78 78c20-34 76-40 102 0-18-8-36-10-52-6-18 4-34 5-50 6z" fill="#111827"/><text x="128" y="236" font-family="Arial,sans-serif" font-size="24" text-anchor="middle" fill="#f8fafc">ADMIN</text></svg>`
+
+const seedUserAvatarSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><rect width="256" height="256" rx="42" fill="#2f4f7f"/><circle cx="128" cy="92" r="44" fill="#ffd6a5"/><path d="M50 222c12-48 44-76 78-76s66 28 78 76" fill="#a7c7e7"/><path d="M82 86c8-34 84-46 98 2-24-12-56-16-98-2z" fill="#30343f"/><text x="128" y="236" font-family="Arial,sans-serif" font-size="24" text-anchor="middle" fill="#ffffff">USER</text></svg>`
+
+const seedDefaultCoverSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="#f7f3ea"/><rect x="0" y="0" width="1280" height="720" fill="#183a37"/><path d="M0 520c210-140 420-132 640-8s420 114 640-36v244H0z" fill="#6db784"/><path d="M0 574c240-88 446-70 650 12 236 96 420 62 630-58v192H0z" fill="#d7b56d"/><circle cx="1000" cy="160" r="76" fill="#f6d365"/><rect x="120" y="120" width="520" height="74" rx="12" fill="#ffffff"/><rect x="120" y="226" width="760" height="28" rx="8" fill="#e6f2ed"/><rect x="120" y="278" width="620" height="28" rx="8" fill="#e6f2ed"/><text x="120" y="172" font-family="Arial,sans-serif" font-size="44" font-weight="700" fill="#183a37">CashewBlog</text></svg>`
+
 func seedDefaultBlogs(db *gorm.DB, adminID uint, userID uint, assetIDs map[string]uint, categoryIDs map[string]uint, tagIDs map[string]uint, now time.Time) (map[string]uint, error) {
 	backendCategoryID := categoryIDs["backend"]
 	productCategoryID := categoryIDs["product"]
-	coverID := assetIDs["default-cover.png"]
+	coverID := assetIDs["default-cover.svg"]
 	defaultBlogs := []Blog{
 		{
 			State:           BlogStatePublic,
@@ -358,6 +408,12 @@ func seedDefaultBlogs(db *gorm.DB, adminID uint, userID uint, assetIDs map[strin
 		var blog Blog
 		err := db.Where("slug = ?", item.Slug).First(&blog).Error
 		if err == nil {
+			if err := db.Model(&blog).Updates(map[string]any{
+				"title_image": item.TitleImage,
+				"updated_at":  now,
+			}).Error; err != nil {
+				return nil, err
+			}
 			result[item.Slug] = blog.ID
 			continue
 		}

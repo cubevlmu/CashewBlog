@@ -55,6 +55,10 @@ export function useHomePage() {
       return ''
     }
 
+    if (homeConfig.value.header.image.trim() === '--bing--') {
+      return viewportWidth.value <= 640 ? 'https://bing.img.run/m.php' : 'https://bing.img.run/1920x1080.php'
+    }
+
     return viewportWidth.value <= 640 ? 'https://bing.img.run/m.php' : homeConfig.value.header.image
   })
   const heroStyle = computed(() =>

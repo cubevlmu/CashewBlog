@@ -3,7 +3,8 @@ package api
 import "time"
 
 type AssetRef struct {
-	ID uint `json:"id"`
+	ID  uint   `json:"id"`
+	URL string `json:"url"`
 }
 
 type UserLite struct {
@@ -46,7 +47,9 @@ type TagItem struct {
 	ID        uint      `json:"id"`
 	Name      string    `json:"name"`
 	Slug      string    `json:"slug"`
+	Desc      string    `json:"desc"`
 	Color     string    `json:"color"`
+	PostCount int64     `json:"post_count"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -62,6 +65,7 @@ type CategoryItem struct {
 	Slug      string         `json:"slug"`
 	Parent    CategoryParent `json:"parent"`
 	Desc      string         `json:"desc"`
+	PostCount int64          `json:"post_count"`
 	CreatedAt time.Time      `json:"created_at"`
 }
 
@@ -71,6 +75,7 @@ type AssetItem struct {
 	OriginalFileName string    `json:"original_file_name"`
 	MimeType         string    `json:"mime_type"`
 	FileExtension    string    `json:"file_extension"`
+	URL              string    `json:"url"`
 	FileHash         string    `json:"file_hash"`
 	FileSize         int64     `json:"file_size"`
 	Width            int       `json:"width"`
@@ -101,6 +106,7 @@ type BlogTag struct {
 	ID    uint   `json:"id"`
 	Name  string `json:"name"`
 	Slug  string `json:"slug"`
+	Desc  string `json:"desc,omitempty"`
 	Color string `json:"color"`
 }
 

@@ -1,41 +1,34 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive } from 'vue'
+import { reactive, ref } from 'vue'
 
-import AdminMarkdownEditor from '@/components/AdminMarkdownEditor.vue'
+import AdminEditorJsEditor from '@/components/AdminEditorJsEditor.vue'
+import AdminMediaLibraryDialog from '@/components/AdminMediaLibraryDialog.vue'
 import { useAdminPostEditor } from '@/composables/useAdminPostEditor'
+import type { AdminAssetRecord } from '@/types/admin'
 
 const editor = reactive(useAdminPostEditor())
-let previousTheme: string | undefined
-let previousPreference: string | undefined
+const editorComponent = ref<InstanceType<typeof AdminEditorJsEditor> | null>(null)
+const mediaOpen = ref(false)
+const mediaMode = ref<'content' | 'cover'>('content')
 
-onMounted(() => {
-  if (typeof document === 'undefined') {
+function openContentMediaLibrary() {
+  mediaMode.value = 'content'
+  mediaOpen.value = true
+}
+
+function openCoverMediaLibrary() {
+  mediaMode.value = 'cover'
+  mediaOpen.value = true
+}
+
+async function selectMedia(asset: AdminAssetRecord) {
+  if (mediaMode.value === 'cover') {
+    editor.form.coverImage = asset.fileUrl
+    editor.form.titleImageId = asset.id
     return
   }
-
-  previousTheme = document.documentElement.dataset.theme
-  previousPreference = document.documentElement.dataset.themePreference
-  document.documentElement.dataset.theme = 'light'
-  document.documentElement.dataset.themePreference = 'light'
-})
-
-onBeforeUnmount(() => {
-  if (typeof document === 'undefined') {
-    return
-  }
-
-  if (previousTheme) {
-    document.documentElement.dataset.theme = previousTheme
-  } else {
-    delete document.documentElement.dataset.theme
-  }
-
-  if (previousPreference) {
-    document.documentElement.dataset.themePreference = previousPreference
-  } else {
-    delete document.documentElement.dataset.themePreference
-  }
-})
+  await editorComponent.value?.insertMedia(asset)
+}
 </script>
 
 <template>
@@ -43,7 +36,7 @@ onBeforeUnmount(() => {
     <header class="admin-page-heading admin-editor-page__header">
       <div>
         <h2>{{ editor.editorTitle }}</h2>
-        <p class="panel__text">所见即所得编辑，保存结果仍然是 Markdown。</p>
+        <p class="panel__text">使用 Editor.js 编辑，保存结果仍然是 Markdown。</p>
       </div>
       <div class="admin-editor-page__actions">
         <button class="button button--ghost" type="button" :disabled="editor.saving" @click="editor.saveDraft">
@@ -66,8 +59,11 @@ onBeforeUnmount(() => {
         <label class="admin-form-field">
           <span>文章正文</span>
         </label>
+        <div class="admin-editor-toolbar">
+          <button class="button button--ghost" type="button" :disabled="editor.saving" @click="openContentMediaLibrary">插入多媒体</button>
+        </div>
 
-        <AdminMarkdownEditor v-model="editor.form.contentMarkdown" class="admin-markdown-editor" :disabled="editor.saving" />
+        <AdminEditorJsEditor ref="editorComponent" v-model="editor.form.contentMarkdown" class="admin-block-editor" :disabled="editor.saving" />
       </section>
 
       <aside class="admin-editor-sidebar">
@@ -82,27 +78,29 @@ onBeforeUnmount(() => {
             <label v-if="editor.canEditState" class="admin-form-field">
               <span>状态</span>
               <select v-model="editor.form.state" class="admin-select">
-                <option value="draft">草稿 / 待审核</option>
-                <option value="private">私密</option>
+                <option value="draft">草稿</option>
+                <option value="private">私密 / 待审核</option>
                 <option value="public">公开</option>
               </select>
             </label>
             <div v-else class="admin-form-field">
               <span>状态</span>
-              <div class="admin-editor-sidebar__readonly">待审核</div>
+              <div class="admin-editor-sidebar__readonly">私密 / 待审核</div>
             </div>
             <label class="admin-form-field admin-editor-sidebar__field--full">
               <span>摘要</span>
               <textarea v-model="editor.form.summary" class="admin-textarea" rows="4" placeholder="输入文章摘要" />
             </label>
-            <label class="admin-form-field admin-editor-sidebar__field--full">
+            <div class="admin-form-field admin-editor-sidebar__field--full">
               <span>封面图</span>
-              <input v-model="editor.form.coverImage" class="admin-input" type="text" placeholder="https://..." />
-            </label>
+              <button class="button button--ghost admin-editor-cover-button" type="button" :disabled="editor.saving" @click="openCoverMediaLibrary">
+                {{ editor.coverButtonText }}
+              </button>
+              <small>{{ editor.form.coverImage ? '已选择封面图。' : '点击后打开资源库选择封面图。' }}</small>
+            </div>
             <label class="admin-form-field">
               <span>分类</span>
               <select v-model="editor.form.categoryId" class="admin-select">
-                <option :value="null">选择分类</option>
                 <option v-for="category in editor.categories" :key="category.id" :value="category.id">{{ category.name }}</option>
               </select>
             </label>
@@ -149,5 +147,12 @@ onBeforeUnmount(() => {
         <p v-if="editor.successMessage" class="admin-profile-editor__success">{{ editor.successMessage }}</p>
       </aside>
     </div>
+
+    <AdminMediaLibraryDialog
+      v-model="mediaOpen"
+      :title="mediaMode === 'cover' ? '选择封面图' : '插入多媒体'"
+      :image-only="mediaMode === 'cover'"
+      @select="selectMedia"
+    />
   </section>
 </template>

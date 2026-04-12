@@ -33,8 +33,10 @@ export function useAdminUsersPage() {
     displayName: '',
     email: '',
     avatar: '',
+    avatarId: null as number | null,
     gender: 'unknown' as AdminUserRecord['gender'],
     bio: '',
+    website: '',
     role: 'user' as AdminUserRecord['role'],
   })
   const editError = ref('')
@@ -109,8 +111,10 @@ export function useAdminUsersPage() {
       displayName: user.displayName,
       email: user.email,
       avatar: user.avatar,
+      avatarId: user.avatarId,
       gender: user.gender,
       bio: user.bio,
+      website: user.website,
       role: user.role,
     }
     editError.value = ''
@@ -127,8 +131,10 @@ export function useAdminUsersPage() {
       displayName: '',
       email: '',
       avatar: '',
+      avatarId: null,
       gender: 'unknown',
       bio: '',
+      website: '',
       role: 'user',
     }
     editError.value = ''
@@ -159,9 +165,10 @@ export function useAdminUsersPage() {
           username: editForm.value.username.trim(),
           displayName: editForm.value.displayName.trim(),
           email: editForm.value.email.trim(),
-          avatar: editForm.value.avatar.trim() || '/placeholder-avatar.svg',
+          avatarId: editForm.value.avatarId,
           gender: editForm.value.gender,
           bio: editForm.value.bio.trim(),
+          website: editForm.value.website.trim(),
           role: editForm.value.role,
         })
         editSuccess.value = '用户已创建'
@@ -170,9 +177,10 @@ export function useAdminUsersPage() {
         await updateAdminUser(editForm.value.id, {
           displayName: editForm.value.displayName.trim(),
           email: editForm.value.email.trim(),
-          avatar: editForm.value.avatar.trim() || '/placeholder-avatar.svg',
+          avatarId: editForm.value.avatarId,
           gender: editForm.value.gender,
           bio: editForm.value.bio.trim(),
+          website: editForm.value.website.trim(),
           role: editForm.value.role,
         })
         editSuccess.value = '用户资料已更新'

@@ -19,6 +19,27 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
+function markdownToSummaryText(value: string) {
+  return value
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[([^\]]*)]\([^)]+\)/g, '$1')
+    .replace(/\[([^\]]+)]\([^)]+\)/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[#>*_`~-]/g, ' ')
+    .replace(/\d+\.\s+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function findDefaultCategoryId(categories: AdminCategoryRecord[]) {
+  return (
+    categories.find((category) => category.isDefault)?.id ??
+    categories.find((category) => category.name === '未分类' || category.slug === 'uncategorized')?.id ??
+    categories[0]?.id ??
+    null
+  )
+}
+
 export function useAdminPostEditor() {
   const route = useRoute()
   const router = useRouter()
@@ -36,6 +57,7 @@ export function useAdminPostEditor() {
   const canEditState = computed(() => authState.user?.role === 'admin')
   const submitButtonText = computed(() => (canEditState.value ? '发布文章' : '提交审核'))
   const record = computed(() => mapEditorFormToAdminEditorRecord(form, categories.value, tags.value))
+  const coverButtonText = computed(() => (form.coverImage ? '更换封面图' : '选择封面图'))
 
   async function load() {
     loading.value = true
@@ -51,6 +73,7 @@ export function useAdminPostEditor() {
       categories.value = nextCategories
       tags.value = nextTags
       Object.assign(form, detailForm)
+      form.categoryId = form.categoryId ?? findDefaultCategoryId(nextCategories)
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '编辑器加载失败'
     } finally {
@@ -71,22 +94,33 @@ export function useAdminPostEditor() {
     form.tagIds = form.tagIds.filter((item) => item !== tagId)
   }
 
-  async function save(state: 'public' | 'private') {
-    saving.value = true
+  function openCoverLibrary() {
+    successMessage.value = '资源库选择器待接入'
+  }
+
+  async function save(state: 'draft' | 'public' | 'private') {
     errorMessage.value = ''
     successMessage.value = ''
 
     try {
-      const nextState = canEditState.value ? state : 'draft'
       form.title = form.title.trim()
+      if (!form.title) {
+        errorMessage.value = '文章标题不能为空'
+        return
+      }
+
+      saving.value = true
+      const nextState = canEditState.value ? state : state === 'public' ? 'private' : 'draft'
       form.slug = form.slug.trim() || slugify(form.title)
-      form.summary = form.summary.trim()
+      form.summary = form.summary.trim() || markdownToSummaryText(form.contentMarkdown).slice(0, 100)
       form.coverImage = form.coverImage.trim()
+      form.categoryId = form.categoryId ?? findDefaultCategoryId(categories.value)
       form.state = nextState
 
       const data = form.id ? await updateMyBlog(form.id, form) : await createMyBlog(form)
       Object.assign(form, data.blog ? await loadEditableBlog(data.blog.id) : createEmptyEditorForm())
-      successMessage.value = nextState === 'public' ? '文章已发布' : canEditState.value ? '草稿已保存' : '文章已提交审核'
+      form.categoryId = form.categoryId ?? findDefaultCategoryId(categories.value)
+      successMessage.value = nextState === 'public' ? '文章已发布' : nextState === 'draft' ? '草稿已保存' : '文章已提交审核'
 
       if (!route.params.id && form.id) {
         await router.replace({ name: 'admin-post-editor', params: { id: String(form.id) } })
@@ -99,7 +133,7 @@ export function useAdminPostEditor() {
   }
 
   function saveDraft() {
-    return save('private')
+    return save('draft')
   }
 
   function publish() {
@@ -131,9 +165,11 @@ export function useAdminPostEditor() {
     availableTagOptions,
     canEditState,
     submitButtonText,
+    coverButtonText,
     load,
     addSelectedTag,
     removeTag,
+    openCoverLibrary,
     saveDraft,
     publish,
   }

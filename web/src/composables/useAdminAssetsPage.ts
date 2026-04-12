@@ -1,10 +1,11 @@
 import { computed, ref } from 'vue'
 
-import { deleteAdminAssets, getAdminAssetById, getAdminAssets } from '@/controllers/adminController'
+import { deleteAdminAssets, getAdminAssetById, getAdminAssets, getAdminUploadLimitBytes, uploadAdminAsset } from '@/controllers/adminController'
 import { authState } from '@/stores/authStore'
 import type { AdminAssetRecord } from '@/types/admin'
 
 type AssetSortKey = 'uploadedAt' | 'title' | 'author' | 'uploadedTo' | 'commentCount'
+type AssetKind = 'image' | 'audio' | 'video' | 'file'
 
 export function useAdminAssetsPage() {
   const assets = ref<AdminAssetRecord[]>([])
@@ -12,7 +13,7 @@ export function useAdminAssetsPage() {
   const errorMessage = ref('')
   const selectedIds = ref<number[]>([])
   const keyword = ref('')
-  const typeFilter = ref<'all' | 'image' | 'file'>('image')
+  const typeFilter = ref<'all' | AssetKind>('image')
   const sortKey = ref<AssetSortKey>('uploadedAt')
   const sortDirection = ref<'asc' | 'desc'>('desc')
   const page = ref(1)
@@ -23,12 +24,17 @@ export function useAdminAssetsPage() {
   const confirmOpen = ref(false)
   const saving = ref(false)
   const actionScope = ref<'single' | 'batch'>('single')
+  const uploadOpen = ref(false)
+  const uploadFile = ref<File | null>(null)
+  const uploadError = ref('')
+  const uploadSuccess = ref('')
+  const uploading = ref(false)
+  const uploadMaxBytes = ref(10 * 1024 * 1024)
 
   const filteredAssets = computed(() => {
     const normalized = keyword.value.trim().toLowerCase()
     return assets.value.filter((asset) => {
-      if (typeFilter.value === 'image' && !asset.mimeType.startsWith('image/')) return false
-      if (typeFilter.value === 'file' && asset.mimeType.startsWith('image/')) return false
+      if (typeFilter.value !== 'all' && assetKind(asset) !== typeFilter.value) return false
       if (!normalized) return true
       return [asset.title, asset.fileName, asset.author.displayName, asset.uploadedTo ?? '', asset.description ?? '']
         .join(' ')
@@ -74,6 +80,14 @@ export function useAdminAssetsPage() {
     }
   }
 
+  async function loadUploadLimit() {
+    try {
+      uploadMaxBytes.value = await getAdminUploadLimitBytes()
+    } catch {
+      uploadMaxBytes.value = 10 * 1024 * 1024
+    }
+  }
+
   function updateSort(nextKey: AssetSortKey) {
     if (sortKey.value === nextKey) {
       sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -115,6 +129,77 @@ export function useAdminAssetsPage() {
     confirmOpen.value = true
   }
 
+  function openUpload() {
+    uploadOpen.value = true
+    uploadError.value = ''
+    uploadSuccess.value = ''
+    uploadFile.value = null
+    void loadUploadLimit()
+  }
+
+  function selectUploadFile(event: Event) {
+    const target = event.target as HTMLInputElement
+    uploadFile.value = target.files?.[0] ?? null
+    uploadError.value = ''
+    uploadSuccess.value = ''
+  }
+
+  function formatFileSize(bytes: number) {
+    if (bytes >= 1024 * 1024) {
+      return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+    }
+    if (bytes >= 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`
+    }
+    return `${bytes} B`
+  }
+
+  function assetKind(asset: Pick<AdminAssetRecord, 'mimeType' | 'fileName'>): AssetKind {
+    const mimeType = asset.mimeType.toLowerCase()
+    const fileName = asset.fileName.toLowerCase()
+    if (mimeType.startsWith('image/')) return 'image'
+    if (mimeType.startsWith('audio/') || /\.(mp3|m4a|aac|flac|wav|ogg|opus)$/i.test(fileName)) return 'audio'
+    if (mimeType.startsWith('video/') || /\.(mp4|mov|m4v|webm|avi|mkv)$/i.test(fileName)) return 'video'
+    return 'file'
+  }
+
+  function assetKindLabel(asset: Pick<AdminAssetRecord, 'mimeType' | 'fileName'>) {
+    const kind = assetKind(asset)
+    if (kind === 'image') return '图片'
+    if (kind === 'audio') return '音频'
+    if (kind === 'video') return '视频'
+    return '文件'
+  }
+
+  async function submitUpload() {
+    uploadError.value = ''
+    uploadSuccess.value = ''
+    const file = uploadFile.value
+    if (!file) {
+      uploadError.value = '请选择要上传的文件'
+      return
+    }
+    if (file.size > uploadMaxBytes.value) {
+      uploadError.value = `文件大小不能超过 ${formatFileSize(uploadMaxBytes.value)}`
+      return
+    }
+
+    uploading.value = true
+    try {
+      const asset = await uploadAdminAsset(file)
+      uploadSuccess.value = `已上传 ${asset.title}`
+      uploadFile.value = null
+      uploadOpen.value = false
+      await load()
+      activeDetail.value = asset
+      detailOpen.value = true
+    } catch (error) {
+      uploadError.value = error instanceof Error ? error.message : '上传失败'
+    } finally {
+      uploading.value = false
+    }
+  }
+
   async function confirmDelete() {
     if (!selectedIds.value.length) return
     saving.value = true
@@ -151,6 +236,7 @@ export function useAdminAssetsPage() {
   }
 
   void load()
+  void loadUploadLimit()
 
   return {
     assets,
@@ -173,7 +259,14 @@ export function useAdminAssetsPage() {
     confirmOpen,
     saving,
     actionScope,
+    uploadOpen,
+    uploadFile,
+    uploadError,
+    uploadSuccess,
+    uploading,
+    uploadMaxBytes,
     load,
+    loadUploadLimit,
     updateSort,
     goToPage,
     toggleSelectAll,
@@ -181,6 +274,12 @@ export function useAdminAssetsPage() {
     openDetail,
     requestDelete,
     confirmDelete,
+    openUpload,
+    selectUploadFile,
+    submitUpload,
+    formatFileSize,
+    assetKind,
+    assetKindLabel,
     sortMeta,
     formatDate,
     formatDateTime,

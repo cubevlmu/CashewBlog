@@ -1,8 +1,10 @@
-import { getDemoAccounts, login, updateMePassword, updateMeProfile } from '@/api/auth'
+import { checkBackendHealth, fetchAuthStatus, login, refreshAuthTokens, updateMePassword, updateMeProfile } from '@/api/auth'
 
 export {
-  getDemoAccounts,
+  checkBackendHealth,
+  fetchAuthStatus,
   login,
+  refreshAuthTokens,
   updateMePassword,
   updateMeProfile,
 }

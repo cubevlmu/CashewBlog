@@ -26,6 +26,9 @@ export async function getHomePageViewModel(pageSize = 20) {
     getCategories(),
     getHomePosts(1, pageSize),
   ])
+  config.summary.postCount = homePostsPage.total
+  config.summary.tagCount = tagPage.total
+  config.summary.categoryCount = categoryPage.total
 
   return mapApiHomePageToVM(
     config,
@@ -48,6 +51,7 @@ export async function getHomeFeedPageViewModel(
   const tags = context?.tags ?? (await getTags()).list.map(mapApiTagToTaxonomyVM)
   const categories = context?.categories ?? (await getCategories()).list.map(mapApiCategoryToTaxonomyVM)
   const homePostsPage = await getHomePosts(page, pageSize)
+  config.summary.postCount = homePostsPage.total
 
   return mapApiHomePageToVM(config, tags, categories, homePostsPage)
 }
@@ -98,7 +102,7 @@ export async function getEditorOptions() {
 }
 
 export async function getEditableBlogForm(id: number) {
-  const { getMyBlogDetail } = await import('@/api/meBlogs')
-  const detail = await getMyBlogDetail(id)
+  const { getEditableBlogDetail } = await import('@/api/meBlogs')
+  const detail = await getEditableBlogDetail(id)
   return mapApiBlogDetailToEditorForm(detail?.blog)
 }

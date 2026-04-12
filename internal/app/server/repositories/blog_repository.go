@@ -14,14 +14,17 @@ import (
 )
 
 var (
-	ErrBlogNotFound  = errors.New("blog not found")
-	ErrBlogForbidden = errors.New("forbidden")
-	ErrBlogConflict  = errors.New("blog conflict")
+	ErrBlogNotFound   = errors.New("blog not found")
+	ErrBlogForbidden  = errors.New("forbidden")
+	ErrBlogConflict   = errors.New("blog conflict")
 	ErrInvalidBlogRef = errors.New("invalid blog reference")
 )
 
 type BlogRepository struct {
-	db *gorm.DB
+	db         *gorm.DB
+	categories *CategoryRepository
+	tags       *TagRepository
+	read       *ReadRepository
 }
 
 // BlogListFilter describes supported blog-list query conditions.
@@ -37,17 +40,17 @@ type BlogListFilter struct {
 }
 
 type CreateBlogInput struct {
-	AuthorID         uint
-	Title            string
-	Slug             string
-	Summary          string
-	ContentMarkdown  string
-	TitleImageID     *uint
-	CategoryID       *uint
-	TagIDs           []uint
-	AllowComment     bool
-	IsTop            bool
-	State            int
+	AuthorID        uint
+	Title           string
+	Slug            string
+	Summary         string
+	ContentMarkdown string
+	TitleImageID    *uint
+	CategoryID      *uint
+	TagIDs          []uint
+	AllowComment    bool
+	IsTop           bool
+	State           int
 }
 
 type UpdateBlogInput struct {
@@ -78,6 +81,23 @@ func NewBlogRepository(db *gorm.DB) *BlogRepository {
 		return nil
 	}
 	return &BlogRepository{db: db}
+}
+
+// BindTaxonomyRepositories lets blog writes refresh cached tag/category article counts.
+func (r *BlogRepository) BindTaxonomyRepositories(categories *CategoryRepository, tags *TagRepository) {
+	if r == nil {
+		return
+	}
+	r.categories = categories
+	r.tags = tags
+}
+
+// BindReadRepository lets blog writes refresh read-side dashboard caches.
+func (r *BlogRepository) BindReadRepository(read *ReadRepository) {
+	if r == nil {
+		return
+	}
+	r.read = read
 }
 
 // GetByID loads one blog by primary key and optionally constrains visible states.
@@ -118,6 +138,26 @@ func (r *BlogRepository) GetBySlug(ctx context.Context, slug string, allowedStat
 		return nil, err
 	}
 	return &item, nil
+}
+
+// LoadByIDs batch-loads blogs and returns them keyed by blog id.
+func (r *BlogRepository) LoadByIDs(ctx context.Context, ids []uint) (map[uint]database.Blog, error) {
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("blog repository not initialized")
+	}
+
+	result := make(map[uint]database.Blog, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+	var items []database.Blog
+	if err := r.db.WithContext(ctx).Unscoped().Where("id IN ?", uniqueUint(ids)).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	for _, item := range items {
+		result[item.ID] = item
+	}
+	return result, nil
 }
 
 // GetByIDAndAuthor loads one blog owned by a specific author.
@@ -185,6 +225,12 @@ func (r *BlogRepository) Create(ctx context.Context, in CreateBlogInput) (*datab
 		return nil
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := r.refreshTaxonomyArticleCounts(ctx); err != nil {
+		return nil, err
+	}
+	if err := r.refreshDashboardRecent(ctx); err != nil {
 		return nil, err
 	}
 	return blog, nil
@@ -262,6 +308,12 @@ func (r *BlogRepository) UpdateByID(ctx context.Context, in UpdateBlogInput) (*d
 	if err != nil {
 		return nil, err
 	}
+	if err := r.refreshTaxonomyArticleCounts(ctx); err != nil {
+		return nil, err
+	}
+	if err := r.refreshDashboardRecent(ctx); err != nil {
+		return nil, err
+	}
 	return &blog, nil
 }
 
@@ -309,6 +361,12 @@ func (r *BlogRepository) UpdateStateByID(ctx context.Context, in UpdateBlogState
 	if err != nil {
 		return nil, err
 	}
+	if err := r.refreshTaxonomyArticleCounts(ctx); err != nil {
+		return nil, err
+	}
+	if err := r.refreshDashboardRecent(ctx); err != nil {
+		return nil, err
+	}
 	return &blog, nil
 }
 
@@ -340,6 +398,12 @@ func (r *BlogRepository) RestoreByID(ctx context.Context, id uint) (*database.Bl
 		return tx.Where("id = ?", blog.ID).First(&blog).Error
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := r.refreshTaxonomyArticleCounts(ctx); err != nil {
+		return nil, err
+	}
+	if err := r.refreshDashboardRecent(ctx); err != nil {
 		return nil, err
 	}
 	return &blog, nil
@@ -443,7 +507,7 @@ func (r *BlogRepository) DeleteByID(ctx context.Context, id uint, requesterID ui
 		return fmt.Errorf("blog repository not initialized")
 	}
 
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var blog database.Blog
 		if err := tx.Where("id = ?", id).First(&blog).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -484,7 +548,37 @@ func (r *BlogRepository) DeleteByID(ctx context.Context, id uint, requesterID ui
 			return err
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	if err := r.refreshTaxonomyArticleCounts(ctx); err != nil {
+		return err
+	}
+	return r.refreshDashboardRecent(ctx)
+}
+
+func (r *BlogRepository) refreshTaxonomyArticleCounts(ctx context.Context) error {
+	if r == nil {
+		return nil
+	}
+	if r.tags != nil {
+		if err := r.tags.RefreshArticleCounts(ctx); err != nil {
+			return err
+		}
+	}
+	if r.categories != nil {
+		if err := r.categories.RefreshArticleCounts(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *BlogRepository) refreshDashboardRecent(ctx context.Context) error {
+	if r == nil || r.read == nil {
+		return nil
+	}
+	return r.read.RefreshAdminDashboardRecent(ctx)
 }
 
 func isUniqueConstraintError(err error) bool {

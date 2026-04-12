@@ -2,6 +2,7 @@
 import { reactive } from 'vue'
 
 import AdminUserProfileEditor from '@/components/AdminUserProfileEditor.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { useAdminProfilePage } from '@/composables/useAdminProfilePage'
 
 const profile = reactive(useAdminProfilePage())
@@ -18,7 +19,7 @@ const profile = reactive(useAdminProfilePage())
 
     <section v-if="profile.currentUser" class="panel admin-profile-card">
       <div class="admin-profile-card__hero">
-        <img class="admin-profile-card__avatar" :src="profile.currentUser.avatar" :alt="profile.currentUser.displayName" />
+        <UserAvatar :src="profile.currentUser.avatar" :alt="profile.currentUser.displayName" size="xl" shape="rounded" />
         <div class="admin-profile-card__copy">
           <p class="panel__label">Account</p>
           <h3>{{ profile.currentUser.displayName }}</h3>

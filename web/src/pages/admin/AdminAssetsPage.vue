@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { faFileAudio, faFileImage, faFileLines, faFileVideo } from '@fortawesome/free-solid-svg-icons'
 
 import AppDialog from '@/components/AppDialog.vue'
 import AdminDataTable from '@/components/AdminDataTable.vue'
 import AdminPaginationControls from '@/components/AdminPaginationControls.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { useAdminAssetsPage } from '@/composables/useAdminAssetsPage'
 
 const media = reactive(useAdminAssetsPage())
+
+function assetIcon(asset: Parameters<typeof media.assetKind>[0]) {
+  const kind = media.assetKind(asset)
+  if (kind === 'image') return faFileImage
+  if (kind === 'audio') return faFileAudio
+  if (kind === 'video') return faFileVideo
+  return faFileLines
+}
 </script>
 
 <template>
@@ -16,6 +27,7 @@ const media = reactive(useAdminAssetsPage())
         <h2>资源库</h2>
         <p class="panel__text">按日期降序显示资源文件，支持搜索、类型筛选、分页、详情查看、复制 URL 和删除。SEO 与压缩插件信息暂时忽略。</p>
       </div>
+      <button class="button button--primary" type="button" @click="media.openUpload">上传文件</button>
     </header>
 
     <section class="panel admin-taxonomy-table">
@@ -32,6 +44,8 @@ const media = reactive(useAdminAssetsPage())
             <input v-model="media.keyword" class="admin-input" type="search" placeholder="搜索文件名和资源标题" />
             <select v-model="media.typeFilter" class="admin-select">
               <option value="image">图片</option>
+              <option value="audio">音频</option>
+              <option value="video">视频</option>
               <option value="file">文件</option>
               <option value="all">全部类型</option>
             </select>
@@ -80,9 +94,14 @@ const media = reactive(useAdminAssetsPage())
             </td>
             <td class="admin-table__col-title">
               <div class="admin-asset-card">
-                <img class="admin-asset-card__thumb" :src="asset.thumbnailUrl" :alt="asset.title" />
+                <img v-if="media.assetKind(asset) === 'image'" class="admin-asset-card__thumb" :src="asset.thumbnailUrl" :alt="asset.title" />
+                <div v-else class="admin-asset-card__thumb admin-asset-card__thumb--icon" :data-kind="media.assetKind(asset)" :aria-label="media.assetKindLabel(asset)">
+                  <FontAwesomeIcon :icon="assetIcon(asset)" />
+                  <span>{{ media.assetKindLabel(asset) }}</span>
+                </div>
                 <div class="admin-asset-card__body">
                   <strong class="admin-taxonomy-table__name">{{ asset.title }}</strong>
+                  <p class="admin-asset-card__type">{{ media.assetKindLabel(asset) }} / {{ asset.mimeType }}</p>
                   <p class="admin-asset-card__filename">文件名：{{ asset.fileName }}</p>
                   <div class="admin-taxonomy-table__actions">
                     <button class="admin-link-button" type="button" @click="media.openDetail(asset.id)">编辑</button>
@@ -100,7 +119,7 @@ const media = reactive(useAdminAssetsPage())
             </td>
             <td v-if="media.authState.isAdmin" class="admin-table__col-author">
               <div class="admin-author">
-                <img :src="asset.author.avatar" :alt="asset.author.displayName" />
+                <UserAvatar :src="asset.author.avatar" :alt="asset.author.displayName" />
                 <div>
                   <strong>{{ asset.author.displayName }}</strong>
                   <span>@{{ asset.author.username }}</span>
@@ -130,7 +149,16 @@ const media = reactive(useAdminAssetsPage())
 
       <div v-if="media.detailLoading" class="admin-dialog__empty">正在加载资源详情...</div>
       <div v-else-if="media.activeDetail" class="admin-detail admin-detail--asset">
-        <img class="admin-detail__cover admin-detail__cover--asset" :src="media.activeDetail.fileUrl" :alt="media.activeDetail.title" />
+        <img
+          v-if="media.assetKind(media.activeDetail) === 'image'"
+          class="admin-detail__cover admin-detail__cover--asset"
+          :src="media.activeDetail.fileUrl"
+          :alt="media.activeDetail.title"
+        />
+        <div v-else class="admin-detail__cover admin-detail__cover--asset admin-detail__cover--asset-icon">
+          <FontAwesomeIcon :icon="assetIcon(media.activeDetail)" />
+          <span>{{ media.assetKindLabel(media.activeDetail) }}</span>
+        </div>
         <div class="admin-detail__header">
           <div>
             <h4>{{ media.activeDetail.title }}</h4>
@@ -154,6 +182,38 @@ const media = reactive(useAdminAssetsPage())
         </div>
       </div>
       <div v-else class="admin-dialog__empty">没有找到这个资源。</div>
+    </AppDialog>
+
+    <AppDialog v-model="media.uploadOpen" width="560px" panel-class="admin-dialog">
+      <template #header>
+        <div class="admin-dialog__header">
+          <div>
+            <p class="panel__label">Upload</p>
+            <h3>上传资源</h3>
+          </div>
+        </div>
+      </template>
+
+      <div class="admin-asset-upload-panel">
+        <label class="admin-asset-upload-panel__drop">
+          <input type="file" :disabled="media.uploading" @change="media.selectUploadFile" />
+          <strong>{{ media.uploadFile ? media.uploadFile.name : '选择文件' }}</strong>
+          <span>
+            {{ media.uploadFile ? `当前文件 ${media.formatFileSize(media.uploadFile.size)}` : `最大 ${media.formatFileSize(media.uploadMaxBytes)}` }}
+          </span>
+        </label>
+
+        <p class="panel__text">上传前会按后台设置 upload_max_size 校验，超出限制的文件不会提交。</p>
+        <p v-if="media.uploadError" class="login-form__error">{{ media.uploadError }}</p>
+        <p v-if="media.uploadSuccess" class="admin-profile-editor__success">{{ media.uploadSuccess }}</p>
+
+        <div class="admin-confirm__actions">
+          <button class="button button--ghost" type="button" :disabled="media.uploading" @click="media.uploadOpen = false">取消</button>
+          <button class="button button--primary" type="button" :disabled="media.uploading" @click="media.submitUpload">
+            {{ media.uploading ? '上传中...' : '开始上传' }}
+          </button>
+        </div>
+      </div>
     </AppDialog>
 
     <AppDialog v-model="media.confirmOpen" width="520px" panel-class="admin-dialog">

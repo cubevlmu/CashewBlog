@@ -6,9 +6,11 @@ export interface AuthUser {
   displayName: string
   role: AuthRole
   avatar: string
+  avatarId: number | null
   bio: string
   email: string
   gender: 'male' | 'female' | 'unknown'
+  website: string
 }
 
 export interface AuthTokens {

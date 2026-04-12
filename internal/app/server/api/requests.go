@@ -42,6 +42,7 @@ type CommentStateRequest struct {
 type TagUpsertRequest struct {
 	Name  string `json:"name" binding:"required"`
 	Slug  string `json:"slug" binding:"required"`
+	Desc  string `json:"desc"`
 	Color string `json:"color"`
 }
 
@@ -114,8 +115,31 @@ type AdminSettingPutRequest struct {
 }
 
 type HomeSiteUpdateRequest struct {
-	BannerTitle     string `json:"banner_title"`
-	BannerSubtitle  string `json:"banner_subtitle"`
-	BannerImage     string `json:"banner_image"`
-	TypingAnimation bool   `json:"typing_animation"`
+	NavbarHeadText  string          `json:"navbar_head_text"`
+	NavbarLinks     []HomeNavLink   `json:"navbar_links"`
+	BannerTitle     string          `json:"banner_title"`
+	BannerSubtitle  string          `json:"banner_subtitle"`
+	BannerImage     string          `json:"banner_image"`
+	TypingAnimation bool            `json:"typing_animation"`
+	Announcement    string          `json:"announcement"`
+	IntroBlogName   string          `json:"intro_blog_name"`
+	IntroHitokoto   string          `json:"intro_hitokoto"`
+	SidebarHTML     string          `json:"sidebar_custom_html"`
+	OwnerName       string          `json:"owner_name"`
+	OwnerAvatar     string          `json:"owner_avatar"`
+	OwnerBio        string          `json:"owner_bio"`
+	OwnerLinks      []HomeOwnerLink `json:"owner_links"`
+	FooterText      string          `json:"footer_text"`
+	FooterExtraHTML string          `json:"footer_extra_html"`
+}
+
+type HomeNavLink struct {
+	Text string `json:"text"`
+	Link string `json:"link"`
+}
+
+type HomeOwnerLink struct {
+	Text string `json:"text"`
+	Link string `json:"link"`
+	Icon string `json:"icon"`
 }

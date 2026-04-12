@@ -19,7 +19,8 @@ var (
 )
 
 type CategoryRepository struct {
-	db *gorm.DB
+	db            *gorm.DB
+	articleCounts *articleCountCache
 }
 
 type CreateCategoryInput struct {
@@ -41,7 +42,43 @@ func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
 	if db == nil {
 		return nil
 	}
-	return &CategoryRepository{db: db}
+	repo := &CategoryRepository{db: db, articleCounts: newArticleCountCache()}
+	_ = repo.RefreshArticleCounts(context.Background())
+	return repo
+}
+
+// ArticleCount returns the cached public article count for one category.
+func (r *CategoryRepository) ArticleCount(id uint) int64 {
+	if r == nil || r.articleCounts == nil {
+		return 0
+	}
+	return r.articleCounts.Get(id)
+}
+
+// RefreshArticleCounts rebuilds the cached public article counts grouped by category.
+func (r *CategoryRepository) RefreshArticleCounts(ctx context.Context) error {
+	if r == nil || r.db == nil {
+		return fmt.Errorf("category repository not initialized")
+	}
+	type row struct {
+		ID    uint
+		Count int64
+	}
+	var rows []row
+	if err := r.db.WithContext(ctx).
+		Model(&database.Blog{}).
+		Select("category AS id, COUNT(*) AS count").
+		Where("state = ? AND category IS NOT NULL", database.BlogStatePublic).
+		Group("category").
+		Scan(&rows).Error; err != nil {
+		return err
+	}
+	counts := make(map[uint]int64, len(rows))
+	for _, item := range rows {
+		counts[item.ID] = item.Count
+	}
+	r.articleCounts.SetAll(counts)
+	return nil
 }
 
 // GetByID loads one category by primary key.
@@ -90,6 +127,9 @@ func (r *CategoryRepository) Create(ctx context.Context, in CreateCategoryInput)
 	if err != nil {
 		return nil, err
 	}
+	if err := r.RefreshArticleCounts(ctx); err != nil {
+		return nil, err
+	}
 	return category, nil
 }
 
@@ -129,6 +169,9 @@ func (r *CategoryRepository) UpdateByID(ctx context.Context, in UpdateCategoryIn
 	if err != nil {
 		return nil, err
 	}
+	if err := r.RefreshArticleCounts(ctx); err != nil {
+		return nil, err
+	}
 	return &category, nil
 }
 
@@ -138,7 +181,7 @@ func (r *CategoryRepository) DeleteByID(ctx context.Context, id uint) error {
 		return fmt.Errorf("category repository not initialized")
 	}
 
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var category database.Category
 		if err := tx.Where("id = ?", id).First(&category).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -162,7 +205,10 @@ func (r *CategoryRepository) DeleteByID(ctx context.Context, id uint) error {
 			return err
 		}
 		return tx.Delete(&database.Category{}, category.ID).Error
-	})
+	}); err != nil {
+		return err
+	}
+	return r.RefreshArticleCounts(ctx)
 }
 
 func normalizeCategoryParent(parentID *uint) *uint {

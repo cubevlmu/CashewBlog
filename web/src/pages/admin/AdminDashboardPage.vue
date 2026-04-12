@@ -37,11 +37,29 @@ const dashboard = reactive(useAdminDashboardPage())
       <section v-if="!dashboard.loading" class="admin-grid">
         <article class="panel admin-card">
           <p class="panel__label">最近文章</p>
-          <p v-for="item in dashboard.summary?.recentPosts ?? []" :key="item" class="panel__text">{{ item }}</p>
+          <div v-if="(dashboard.summary?.recentPosts ?? []).length > 0" class="dashboard-recent-list">
+            <article v-for="item in dashboard.summary?.recentPosts ?? []" :key="`${item.title}-${item.time}`" class="dashboard-recent-item">
+              <strong>{{ item.title }}</strong>
+              <div class="dashboard-recent-meta">
+                <span>{{ item.author }}</span>
+                <time>{{ item.time }}</time>
+              </div>
+            </article>
+          </div>
+          <p v-else class="panel__text">暂无最近文章。</p>
         </article>
         <article class="panel admin-card">
           <p class="panel__label">最近评论</p>
-          <p v-for="item in dashboard.summary?.recentComments ?? []" :key="item" class="panel__text">{{ item }}</p>
+          <div v-if="(dashboard.summary?.recentComments ?? []).length > 0" class="dashboard-recent-list">
+            <article v-for="item in dashboard.summary?.recentComments ?? []" :key="`${item.publisher}-${item.time}`" class="dashboard-recent-item">
+              <strong>{{ item.content }}</strong>
+              <div class="dashboard-recent-meta">
+                <span>{{ item.publisher }}</span>
+                <time>{{ item.time }}</time>
+              </div>
+            </article>
+          </div>
+          <p v-else class="panel__text">暂无最近评论。</p>
         </article>
       </section>
     </template>

@@ -6,6 +6,7 @@ export function mapTagToTaxonomyItem(tag: ApiTagItem): TaxonomyItem {
     id: tag.id,
     name: tag.name,
     slug: tag.slug,
+    desc: tag.desc,
     color: tag.color,
     postCount: tag.post_count ?? 0,
   }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import UserAvatar from '@/components/UserAvatar.vue'
 import type { HomePostCard } from '@/types/site'
 
 const props = defineProps<{
@@ -42,6 +43,10 @@ const formattedDate = computed(() =>
       <p class="feed-card__desc">{{ post.desc }}</p>
 
       <div class="feed-card__meta">
+        <span class="feed-card__author">
+          <UserAvatar :src="post.author.avatar" :alt="post.author.displayName" size="xs" shape="rounded" />
+          <span>{{ post.author.displayName }}</span>
+        </span>
         <span>{{ formattedDate }}</span>
         <span>{{ post.readingTime }} 分钟</span>
         <span>{{ post.viewCount }} 阅读</span>

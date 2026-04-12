@@ -106,7 +106,7 @@ func (g *SecurityGuard) Handler() gin.HandlerFunc {
 		g.cleanup(now)
 		blocked, reason := g.checkIP(ip, now)
 		g.mu.Unlock()
-		if blocked && reason == "too_fast" {
+		if blocked && reason == "too_fast" && !isStaticAssetRead(method, path) {
 			g.log.GetZap().Warn("security blocked",
 				zap.String("reason", "too_fast"),
 				zap.String("ip", ip),
@@ -257,4 +257,8 @@ func isWriteMethod(method string) bool {
 	default:
 		return false
 	}
+}
+
+func isStaticAssetRead(method string, path string) bool {
+	return method == http.MethodGet && strings.HasPrefix(path, "/api/v1/assets/")
 }

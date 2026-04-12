@@ -5,6 +5,7 @@ import { faArrowLeft, faArrowRightFromBracket, faUserShield } from '@fortawesome
 import { useRouter } from 'vue-router'
 
 import PostFeedCard from '@/components/PostFeedCard.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { useUserPage } from '@/composables/useUserPage'
 
 withDefaults(defineProps<{
@@ -33,7 +34,7 @@ const userPage = reactive(useUserPage())
 
       <div v-if="userPage.currentUser" class="user-profile panel">
         <div class="user-profile__hero">
-          <img class="user-profile__avatar" :src="userPage.currentUser.avatar" :alt="userPage.currentUser.displayName" />
+          <UserAvatar :src="userPage.currentUser.avatar" :alt="userPage.currentUser.displayName" size="xl" shape="rounded" />
           <div class="user-profile__copy">
             <p class="panel__label">当前登录用户</p>
             <h2>{{ userPage.currentUser.displayName }}</h2>

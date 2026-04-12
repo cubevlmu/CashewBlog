@@ -1,5 +1,6 @@
 import { mapHomeConfigToHomePatch } from '@/mappers/siteApi'
 import { requestJson } from '@/data/core/http'
+import { invalidatePublicSettingsCache } from '@/api/settings'
 import type { HomeConfig } from '@/types/site-config'
 
 export function patchAdminHomeConfig(config: HomeConfig) {
@@ -12,5 +13,8 @@ export function patchAdminHomeConfig(config: HomeConfig) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(mapHomeConfigToHomePatch(config)),
+  }).then((result) => {
+    invalidatePublicSettingsCache()
+    return result
   })
 }

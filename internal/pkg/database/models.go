@@ -106,6 +106,7 @@ type Tag struct {
 	ID        uint      `gorm:"primaryKey"`
 	Name      string    `gorm:"size:64;not null;uniqueIndex"`
 	Slug      string    `gorm:"size:64;not null;uniqueIndex"`
+	Desc      string    `gorm:"column:desc;type:text"`
 	Color     string    `gorm:"size:32"`
 	CreatedAt time.Time `gorm:"not null"`
 }

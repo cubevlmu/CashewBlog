@@ -4,7 +4,7 @@ import { deleteAdminComments, getAdminComments, updateAdminCommentsState } from 
 import { authState } from '@/stores/authStore'
 import type { AdminCommentRecord } from '@/types/admin'
 
-type PendingAction = 'approve' | 'hide' | 'delete'
+type PendingAction = 'approve' | 'restore' | 'hide' | 'delete'
 
 export function useAdminCommentsPage() {
   const comments = ref<AdminCommentRecord[]>([])
@@ -65,7 +65,7 @@ export function useAdminCommentsPage() {
     try {
       if (pendingAction.value === 'delete') {
         await deleteAdminComments(selectedIds.value)
-      } else if (pendingAction.value === 'approve') {
+      } else if (pendingAction.value === 'approve' || pendingAction.value === 'restore') {
         await updateAdminCommentsState(selectedIds.value, 'approved')
       } else {
         await updateAdminCommentsState(selectedIds.value, 'hidden')

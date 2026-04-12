@@ -44,8 +44,6 @@ func (h *BlogHandler) ListBlogs(c *gin.Context) {
 	publicState := database.BlogStatePublic
 	if !webutil.IsAdminRequest(c) {
 		filter.State = &publicState
-	} else if state == nil {
-		filter.State = &publicState
 	} else {
 		filter.State = state
 	}
@@ -183,6 +181,7 @@ func (h *BlogHandler) CreateBlog(c *gin.Context) {
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	detailKey := webutil.CacheKey(c, "create_blog_detail") + "|blog_id=" + strconv.FormatUint(uint64(blog.ID), 10)
 	detail, err := h.Read.GetMyBlog(c.Request.Context(), uint(uid), blog.ID, detailKey)
@@ -268,6 +267,7 @@ func (h *BlogHandler) UpdateBlog(c *gin.Context) {
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	detail, err := h.Read.GetBlogDetailFromModel(c.Request.Context(), blog)
 	if err != nil {
@@ -314,6 +314,7 @@ func (h *BlogHandler) DeleteBlog(c *gin.Context) {
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{"deleted": true, "id": blogID})
 }
@@ -389,6 +390,7 @@ func (h *BlogHandler) RestoreBlog(c *gin.Context) {
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{
 		"id":       blog.ID,
@@ -470,6 +472,28 @@ func (h *BlogHandler) GetMyBlog(c *gin.Context) {
 	webutil.RespondOK(c, gin.H{"blog": detail})
 }
 
+// GetAdminBlog handles GET /api/v1/admin/blogs/:id.
+// It loads one non-deleted blog detail for admin editing without author scoping.
+func (h *BlogHandler) GetAdminBlog(c *gin.Context) {
+	blogID, err := webutil.ParseUintParam(c, "id")
+	if err != nil {
+		webutil.RespondError(c, http.StatusBadRequest, 40000, err.Error())
+		return
+	}
+
+	result, err := h.Read.GetBlogDetailByID(c.Request.Context(), blogID, webutil.CacheKey(c, "admin_blog_detail"))
+	if err != nil {
+		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
+		return
+	}
+	if result == nil || result.State == database.BlogStateDeleted {
+		webutil.RespondError(c, http.StatusNotFound, 40400, "blog not found")
+		return
+	}
+
+	webutil.RespondOK(c, gin.H{"blog": result.Detail})
+}
+
 // CreateMyBlog handles POST /api/v1/me/blogs.
 // It creates a blog for the authenticated user by reusing the public create flow.
 func (h *BlogHandler) CreateMyBlog(c *gin.Context) {
@@ -514,6 +538,7 @@ func (h *BlogHandler) DeleteMyBlog(c *gin.Context) {
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{"deleted": true, "id": blogID})
 }
@@ -662,6 +687,7 @@ func (h *BlogHandler) updateBlogState(c *gin.Context, userID string, role string
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	data := gin.H{
 		"id":    blog.ID,

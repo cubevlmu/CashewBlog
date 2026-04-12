@@ -4,6 +4,7 @@ import { reactive } from 'vue'
 import AppDialog from '@/components/AppDialog.vue'
 import AdminDataTable from '@/components/AdminDataTable.vue'
 import AdminPaginationControls from '@/components/AdminPaginationControls.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { useAdminCommentsPage } from '@/composables/useAdminCommentsPage'
 
 const comments = reactive(useAdminCommentsPage())
@@ -63,7 +64,7 @@ const comments = reactive(useAdminCommentsPage())
                 </td>
                 <td class="admin-table__col-author">
                   <div class="admin-author">
-                    <img :src="comment.avatar" :alt="comment.author" />
+                    <UserAvatar :src="comment.avatar" :alt="comment.author" />
                     <div>
                       <strong>{{ comment.author }}</strong>
                       <span>{{ comment.authorEmail }}</span>
@@ -85,7 +86,15 @@ const comments = reactive(useAdminCommentsPage())
                     >
                       审核
                     </button>
-                    <button class="admin-link-button" type="button" @click="comments.requestAction('hide', [comment.id])">隐藏</button>
+                    <button
+                      v-if="comment.state === 'hidden'"
+                      class="admin-link-button"
+                      type="button"
+                      @click="comments.requestAction('restore', [comment.id])"
+                    >
+                      恢复
+                    </button>
+                    <button v-else class="admin-link-button" type="button" @click="comments.requestAction('hide', [comment.id])">隐藏</button>
                     <button class="admin-link-button admin-link-button--danger" type="button" @click="comments.requestAction('delete', [comment.id])">删除</button>
                   </div>
                 </td>

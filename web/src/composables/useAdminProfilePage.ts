@@ -9,8 +9,10 @@ export function useAdminProfilePage() {
     displayName: '',
     email: '',
     avatar: '',
+    avatarId: null as number | null,
     gender: 'unknown' as AuthUser['gender'],
     bio: '',
+    website: '',
     role: 'user' as AuthUser['role'],
   })
   const passwordForm = reactive({
@@ -43,8 +45,10 @@ export function useAdminProfilePage() {
     profileForm.displayName = currentUser.value?.displayName ?? ''
     profileForm.email = currentUser.value?.email ?? ''
     profileForm.avatar = currentUser.value?.avatar ?? ''
+    profileForm.avatarId = currentUser.value?.avatarId ?? null
     profileForm.gender = currentUser.value?.gender ?? 'unknown'
     profileForm.bio = currentUser.value?.bio ?? ''
+    profileForm.website = currentUser.value?.website ?? ''
     profileForm.role = currentUser.value?.role ?? 'user'
   }
 
@@ -68,8 +72,9 @@ export function useAdminProfilePage() {
       await updateCurrentUserProfile({
         displayName: profileForm.displayName.trim(),
         email: profileForm.email.trim(),
-        avatar: profileForm.avatar.trim() || '/placeholder-avatar.svg',
+        avatarId: profileForm.avatarId,
         bio: profileForm.bio.trim(),
+        website: profileForm.website.trim(),
         gender: profileForm.gender,
         role: canEditRole.value ? profileForm.role : (currentUser.value?.role ?? 'user'),
       })

@@ -8,12 +8,13 @@ import type {
   AdminUserRecord,
 } from '@/types/admin'
 import type { AdminDashboardSummary } from '@/types/adminDashboard'
+import { assetUrl } from '@/mappers/assetUrl'
 import type {
   ApiAssetItem,
+  ApiAdminCommentItem,
   ApiBlogDetail,
   ApiBlogListItem,
   ApiCategoryItem,
-  ApiCommentItem,
   ApiDashboardData,
   ApiTagItem,
   ApiUserProfile,
@@ -26,7 +27,15 @@ function fallbackAvatar() {
 }
 
 function pickAvatar(user?: ApiUserSummary | null) {
-  return user?.avatar?.url || fallbackAvatar()
+  return assetUrl(user?.avatar) || fallbackAvatar()
+}
+
+function pickAvatarId(user?: ApiUserSummary | null) {
+  const avatar = user?.avatar
+  if (!avatar || typeof avatar === 'number') {
+    return typeof avatar === 'number' && avatar > 0 ? avatar : null
+  }
+  return avatar.id || null
 }
 
 function estimateWordCount(blog: Pick<ApiBlogListItem, 'summary'> & Partial<Pick<ApiBlogDetail, 'content_markdown'>>) {
@@ -71,6 +80,23 @@ function formatFileSize(size: number) {
   return `${size} B`
 }
 
+function formatDashboardTime(value: string) {
+  if (!value) {
+    return ''
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export function mapBlogToAdminPostRecord(blog: ApiBlogListItem | ApiBlogDetail): AdminPostRecord {
   const wordCount = estimateWordCount(blog)
 
@@ -91,7 +117,7 @@ export function mapBlogToAdminPostRecord(blog: ApiBlogListItem | ApiBlogDetail):
     commentCount: blog.comment_count,
     wordCount,
     readingTime: estimateReadingTime(wordCount),
-    coverImage: blog.title_image?.url || '',
+    coverImage: assetUrl(blog.title_image),
     isPinned: blog.is_top,
   }
 }
@@ -102,7 +128,7 @@ export function mapBlogToAdminEditorRecord(blog?: ApiBlogDetail | null): AdminPo
     title: blog?.title ?? '',
     slug: blog?.slug ?? '',
     desc: blog?.summary ?? '',
-    coverImage: blog?.title_image?.url ?? '',
+    coverImage: assetUrl(blog?.title_image),
     category: blog?.category?.name ?? '',
     tags: blog?.tags.map((tag) => tag.name) ?? [],
     content: blog?.content_markdown ?? '',
@@ -116,7 +142,7 @@ export function mapTagToAdminTagRecord(tag: ApiTagItem): AdminTagRecord {
     id: tag.id,
     name: tag.name,
     slug: tag.slug,
-    desc: '',
+    desc: tag.desc || '',
     postCount: tag.post_count ?? 0,
   }
 }
@@ -134,18 +160,18 @@ export function mapCategoryToAdminCategoryRecord(category: ApiCategoryItem): Adm
   }
 }
 
-export function mapCommentToAdminCommentRecord(comment: ApiCommentItem, blogTitle = ''): AdminCommentRecord {
-  return {
-    id: comment.id,
-    author: comment.user?.nickname || comment.user?.username || '匿名用户',
-    authorEmail: '',
-    avatar: pickAvatar(comment.user),
-    content: comment.content,
-    replyTo: undefined,
-    submittedAt: comment.created_at,
-    state: comment.state === 'hidden' ? 'hidden' : comment.state === 'deleted' ? 'hidden' : 'approved',
-    postTitle: blogTitle,
-  }
+export function mapCommentToAdminCommentRecord(comment: ApiAdminCommentItem, blogTitle = comment.blog?.title || '', replyTo?: string): AdminCommentRecord {
+	return {
+		id: comment.id,
+		author: comment.user?.nickname || comment.user?.username || '匿名用户',
+		authorEmail: '',
+		avatar: pickAvatar(comment.user),
+		content: comment.content,
+		replyTo,
+		submittedAt: comment.created_at,
+		state: comment.state === 'hidden' ? 'hidden' : comment.state === 'deleted' ? 'hidden' : 'approved',
+		postTitle: blogTitle,
+	}
 }
 
 export function mapAssetToAdminAssetRecord(asset: ApiAssetItem): AdminAssetRecord {
@@ -153,8 +179,8 @@ export function mapAssetToAdminAssetRecord(asset: ApiAssetItem): AdminAssetRecor
     id: asset.id,
     title: asset.original_file_name,
     fileName: asset.file_name,
-    fileUrl: asset.url,
-    thumbnailUrl: asset.url,
+    fileUrl: assetUrl(asset),
+    thumbnailUrl: assetUrl(asset),
     mimeType: asset.mime_type,
     fileSizeLabel: formatFileSize(asset.file_size),
     author: mapPostAuthor(asset.uploader),
@@ -177,8 +203,10 @@ export function mapUserToAdminUserRecord(user: ApiUserProfile): AdminUserRecord 
     twoFactorEnabled: false,
     lastLoginAt: user.last_login || user.updated_at,
     avatar: pickAvatar(user),
+    avatarId: pickAvatarId(user),
     gender: user.gender === 'female' || user.gender === 'male' ? user.gender : 'unknown',
     bio: user.bio || '',
+    website: user.website || '',
   }
 }
 
@@ -194,7 +222,15 @@ export function mapDashboardToSummary(data: ApiDashboardData): AdminDashboardSum
       { label: '今日浏览', value: String(data.today_views) },
       { label: '今日评论', value: String(data.today_comments) },
     ],
-    recentPosts: [],
-    recentComments: [],
+    recentPosts: (data.recent_posts ?? []).map((post) => ({
+      title: post.title,
+      author: post.author,
+      time: formatDashboardTime(post.time),
+    })),
+    recentComments: (data.recent_comments ?? []).map((comment) => ({
+      content: comment.content,
+      publisher: comment.publisher,
+      time: formatDashboardTime(comment.time),
+    })),
   }
 }

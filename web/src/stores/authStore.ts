@@ -14,9 +14,11 @@ function normalizeUser(user: AuthUser): AuthUser {
   return {
     ...user,
     avatar: user.avatar || '/placeholder-avatar.svg',
+    avatarId: user.avatarId ?? null,
     bio: user.bio || '这个账号暂时还没有填写个人简介。',
     email: user.email || `${user.username}@cashew.blog`,
     gender: user.gender || 'unknown',
+    website: user.website || '',
   }
 }
 

@@ -22,13 +22,15 @@ type PageData struct {
 }
 
 type ReadService struct {
-	repo     *repositories.ReadRepository
-	blogs    *repositories.BlogRepository
-	assets   *repositories.AssetRepository
-	users    *repositories.UserRepository
-	comments *repositories.CommentRepository
-	settings *repositories.SettingRepository
-	cache    *cache.Store
+	repo       *repositories.ReadRepository
+	blogs      *repositories.BlogRepository
+	assets     *repositories.AssetRepository
+	users      *repositories.UserRepository
+	comments   *repositories.CommentRepository
+	settings   *repositories.SettingRepository
+	tags       *repositories.TagRepository
+	categories *repositories.CategoryRepository
+	cache      *cache.Store
 }
 
 type BlogView struct {
@@ -56,7 +58,9 @@ type TagView struct {
 	ID        uint      `json:"id"`
 	Name      string    `json:"name"`
 	Slug      string    `json:"slug"`
+	Desc      string    `json:"desc"`
 	Color     string    `json:"color"`
+	PostCount int64     `json:"post_count"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -66,6 +70,7 @@ type CategoryView struct {
 	Slug      string    `json:"slug"`
 	Desc      string    `json:"desc"`
 	ParentID  *uint     `json:"parent_id"`
+	PostCount int64     `json:"post_count"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -117,8 +122,16 @@ type BlogContextResult struct {
 	NextBlog *serverapi.BlogListItem `json:"next_blog"`
 }
 
-func NewReadService(repo *repositories.ReadRepository, blogs *repositories.BlogRepository, assets *repositories.AssetRepository, users *repositories.UserRepository, comments *repositories.CommentRepository, settings *repositories.SettingRepository, store *cache.Store) *ReadService {
-	return &ReadService{repo: repo, blogs: blogs, assets: assets, users: users, comments: comments, settings: settings, cache: store}
+func NewReadService(repo *repositories.ReadRepository, blogs *repositories.BlogRepository, assets *repositories.AssetRepository, users *repositories.UserRepository, comments *repositories.CommentRepository, settings *repositories.SettingRepository, tags *repositories.TagRepository, categories *repositories.CategoryRepository, store *cache.Store) *ReadService {
+	return &ReadService{repo: repo, blogs: blogs, assets: assets, users: users, comments: comments, settings: settings, tags: tags, categories: categories, cache: store}
+}
+
+// InvalidateAll clears cached read payloads after write-side mutations.
+func (s *ReadService) InvalidateAll() {
+	if s == nil || s.cache == nil {
+		return
+	}
+	s.cache.Clear()
 }
 
 func (s *ReadService) GetCurrentUser(ctx context.Context, userID uint, key string) (gin.H, error) {
@@ -276,7 +289,7 @@ func (s *ReadService) ListTags(ctx context.Context, filter repositories.TagListF
 		}
 		list := make([]TagView, 0, len(items))
 		for _, item := range items {
-			list = append(list, tagToView(item))
+			list = append(list, s.tagToView(item))
 		}
 		return &PageData{List: list, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
 	})
@@ -288,7 +301,7 @@ func (s *ReadService) GetTag(ctx context.Context, id uint, key string) (*TagView
 		if err != nil || item == nil {
 			return nil, err
 		}
-		view := tagToView(*item)
+		view := s.tagToView(*item)
 		return &view, nil
 	})
 }
@@ -299,7 +312,7 @@ func (s *ReadService) GetTagRefByID(ctx context.Context, id uint, key string) (g
 		if err != nil || item == nil {
 			return nil, err
 		}
-		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "color": item.Color}, nil
+		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "desc": item.Desc, "color": item.Color, "post_count": s.tagArticleCount(item.ID)}, nil
 	})
 }
 
@@ -309,7 +322,7 @@ func (s *ReadService) GetTagRefBySlug(ctx context.Context, slug string, key stri
 		if err != nil || item == nil {
 			return nil, err
 		}
-		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "color": item.Color}, nil
+		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "desc": item.Desc, "color": item.Color, "post_count": s.tagArticleCount(item.ID)}, nil
 	})
 }
 
@@ -321,7 +334,7 @@ func (s *ReadService) ListCategories(ctx context.Context, filter repositories.Ca
 		}
 		list := make([]CategoryView, 0, len(items))
 		for _, item := range items {
-			list = append(list, categoryToView(item))
+			list = append(list, s.categoryToView(item))
 		}
 		return &PageData{List: list, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
 	})
@@ -347,7 +360,7 @@ func (s *ReadService) GetCategory(ctx context.Context, id uint, key string) (*Ca
 		if err != nil || item == nil {
 			return nil, err
 		}
-		return new(categoryToView(*item)), nil
+		return new(s.categoryToView(*item)), nil
 	})
 }
 
@@ -370,6 +383,7 @@ func (s *ReadService) GetPublicCategory(ctx context.Context, id uint, key string
 		}
 
 		result := serverapi.CategoryItemFromModel(item, parent)
+		result.PostCount = s.categoryArticleCount(item.ID)
 		return &result, nil
 	})
 }
@@ -380,7 +394,7 @@ func (s *ReadService) GetCategoryRefByID(ctx context.Context, id uint, key strin
 		if err != nil || item == nil {
 			return nil, err
 		}
-		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug}, nil
+		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "post_count": s.categoryArticleCount(item.ID)}, nil
 	})
 }
 
@@ -390,7 +404,7 @@ func (s *ReadService) GetCategoryRefBySlug(ctx context.Context, slug string, key
 		if err != nil || item == nil {
 			return nil, err
 		}
-		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug}, nil
+		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "post_count": s.categoryArticleCount(item.ID)}, nil
 	})
 }
 
@@ -626,36 +640,85 @@ func (s *ReadService) GetAssetDetailFromModel(ctx context.Context, asset *databa
 	return &list[0], nil
 }
 
-func (s *ReadService) ListBlogComments(ctx context.Context, filter repositories.CommentListFilter, key string) (*PageData, error) {
-	return cached(s.cache, key, func() (*PageData, error) {
-		items, total, err := s.comments.ListByBlogID(ctx, filter)
-		if err != nil {
-			return nil, err
+func (s *ReadService) ListBlogComments(ctx context.Context, filter repositories.CommentListFilter) (*PageData, error) {
+	items, total, err := s.comments.ListByBlogID(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	users, err := s.users.LoadByIDs(ctx, collectCommentUserIDs(items))
+	if err != nil {
+		return nil, err
+	}
+	list := make([]CommentView, 0, len(items))
+	for _, item := range items {
+		view := CommentView{
+			ID:        item.ID,
+			BlogID:    item.BlogID,
+			UserID:    item.UserID,
+			ParentID:  item.ParentID,
+			Content:   item.Content,
+			State:     item.State,
+			IP:        item.IP,
+			CreatedAt: item.CreatedAt,
+			UpdatedAt: item.UpdatedAt,
 		}
-		users, err := s.users.LoadByIDs(ctx, collectCommentUserIDs(items))
-		if err != nil {
-			return nil, err
+		if user, ok := users[item.UserID]; ok {
+			view.User = authorView(user)
 		}
-		list := make([]CommentView, 0, len(items))
-		for _, item := range items {
-			view := CommentView{
-				ID:        item.ID,
-				BlogID:    item.BlogID,
-				UserID:    item.UserID,
-				ParentID:  item.ParentID,
-				Content:   item.Content,
-				State:     item.State,
-				IP:        item.IP,
-				CreatedAt: item.CreatedAt,
-				UpdatedAt: item.UpdatedAt,
+		list = append(list, view)
+	}
+	return &PageData{List: buildCommentTree(list), Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
+}
+
+func (s *ReadService) ListAdminComments(ctx context.Context, filter repositories.AdminCommentListFilter) (*PageData, error) {
+	items, total, err := s.comments.ListAdmin(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	users, err := s.users.LoadByIDs(ctx, collectCommentUserIDs(items))
+	if err != nil {
+		return nil, err
+	}
+	avatars, err := s.assets.LoadByIDs(ctx, collectUserAvatarIDs(users))
+	if err != nil {
+		return nil, err
+	}
+	blogs, err := s.blogs.LoadByIDs(ctx, collectCommentBlogIDs(items))
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]gin.H, 0, len(items))
+	for _, item := range items {
+		var user *database.User
+		var avatar *database.Asset
+		if loadedUser, ok := users[item.UserID]; ok {
+			user = &loadedUser
+			if loadedUser.Avatar != nil {
+				if loadedAvatar, ok := avatars[*loadedUser.Avatar]; ok {
+					avatar = &loadedAvatar
+				}
 			}
-			if user, ok := users[item.UserID]; ok {
-				view.User = authorView(user)
-			}
-			list = append(list, view)
 		}
-		return &PageData{List: buildCommentTree(list), Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
-	})
+
+		comment := serverapi.CommentItemFromModel(&item, user, avatar, []serverapi.CommentItem{})
+		payload := gin.H{
+			"id":         comment.ID,
+			"blog_id":    comment.BlogID,
+			"parent_id":  comment.ParentID,
+			"content":    comment.Content,
+			"state":      comment.State,
+			"user":       comment.User,
+			"children":   comment.Children,
+			"created_at": comment.CreatedAt,
+			"updated_at": comment.UpdatedAt,
+		}
+		if blog, ok := blogs[item.BlogID]; ok {
+			payload["blog"] = gin.H{"id": blog.ID, "title": blog.Title, "slug": blog.Slug}
+		}
+		list = append(list, payload)
+	}
+	return &PageData{List: list, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
 }
 
 func (s *ReadService) GetCommentItem(ctx context.Context, comment *database.Comment) (*serverapi.CommentItem, error) {
@@ -758,8 +821,30 @@ func (s *ReadService) GetAdminDashboard(ctx context.Context, key string) (gin.H,
 		for statKey, statValue := range stats {
 			result[statKey] = statValue
 		}
+		posts, comments := s.repo.AdminDashboardRecent()
+		result["recent_posts"] = posts
+		result["recent_comments"] = comments
 		return result, nil
 	})
+}
+
+func (s *ReadService) GetUserDashboard(ctx context.Context, userID uint, key string) (gin.H, error) {
+	_ = key
+	stats, err := s.repo.CountUserDashboardSummary(ctx, userID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	posts, comments, err := s.repo.ListUserDashboardRecent(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make(gin.H, len(stats)+2)
+	for statKey, statValue := range stats {
+		result[statKey] = statValue
+	}
+	result["recent_posts"] = posts
+	result["recent_comments"] = comments
+	return result, nil
 }
 
 func (s *ReadService) ListAdminLogs(ctx context.Context, filter repositories.AuditLogListFilter, key string) (*PageData, error) {
@@ -833,7 +918,7 @@ func (s *ReadService) composeBlogs(ctx context.Context, blogs []database.Blog, i
 			view.Author = authorView(author)
 		}
 		for _, tag := range tagsByBlogID[item.ID] {
-			view.Tags = append(view.Tags, tagToView(tag))
+			view.Tags = append(view.Tags, s.tagToView(tag))
 		}
 		result = append(result, view)
 	}
@@ -848,12 +933,26 @@ func authorView(user database.User) gin.H {
 	return gin.H{"id": user.ID, "username": user.Username, "nickname": user.Nickname, "avatar": user.Avatar}
 }
 
-func tagToView(tag database.Tag) TagView {
-	return TagView{ID: tag.ID, Name: tag.Name, Slug: tag.Slug, Color: tag.Color, CreatedAt: tag.CreatedAt}
+func (s *ReadService) tagToView(tag database.Tag) TagView {
+	return TagView{ID: tag.ID, Name: tag.Name, Slug: tag.Slug, Desc: tag.Desc, Color: tag.Color, PostCount: s.tagArticleCount(tag.ID), CreatedAt: tag.CreatedAt}
 }
 
-func categoryToView(category database.Category) CategoryView {
-	return CategoryView{ID: category.ID, Name: category.Name, Slug: category.Slug, Desc: category.Desc, ParentID: category.Parent, CreatedAt: category.CreatedAt}
+func (s *ReadService) categoryToView(category database.Category) CategoryView {
+	return CategoryView{ID: category.ID, Name: category.Name, Slug: category.Slug, Desc: category.Desc, ParentID: category.Parent, PostCount: s.categoryArticleCount(category.ID), CreatedAt: category.CreatedAt}
+}
+
+func (s *ReadService) tagArticleCount(id uint) int64 {
+	if s == nil || s.tags == nil {
+		return 0
+	}
+	return s.tags.ArticleCount(id)
+}
+
+func (s *ReadService) categoryArticleCount(id uint) int64 {
+	if s == nil || s.categories == nil {
+		return 0
+	}
+	return s.categories.ArticleCount(id)
 }
 
 func settingToView(item database.Setting) SettingView {
@@ -880,6 +979,24 @@ func collectCommentUserIDs(items []database.Comment) []uint {
 	result := make([]uint, 0, len(items))
 	for _, item := range items {
 		result = append(result, item.UserID)
+	}
+	return result
+}
+
+func collectCommentBlogIDs(items []database.Comment) []uint {
+	result := make([]uint, 0, len(items))
+	for _, item := range items {
+		result = append(result, item.BlogID)
+	}
+	return result
+}
+
+func collectUserAvatarIDs(users map[uint]database.User) []uint {
+	result := make([]uint, 0, len(users))
+	for _, user := range users {
+		if user.Avatar != nil {
+			result = append(result, *user.Avatar)
+		}
 	}
 	return result
 }
@@ -1187,7 +1304,9 @@ func (s *ReadService) composePublicCategoryList(ctx context.Context, categories 
 				parent = &item
 			}
 		}
-		result = append(result, serverapi.CategoryItemFromModel(&category, parent))
+		item := serverapi.CategoryItemFromModel(&category, parent)
+		item.PostCount = s.categoryArticleCount(category.ID)
+		result = append(result, item)
 	}
 	return result, nil
 }

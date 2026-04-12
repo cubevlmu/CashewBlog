@@ -2,6 +2,7 @@
 import { reactive } from 'vue'
 
 import AppDialog from '@/components/AppDialog.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { useAdminPostsPage } from '@/composables/useAdminPostsPage'
 
 const posts = reactive(useAdminPostsPage())
@@ -115,7 +116,7 @@ const posts = reactive(useAdminPostsPage())
               </td>
               <td v-if="posts.authState.isAdmin" class="admin-table__col-author">
                 <div class="admin-author">
-                  <img :src="row.author.avatar" :alt="row.author.displayName" />
+                  <UserAvatar :src="row.author.avatar" :alt="row.author.displayName" />
                   <div>
                     <strong>{{ row.author.displayName }}</strong>
                     <span>@{{ row.author.username }}</span>

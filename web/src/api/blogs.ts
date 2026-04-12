@@ -1,4 +1,4 @@
-import type { ApiBlogContextData, ApiBlogListItem, ApiPageData } from '@/types/api'
+import type { ApiBlogContextData, ApiBlogDetail, ApiBlogListItem, ApiCommentItem, ApiPageData } from '@/types/api'
 
 import { requestJson } from '@/data/core/http'
 
@@ -11,5 +11,13 @@ export function getBlogContextBySlug(slug: string) {
 }
 
 export function getBlogContextById(id: number) {
-  return requestJson<ApiBlogContextData>(`/api/v1/blogs/${id}/context`)
+  return Promise.all([
+    requestJson<{ blog: ApiBlogDetail }>(`/api/v1/blogs/${id}`),
+    requestJson<ApiPageData<ApiCommentItem>>(`/api/v1/blogs/${id}/comments?page=1&page_size=100`),
+  ]).then(([blogData, commentsData]) => ({
+    blog: blogData.blog,
+    comments: commentsData.list,
+    prev_blog: null,
+    next_blog: null,
+  }))
 }

@@ -1,7 +1,7 @@
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getDemoAccounts, loginWithPassword } from '@/services/auth'
+import { loginWithPassword } from '@/services/auth'
 import { authState } from '@/stores/authStore'
 
 export function useLoginPage() {
@@ -13,13 +13,6 @@ export function useLoginPage() {
     username: '',
     password: '',
   })
-
-  const demoAccounts = getDemoAccounts()
-
-  function fillDemoAccount(username: string, password: string) {
-    form.username = username
-    form.password = password
-  }
 
   async function submitLogin() {
     if (!form.username.trim() || !form.password) {
@@ -52,8 +45,6 @@ export function useLoginPage() {
     loading,
     errorMessage,
     form,
-    demoAccounts,
-    fillDemoAccount,
     submitLogin,
   }
 }

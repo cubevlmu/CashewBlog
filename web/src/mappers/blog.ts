@@ -33,6 +33,12 @@ export function mapApiSearchResultToPostCardVM(item: ApiSearchResultItem): PostC
     title: item.title,
     slug: item.slug,
     coverImage: fallbackCoverImage,
+    author: {
+      id: 0,
+      username: '',
+      displayName: '匿名作者',
+      avatar: '/placeholder-avatar.svg',
+    },
     desc: item.summary,
     content: undefined,
     publishedAt: item.published_at,

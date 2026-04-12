@@ -11,6 +11,7 @@ import {
   deleteAdminUsers,
   getAdminAssetById,
   getAdminAssets,
+  getAdminUploadLimitBytes,
   getAdminCategories,
   getAdminComments,
   getAdminDashboardSummary,
@@ -26,6 +27,7 @@ import {
   updateAdminPostState,
   updateAdminTag,
   updateAdminUser,
+  uploadAdminAsset,
   updateMyBlog,
 } from '@/repositories/adminRepository'
 
@@ -42,6 +44,7 @@ export {
   deleteAdminUsers,
   getAdminAssetById,
   getAdminAssets,
+  getAdminUploadLimitBytes,
   getAdminCategories,
   getAdminComments,
   getAdminDashboardSummary,
@@ -57,5 +60,6 @@ export {
   updateAdminPostState,
   updateAdminTag,
   updateAdminUser,
+  uploadAdminAsset,
   updateMyBlog,
 }

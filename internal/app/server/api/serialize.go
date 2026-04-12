@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"CashewBlog/internal/pkg/database"
 )
@@ -11,8 +12,16 @@ func AssetRefFromModel(asset *database.Asset) *AssetRef {
 		return nil
 	}
 	return &AssetRef{
-		ID: asset.ID,
+		ID:  asset.ID,
+		URL: assetURL(asset.ID),
 	}
+}
+
+func assetURL(id uint) string {
+	if id == 0 {
+		return ""
+	}
+	return fmt.Sprintf("/api/v1/assets/%d", id)
 }
 
 func UserLiteFromModel(user *database.User, avatar *database.Asset) UserLite {
@@ -74,6 +83,7 @@ func TagItemFromModel(tag *database.Tag) TagItem {
 		ID:        tag.ID,
 		Name:      tag.Name,
 		Slug:      tag.Slug,
+		Desc:      tag.Desc,
 		Color:     tag.Color,
 		CreatedAt: tag.CreatedAt,
 	}
@@ -84,6 +94,7 @@ func BlogTagFromModel(tag database.Tag) BlogTag {
 		ID:    tag.ID,
 		Name:  tag.Name,
 		Slug:  tag.Slug,
+		Desc:  tag.Desc,
 		Color: tag.Color,
 	}
 }
@@ -204,6 +215,7 @@ func AssetItemFromModel(asset *database.Asset, uploader *database.User, uploader
 		OriginalFileName: asset.OriginalFileName,
 		MimeType:         asset.MimeType,
 		FileExtension:    asset.FileExtension,
+		URL:              assetURL(asset.ID),
 		FileHash:         asset.FileHash,
 		FileSize:         asset.FileSize,
 		Width:            asset.Width,

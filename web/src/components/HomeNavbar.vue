@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { faBars, faSearch } from '@fortawesome/free-solid-svg-icons'
 
 import AppDrawer from '@/components/AppDrawer.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { useHomeNavbar } from '@/composables/useHomeNavbar'
 import type { HomeConfig } from '@/types/site'
 
@@ -58,11 +59,11 @@ const navbar = reactive(useHomeNavbar())
           搜索
         </button>
         <button :class="['home-navbar__user', { 'home-navbar__user--avatar': navbar.isLoggedIn }]" type="button" @click="navbar.openUserPage">
-          <img
+          <UserAvatar
             v-if="navbar.isLoggedIn"
-            class="home-navbar__user-avatar"
             :src="navbar.userAvatar"
             alt="用户头像"
+            size="sm"
           />
           <span v-else>登录</span>
         </button>
@@ -117,11 +118,11 @@ const navbar = reactive(useHomeNavbar())
           {{ item.text }}
         </button>
         <button class="mobile-drawer__link mobile-drawer__link--user" type="button" @click="navbar.openUserPage">
-          <img
+          <UserAvatar
             v-if="navbar.isLoggedIn"
-            class="mobile-drawer__user-avatar"
             :src="navbar.userAvatar"
             alt="用户头像"
+            size="sm"
           />
           <span>{{ navbar.isLoggedIn ? '用户中心' : '登录' }}</span>
         </button>

@@ -19,7 +19,7 @@ export function mapPublicSettingsToHomeConfig(settings: ApiPublicSettings): Home
       animation: settings.home.typing_animation,
       image: settings.home.banner_image,
     },
-    announcement: settings.site.subtitle,
+    announcement: settings.announcement?.content || settings.site.subtitle,
     intro: {
       blogName: settings.intro?.blog_name || settings.site.title,
       hitokoto: settings.intro?.hitokoto || settings.site.subtitle,
@@ -47,9 +47,28 @@ export function mapPublicSettingsToHomeConfig(settings: ApiPublicSettings): Home
 
 export function mapHomeConfigToHomePatch(config: HomeConfig) {
   return {
+    navbar_head_text: config.navbar.headText,
+    navbar_links: config.navbar.links.map((link) => ({
+      text: link.text,
+      link: link.link,
+    })),
     banner_title: config.header.title,
     banner_subtitle: config.header.subtitle,
     banner_image: config.header.image,
     typing_animation: config.header.animation,
+    announcement: config.announcement,
+    intro_blog_name: config.intro.blogName,
+    intro_hitokoto: config.intro.hitokoto,
+    sidebar_custom_html: config.sidebar.customHtml,
+    owner_name: config.owner.name,
+    owner_avatar: config.owner.avatar,
+    owner_bio: config.owner.bio,
+    owner_links: config.owner.links.map((link) => ({
+      text: link.text,
+      link: link.link,
+      icon: link.icon || '',
+    })),
+    footer_text: config.footer.text,
+    footer_extra_html: config.footer.extraHtml,
   }
 }

@@ -13,11 +13,19 @@ export interface PostTaxonomy {
   slug: string
 }
 
+export interface PostAuthor {
+  id: number
+  username: string
+  displayName: string
+  avatar: string
+}
+
 export interface HomePostCard {
   id: number
   title: string
   slug: string
   coverImage: string
+  author: PostAuthor
   desc: string
   content?: string
   publishedAt: string

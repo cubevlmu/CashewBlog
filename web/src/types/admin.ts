@@ -119,8 +119,10 @@ export interface AdminUserRecord {
   twoFactorEnabled: boolean
   lastLoginAt: string
   avatar: string
+  avatarId: number | null
   gender: 'male' | 'female' | 'unknown'
   bio: string
+  website: string
 }
 
 export interface AdminConfigLink {

@@ -128,13 +128,14 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		respondCategoryWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	parent, err := h.loadCategoryParent(c, category.Parent)
 	if err != nil {
 		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
 		return
 	}
-	webutil.RespondCreated(c, gin.H{"category": serverapi.CategoryItemFromModel(category, parent)})
+	webutil.RespondCreated(c, gin.H{"category": h.categoryItem(category, parent)})
 }
 
 // UpdateCategory handles PATCH /api/v1/categories/:id.
@@ -175,13 +176,14 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		respondCategoryWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	parent, err := h.loadCategoryParent(c, category.Parent)
 	if err != nil {
 		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
 		return
 	}
-	webutil.RespondOK(c, gin.H{"category": serverapi.CategoryItemFromModel(category, parent)})
+	webutil.RespondOK(c, gin.H{"category": h.categoryItem(category, parent)})
 }
 
 // DeleteCategory handles DELETE /api/v1/categories/:id.
@@ -197,6 +199,7 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 		respondCategoryWriteError(c, err)
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{"deleted": true, "id": categoryID})
 }
@@ -261,6 +264,14 @@ func (h *CategoryHandler) loadCategoryParent(c *gin.Context, parentID *uint) (*d
 		return nil, nil
 	}
 	return h.Categories.GetByID(c.Request.Context(), *parentID)
+}
+
+func (h *CategoryHandler) categoryItem(category *database.Category, parent *database.Category) serverapi.CategoryItem {
+	item := serverapi.CategoryItemFromModel(category, parent)
+	if category != nil && h.Categories != nil {
+		item.PostCount = h.Categories.ArticleCount(category.ID)
+	}
+	return item
 }
 
 // respondCategoryWriteError maps repository category errors to the standard API error payload.

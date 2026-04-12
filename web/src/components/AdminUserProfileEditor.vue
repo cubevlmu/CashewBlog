@@ -10,8 +10,10 @@ defineProps<{
     displayName: string
     email: string
     avatar: string
+    avatarId: number | null
     gender: AuthUser['gender']
     bio: string
+    website: string
     role: AuthRole | AdminUserRole
   }
   canEditRole: boolean
@@ -83,9 +85,9 @@ function roleDisplayLabel(role: AuthRole | AdminUserRole) {
       </div>
       <div class="admin-profile-editor__grid">
         <label class="admin-form-field">
-          <span>头像地址</span>
-          <input v-model="form.avatar" class="admin-input" type="text" />
-          <small>当前先用图片 URL 模拟，后续可接资源库选择器。</small>
+          <span>头像素材 ID</span>
+          <input v-model.number="form.avatarId" class="admin-input" type="number" min="0" />
+          <small>填写资源库素材 ID；留空或 0 表示不设置头像。</small>
         </label>
         <label class="admin-form-field">
           <span>性别</span>
@@ -95,6 +97,11 @@ function roleDisplayLabel(role: AuthRole | AdminUserRole) {
             <option value="female">女</option>
           </select>
           <small>用于前台用户中心展示。</small>
+        </label>
+        <label class="admin-form-field admin-profile-editor__field--full">
+          <span>个人网站</span>
+          <input v-model="form.website" class="admin-input" type="url" placeholder="https://example.com" />
+          <small>显示在用户资料中，可留空。</small>
         </label>
         <label class="admin-form-field admin-profile-editor__field--full">
           <span>个人简介</span>

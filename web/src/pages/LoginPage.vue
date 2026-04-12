@@ -12,7 +12,7 @@ const login = reactive(useLoginPage())
       <div class="login-card__intro">
         <p class="panel__label">Auth</p>
         <h1>登录</h1>
-        <p class="panel__text">登录页已经走独立认证数据源，后续接 JWT 或 session 接口时只需要替换认证实现。</p>
+        <p class="panel__text">使用后端账号登录。</p>
       </div>
 
       <div v-if="login.authState.isLoggedIn" class="login-card__status">
@@ -25,12 +25,12 @@ const login = reactive(useLoginPage())
       <form v-else class="login-form" @submit.prevent="login.submitLogin">
         <label class="login-form__field">
           <span>用户名</span>
-          <input v-model="login.form.username" class="input" type="text" placeholder="输入 admin 或 user" />
+          <input v-model="login.form.username" class="input" type="text" placeholder="输入用户名" />
         </label>
 
         <label class="login-form__field">
           <span>密码</span>
-          <input v-model="login.form.password" class="input" type="password" placeholder="输入测试密码" />
+          <input v-model="login.form.password" class="input" type="password" placeholder="输入密码" />
         </label>
 
         <p v-if="login.errorMessage" class="login-form__error">{{ login.errorMessage }}</p>
@@ -39,23 +39,6 @@ const login = reactive(useLoginPage())
           {{ login.loading ? '登录中...' : '登录' }}
         </button>
       </form>
-
-      <div class="login-demo">
-        <p class="panel__label">测试账号</p>
-        <div class="login-demo__grid">
-          <button
-            v-for="account in login.demoAccounts"
-            :key="account.username"
-            class="panel login-demo__card"
-            type="button"
-            @click="login.fillDemoAccount(account.username, account.password)"
-          >
-            <strong>{{ account.username }}</strong>
-            <span>{{ account.password }}</span>
-            <small>{{ account.role === 'admin' ? '可进后台' : '普通用户' }}</small>
-          </button>
-        </div>
-      </div>
     </div>
   </section>
 </template>

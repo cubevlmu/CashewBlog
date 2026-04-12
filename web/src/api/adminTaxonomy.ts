@@ -18,6 +18,7 @@ export async function createAdminTag(payload: Pick<AdminTagRecord, 'name' | 'slu
     body: JSON.stringify({
       name: payload.name,
       slug: payload.slug,
+      desc: payload.desc,
       color: '#8b5cf6',
     }),
   })
@@ -32,6 +33,7 @@ export async function updateAdminTag(id: number, payload: Pick<AdminTagRecord, '
     body: JSON.stringify({
       name: payload.name,
       slug: payload.slug,
+      desc: payload.desc,
       color: '#8b5cf6',
     }),
   })
@@ -55,7 +57,7 @@ export async function createAdminCategory(payload: Pick<AdminCategoryRecord, 'na
     body: JSON.stringify({
       name: payload.name,
       slug: payload.slug,
-      parent_id: payload.parentId ?? 0,
+      parent_id: payload.parentId ?? null,
       desc: payload.desc,
     }),
   })
@@ -73,7 +75,7 @@ export async function updateAdminCategory(
     body: JSON.stringify({
       name: payload.name,
       slug: payload.slug,
-      parent_id: payload.parentId ?? 0,
+      parent_id: payload.parentId ?? null,
       desc: payload.desc,
     }),
   })

@@ -36,8 +36,11 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 	commentRepo := repositories.NewCommentRepository(db.DB())
 	categoryRepo := repositories.NewCategoryRepository(db.DB())
 	tagRepo := repositories.NewTagRepository(db.DB())
+	blogRepo.BindTaxonomyRepositories(categoryRepo, tagRepo)
+	blogRepo.BindReadRepository(readRepo)
+	commentRepo.BindReadRepository(readRepo)
 	settingRepo := repositories.NewSettingRepository(db.DB())
-	readService := services.NewReadService(readRepo, blogRepo, assetRepo, userRepo, commentRepo, settingRepo, readCache)
+	readService := services.NewReadService(readRepo, blogRepo, assetRepo, userRepo, commentRepo, settingRepo, tagRepo, categoryRepo, readCache)
 	logService := services.NewLogService(logPath)
 	authHandler := &handlers.AuthHandler{Auth: authSvc, Read: readService, LoginGuard: services.NewLoginGuard(sec.Login)}
 	healthHandler := &handlers.HealthHandler{DB: db}
@@ -45,7 +48,7 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 	blogHandler := &handlers.BlogHandler{Read: readService, Blogs: blogRepo, Auth: authSvc}
 	tagHandler := &handlers.TagHandler{Read: readService, Tags: tagRepo}
 	categoryHandler := &handlers.CategoryHandler{Read: readService, Categories: categoryRepo}
-	assetHandler := &handlers.AssetHandler{Read: readService, Assets: assetRepo}
+	assetHandler := &handlers.AssetHandler{Read: readService, Assets: assetRepo, Settings: settingRepo}
 	commentHandler := &handlers.CommentHandler{Read: readService, Comments: commentRepo}
 	settingHandler := &handlers.SettingHandler{Read: readService, Settings: settingRepo}
 	adminHandler := &handlers.AdminHandler{Read: readService, Logs: logService}
@@ -78,6 +81,7 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 	v1.GET("/categories/slug/:slug/blogs", categoryHandler.ListCategoryBlogsBySlug)
 	// Gin requires one wildcard name for the /users/:id branch; this path still accepts a username value.
 	v1.GET("/users/:id/blogs", userHandler.ListUserBlogsByUsername)
+	v1.GET("/assets/:id", assetHandler.GetAssetContent)
 
 	v1Protected := v1.Group("/")
 	v1Protected.Use(middleware.Authenticate(authSvc))
@@ -87,6 +91,7 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 
 	v1User := v1Protected.Group("/")
 	v1User.Use(middleware.RequireUser())
+	v1User.GET("/me/dashboard", adminHandler.GetMyDashboard)
 	v1User.PATCH("/users/me", userHandler.UpdateCurrentUser)
 	v1User.PATCH("/users/me/password", userHandler.UpdateCurrentUserPassword)
 	v1User.PATCH("/users/me/avatar", userHandler.UpdateCurrentUserAvatar)
@@ -107,14 +112,17 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 	v1User.POST("/blogs/:id/comments", commentHandler.CreateBlogComment)
 	v1User.POST("/blogs/:id/comments/:commentId/reply", commentHandler.ReplyBlogComment)
 	v1User.PATCH("/comments/:id", commentHandler.UpdateComment)
+	v1User.PATCH("/comments/:id/state", commentHandler.UpdateCommentState)
 	v1User.DELETE("/comments/:id", commentHandler.DeleteComment)
 
 	v1User.POST("/assets/upload", assetHandler.UploadAsset)
 	v1User.POST("/assets/images", assetHandler.UploadImage)
 	v1User.POST("/assets/files", assetHandler.UploadFile)
+	v1User.GET("/assets/upload-limit", assetHandler.GetUploadLimit)
 	v1User.GET("/assets", assetHandler.ListAssets)
-	v1User.GET("/assets/:id", assetHandler.GetAsset)
+	v1User.GET("/assets/:id/meta", assetHandler.GetAsset)
 	v1User.DELETE("/assets/:id", assetHandler.DeleteAsset)
+	v1User.GET("/admin/comments", commentHandler.ListAdminComments)
 
 	admin := v1Protected.Group("/admin")
 	admin.Use(middleware.Authorize(auth.RoleAdmin))
@@ -122,6 +130,7 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 	admin.GET("/stats", adminHandler.GetStats)
 	admin.GET("/logs", adminHandler.ListLogs)
 	admin.GET("/blogs", blogHandler.ListBlogs)
+	admin.GET("/blogs/:id", blogHandler.GetAdminBlog)
 	admin.PATCH("/blogs/:id/state", blogHandler.UpdateBlogState)
 	admin.POST("/blogs/:id/restore", blogHandler.RestoreBlog)
 	admin.GET("/users", userHandler.ListUsers)
@@ -157,10 +166,6 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 	adminSettings.GET("/:key", settingHandler.GetAdminSetting)
 	adminSettings.PUT("/:key", settingHandler.PutAdminSetting)
 	adminSettings.DELETE("/:key", settingHandler.DeleteAdminSetting)
-
-	adminComments := v1Protected.Group("/comments")
-	adminComments.Use(middleware.Authorize(auth.RoleAdmin))
-	adminComments.PATCH("/:id/state", commentHandler.UpdateCommentState)
 
 	return r
 }

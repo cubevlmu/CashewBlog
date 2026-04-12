@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -14,12 +15,14 @@ import (
 	"CashewBlog/internal/app/server/repositories"
 	"CashewBlog/internal/app/server/services"
 	"CashewBlog/internal/app/server/webutil"
+	authpkg "CashewBlog/internal/pkg/auth"
 	"CashewBlog/internal/pkg/database"
 )
 
 type AssetHandler struct {
-	Read   *services.ReadService
-	Assets *repositories.AssetRepository
+	Read     *services.ReadService
+	Assets   *repositories.AssetRepository
+	Settings *repositories.SettingRepository
 }
 
 // UploadAsset stores one uploaded asset on local disk and creates the asset-db mapping.
@@ -37,12 +40,17 @@ func (h *AssetHandler) UploadFile(c *gin.Context) {
 	h.upload(c, false)
 }
 
+// GetUploadLimit returns the configured max upload size for the current user.
+func (h *AssetHandler) GetUploadLimit(c *gin.Context) {
+	webutil.RespondOK(c, gin.H{"max_bytes": h.uploadMaxBytes(c)})
+}
+
 // ListAssets returns the authenticated user's asset list.
 //
-// Supported filters include pagination, keyword, type, and state. Results are
-// always constrained to assets uploaded by the current user.
+// Supported filters include pagination, keyword, type, and state. Admins can
+// browse all assets; normal users are constrained to their own uploads.
 func (h *AssetHandler) ListAssets(c *gin.Context) {
-	userID, _, ok := middleware.UserFromContext(c)
+	userID, role, ok := middleware.UserFromContext(c)
 	if !ok {
 		webutil.RespondError(c, http.StatusUnauthorized, 40100, "unauthorized")
 		return
@@ -56,11 +64,14 @@ func (h *AssetHandler) ListAssets(c *gin.Context) {
 
 	page, pageSize := webutil.ParsePageParams(c)
 	filter := repositories.AssetListFilter{
-		Page:       page,
-		PageSize:   pageSize,
-		Keyword:    webutil.LikeKeyword(c.Query("keyword")),
-		Type:       strings.TrimSpace(strings.ToLower(c.Query("type"))),
-		UploaderID: ptrUint(uint(uid)),
+		Page:     page,
+		PageSize: pageSize,
+		Keyword:  webutil.LikeKeyword(c.Query("keyword")),
+		Type:     strings.TrimSpace(strings.ToLower(c.Query("type"))),
+	}
+	scope := strings.TrimSpace(strings.ToLower(c.Query("scope")))
+	if role != authpkg.RoleAdmin || scope == "mine" {
+		filter.UploaderID = ptrUint(uint(uid))
 	}
 
 	if filter.Type != "" && filter.Type != "image" && filter.Type != "file" {
@@ -85,7 +96,7 @@ func (h *AssetHandler) ListAssets(c *gin.Context) {
 }
 
 func (h *AssetHandler) GetAsset(c *gin.Context) {
-	userID, _, ok := middleware.UserFromContext(c)
+	userID, role, ok := middleware.UserFromContext(c)
 	if !ok {
 		webutil.RespondError(c, http.StatusUnauthorized, 40100, "unauthorized")
 		return
@@ -104,14 +115,14 @@ func (h *AssetHandler) GetAsset(c *gin.Context) {
 	item, err := h.Assets.GetByID(c.Request.Context(), id)
 	if err != nil {
 		switch {
-		case errors.Is(err, repositories.ErrAssetNotFound):
+		case errors.Is(err, repositories.ErrAssetNotFound), os.IsNotExist(err):
 			webutil.RespondError(c, http.StatusNotFound, 40400, "asset not found")
 		default:
 			webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
 		}
 		return
 	}
-	if item.Uploader != uint(uid) {
+	if role != authpkg.RoleAdmin && item.Uploader != uint(uid) {
 		webutil.RespondError(c, http.StatusNotFound, 40400, "asset not found")
 		return
 	}
@@ -127,6 +138,32 @@ func (h *AssetHandler) GetAsset(c *gin.Context) {
 	}
 
 	webutil.RespondOK(c, gin.H{"asset": detail})
+}
+
+func (h *AssetHandler) GetAssetContent(c *gin.Context) {
+	id, err := webutil.ParseUintParam(c, "id")
+	if err != nil {
+		webutil.RespondError(c, http.StatusBadRequest, 40000, err.Error())
+		return
+	}
+
+	asset, data, err := h.Assets.LoadContentByID(c.Request.Context(), id)
+	if err != nil {
+		switch {
+		case errors.Is(err, repositories.ErrAssetNotFound):
+			webutil.RespondError(c, http.StatusNotFound, 40400, "asset not found")
+		default:
+			webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
+		}
+		return
+	}
+	if asset.State != database.AssetStateNormal {
+		webutil.RespondError(c, http.StatusNotFound, 40400, "asset not found")
+		return
+	}
+
+	c.Header("Content-Disposition", "inline; filename="+strconv.Quote(asset.OriginalFileName))
+	c.Data(http.StatusOK, asset.MimeType, data)
 }
 
 // DeleteAsset removes one asset record and its local file when the caller is allowed to do so.
@@ -158,6 +195,7 @@ func (h *AssetHandler) DeleteAsset(c *gin.Context) {
 		}
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondOK(c, gin.H{"deleted": true, "id": id})
 }
@@ -198,6 +236,11 @@ func (h *AssetHandler) upload(c *gin.Context, restrictToImages bool) {
 		webutil.RespondError(c, http.StatusBadRequest, 40000, "file is required")
 		return
 	}
+	maxBytes := h.uploadMaxBytes(c)
+	if maxBytes > 0 && fileHeader.Size > maxBytes {
+		webutil.RespondError(c, http.StatusRequestEntityTooLarge, 41300, "file exceeds upload limit")
+		return
+	}
 	file, err := fileHeader.Open()
 	if err != nil {
 		webutil.RespondError(c, http.StatusBadRequest, 40000, "failed to open file")
@@ -205,9 +248,13 @@ func (h *AssetHandler) upload(c *gin.Context, restrictToImages bool) {
 	}
 	defer file.Close()
 
-	data, err := io.ReadAll(file)
+	data, err := io.ReadAll(io.LimitReader(file, maxBytes+1))
 	if err != nil {
 		webutil.RespondError(c, http.StatusInternalServerError, 50000, "failed to read file")
+		return
+	}
+	if maxBytes > 0 && int64(len(data)) > maxBytes {
+		webutil.RespondError(c, http.StatusRequestEntityTooLarge, 41300, "file exceeds upload limit")
 		return
 	}
 
@@ -236,6 +283,23 @@ func (h *AssetHandler) upload(c *gin.Context, restrictToImages bool) {
 		webutil.RespondError(c, http.StatusInternalServerError, 50000, "asset detail unavailable")
 		return
 	}
+	h.Read.InvalidateAll()
 
 	webutil.RespondCreated(c, gin.H{"asset": detail})
+}
+
+func (h *AssetHandler) uploadMaxBytes(c *gin.Context) int64 {
+	const fallbackUploadMaxBytes int64 = 10 * 1024 * 1024
+	if h.Settings == nil {
+		return fallbackUploadMaxBytes
+	}
+	item, err := h.Settings.GetByKey(c.Request.Context(), "upload_max_size")
+	if err != nil || item == nil {
+		return fallbackUploadMaxBytes
+	}
+	value, err := strconv.ParseInt(strings.TrimSpace(item.Value), 10, 64)
+	if err != nil || value <= 0 {
+		return fallbackUploadMaxBytes
+	}
+	return value
 }

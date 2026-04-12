@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -90,11 +91,25 @@ func (h *SettingHandler) UpdateAdminSettings(c *gin.Context) {
 }
 
 // GetAdminSetting handles GET /api/v1/admin/settings/:key.
-// It loads one setting by key using the setting repository cache.
+// It loads child settings by root key when present, otherwise one setting by exact key.
 func (h *SettingHandler) GetAdminSetting(c *gin.Context) {
 	key := strings.TrimSpace(c.Param("key"))
 	if key == "" {
 		webutil.RespondError(c, http.StatusBadRequest, 40000, "key is required")
+		return
+	}
+
+	children, err := h.Settings.ListByRoot(c.Request.Context(), key)
+	if err != nil {
+		respondSettingError(c, err)
+		return
+	}
+	if len(children) > 0 {
+		list := make([]serverapi.SettingItem, 0, len(children))
+		for _, child := range children {
+			list = append(list, serverapi.SettingItemFromModel(&child))
+		}
+		webutil.RespondOK(c, gin.H{"root": key, "items": list})
 		return
 	}
 
@@ -185,6 +200,20 @@ func (h *SettingHandler) UpdateHomeSite(c *gin.Context) {
 
 	values := []repositories.UpsertSettingInput{
 		{
+			Key:         "navbar.head_text",
+			Value:       req.NavbarHeadText,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Navbar brand text",
+		},
+		{
+			Key:         "navbar.links",
+			Value:       mustMarshalSettingJSON(req.NavbarLinks),
+			Type:        database.SettingTypeJSON,
+			Group:       "public",
+			Description: "Navbar links",
+		},
+		{
 			Key:         "home.banner_title",
 			Value:       req.BannerTitle,
 			Type:        database.SettingTypeString,
@@ -211,6 +240,76 @@ func (h *SettingHandler) UpdateHomeSite(c *gin.Context) {
 			Type:        database.SettingTypeBool,
 			Group:       "public",
 			Description: "Whether home typing animation is enabled",
+		},
+		{
+			Key:         "announcement.content",
+			Value:       req.Announcement,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Home announcement content",
+		},
+		{
+			Key:         "intro.blog_name",
+			Value:       req.IntroBlogName,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Intro blog name",
+		},
+		{
+			Key:         "intro.hitokoto",
+			Value:       req.IntroHitokoto,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Intro quote",
+		},
+		{
+			Key:         "sidebar.custom_html",
+			Value:       req.SidebarHTML,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Sidebar custom HTML",
+		},
+		{
+			Key:         "owner.name",
+			Value:       req.OwnerName,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Owner display name",
+		},
+		{
+			Key:         "owner.avatar",
+			Value:       req.OwnerAvatar,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Owner avatar URL",
+		},
+		{
+			Key:         "owner.bio",
+			Value:       req.OwnerBio,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Owner bio",
+		},
+		{
+			Key:         "owner.links",
+			Value:       mustMarshalSettingJSON(req.OwnerLinks),
+			Type:        database.SettingTypeJSON,
+			Group:       "public",
+			Description: "Owner links",
+		},
+		{
+			Key:         "footer.text",
+			Value:       req.FooterText,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Footer text",
+		},
+		{
+			Key:         "footer.extra_html",
+			Value:       req.FooterExtraHTML,
+			Type:        database.SettingTypeString,
+			Group:       "public",
+			Description: "Footer extra HTML",
 		},
 	}
 	for _, item := range values {
@@ -255,6 +354,30 @@ func publicSettingsPayload(items []database.Setting) gin.H {
 			"theme":    settingValue(items, "site.theme", "", "light"),
 		},
 		"home": homeSettingsPayload(items),
+		"navbar": gin.H{
+			"head_text": settingValue(items, "navbar.head_text", "site_name", "CashewBlog"),
+			"links":     settingJSONValue[[]serverapi.HomeNavLink](items, "navbar.links", []serverapi.HomeNavLink{}),
+		},
+		"announcement": gin.H{
+			"content": settingValue(items, "announcement.content", "site_desc", ""),
+		},
+		"intro": gin.H{
+			"blog_name": settingValue(items, "intro.blog_name", "site_name", "CashewBlog"),
+			"hitokoto":  settingValue(items, "intro.hitokoto", "site_desc", ""),
+		},
+		"sidebar": gin.H{
+			"custom_html": settingValue(items, "sidebar.custom_html", "", ""),
+		},
+		"owner": gin.H{
+			"name":   settingValue(items, "owner.name", "site_name", "CashewBlog"),
+			"avatar": settingValue(items, "owner.avatar", "site.logo", ""),
+			"bio":    settingValue(items, "owner.bio", "site_desc", ""),
+			"links":  settingJSONValue[[]serverapi.HomeOwnerLink](items, "owner.links", []serverapi.HomeOwnerLink{}),
+		},
+		"footer": gin.H{
+			"text":       settingValue(items, "footer.text", "site.icp", ""),
+			"extra_html": settingValue(items, "footer.extra_html", "", ""),
+		},
 	}
 }
 
@@ -290,6 +413,26 @@ func settingBoolValue(items []database.Setting, key string, legacyKey string, fa
 		return fallback
 	}
 	return val
+}
+
+func settingJSONValue[T any](items []database.Setting, key string, fallback T) T {
+	raw := settingValue(items, key, "", "")
+	if strings.TrimSpace(raw) == "" {
+		return fallback
+	}
+	var result T
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		return fallback
+	}
+	return result
+}
+
+func mustMarshalSettingJSON(value interface{}) string {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return "[]"
+	}
+	return string(raw)
 }
 
 func respondSettingError(c *gin.Context, err error) {

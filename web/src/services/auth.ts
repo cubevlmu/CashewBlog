@@ -1,5 +1,5 @@
 export {
-  getDemoAccounts,
+  initializeAuthSession,
   loginWithPassword,
   logout,
   updateCurrentUserPassword,

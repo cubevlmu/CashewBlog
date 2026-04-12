@@ -1,9 +1,16 @@
 import { mapBlogToAdminPostRecord } from '@/mappers/adminApi'
 import { requestJson } from '@/data/core/http'
+import { authState } from '@/stores/authStore'
 import type { AdminPostListParams, AdminPostListResponse, AdminPostState } from '@/types/admin'
 import type { ApiBlogDetail, ApiBlogListItem, ApiPageData } from '@/types/api'
 
 async function getAdminPostDetail(id: number) {
+  if (authState.isAdmin) {
+    try {
+      const data = await requestJson<{ blog: ApiBlogDetail }>(`/api/v1/admin/blogs/${id}`)
+      return data.blog
+    } catch {}
+  }
   try {
     const data = await requestJson<{ blog: ApiBlogDetail }>(`/api/v1/me/blogs/${id}`)
     return data.blog
@@ -27,7 +34,8 @@ export async function getAdminPosts(params: AdminPostListParams): Promise<AdminP
     query.set('state', params.state)
   }
 
-  const data = await requestJson<ApiPageData<ApiBlogListItem>>(`/api/v1/admin/blogs?${query.toString()}`)
+  const path = authState.isAdmin ? '/api/v1/admin/blogs' : '/api/v1/me/blogs'
+  const data = await requestJson<ApiPageData<ApiBlogListItem>>(`${path}?${query.toString()}`)
 
   return {
     list: data.list.map(mapBlogToAdminPostRecord),
@@ -96,8 +104,8 @@ export async function setAdminPostsPinned(ids: number[], isPinned: boolean) {
         slug: blog.slug,
         summary: blog.summary,
         content_markdown: blog.content_markdown,
-        title_image_id: blog.title_image?.id ?? 0,
-        category_id: blog.category?.id ?? 0,
+        title_image_id: blog.title_image?.id ?? null,
+        category_id: blog.category?.id ?? null,
         tag_ids: blog.tags.map((tag) => tag.id),
         allow_comment: blog.allow_comment,
         is_top: isPinned,

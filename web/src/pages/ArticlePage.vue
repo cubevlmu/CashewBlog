@@ -14,6 +14,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 
 import { usePostDetail } from '@/composables/usePostDetail'
+import UserAvatar from '@/components/UserAvatar.vue'
 import type { HomePostCard } from '@/types/site'
 
 const props = defineProps<{
@@ -67,6 +68,10 @@ const {
           <h1 class="article-page__title">{{ activePost.title }}</h1>
         </div>
         <div class="article-page__meta article-page__meta--header">
+          <span class="article-page__meta-item article-page__author">
+            <UserAvatar :src="activePost.author.avatar" :alt="activePost.author.displayName" size="xs" shape="rounded" />
+            <span>{{ activePost.author.displayName }}</span>
+          </span>
           <span class="article-page__meta-item">
             <FontAwesomeIcon :icon="faClock" />
             <span>{{ formattedDate }}</span>
@@ -173,7 +178,7 @@ const {
 
         <div class="comment-list">
           <article v-for="comment in pagedComments" :key="comment.id" class="comment-item">
-            <img class="comment-item__avatar" :src="comment.avatar" :alt="comment.author" />
+            <UserAvatar :src="comment.avatar" :alt="comment.author" size="md" shape="rounded" />
             <div class="comment-item__body">
               <div class="comment-item__meta">
                 <strong>{{ comment.author }}</strong>
