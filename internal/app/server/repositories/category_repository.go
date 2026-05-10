@@ -16,6 +16,12 @@ var (
 	ErrCategoryNotFound   = errors.New("category not found")
 	ErrCategoryConflict   = errors.New("category conflict")
 	ErrInvalidCategoryRef = errors.New("invalid category reference")
+	ErrProtectedCategory  = errors.New("protected category")
+)
+
+const (
+	fallbackCategoryName = "未分类"
+	fallbackCategorySlug = "uncategorized"
 )
 
 type CategoryRepository struct {
@@ -175,7 +181,7 @@ func (r *CategoryRepository) UpdateByID(ctx context.Context, in UpdateCategoryIn
 	return &category, nil
 }
 
-// DeleteByID deletes one category and reassigns affected blogs to the default category.
+// DeleteByID deletes one category and reassigns affected blogs to the parent category or fallback category.
 func (r *CategoryRepository) DeleteByID(ctx context.Context, id uint) error {
 	if r == nil || r.db == nil {
 		return fmt.Errorf("category repository not initialized")
@@ -189,19 +195,31 @@ func (r *CategoryRepository) DeleteByID(ctx context.Context, id uint) error {
 			}
 			return err
 		}
-
-		fallbackID, err := ensureFallbackCategory(tx, category.ID)
-		if err != nil {
-			return err
+		if isProtectedCategory(category) {
+			return ErrProtectedCategory
 		}
+
+		targetCategoryID := category.Parent
+		if targetCategoryID == nil {
+			fallbackID, fallbackErr := ensureFallbackCategory(tx, category.ID)
+			if fallbackErr != nil {
+				return fallbackErr
+			}
+			targetCategoryID = fallbackID
+		}
+
 		var fallbackValue interface{}
-		if fallbackID != nil {
-			fallbackValue = *fallbackID
+		if targetCategoryID != nil {
+			fallbackValue = *targetCategoryID
 		}
 		if err := tx.Model(&database.Blog{}).Where("category = ?", category.ID).Updates(map[string]interface{}{"category": fallbackValue}).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&database.Category{}).Where("parent = ?", category.ID).Updates(map[string]interface{}{"parent": nil}).Error; err != nil {
+		var parentValue interface{}
+		if category.Parent != nil {
+			parentValue = *category.Parent
+		}
+		if err := tx.Model(&database.Category{}).Where("parent = ?", category.ID).Updates(map[string]interface{}{"parent": parentValue}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&database.Category{}, category.ID).Error
@@ -254,7 +272,7 @@ func validateCategoryParent(tx *gorm.DB, categoryID uint, parentID *uint) error 
 
 func ensureFallbackCategory(tx *gorm.DB, deletingID uint) (*uint, error) {
 	var category database.Category
-	err := tx.Where("slug = ? OR name = ?", "uncategorized", "Uncategorized").First(&category).Error
+	err := tx.Where("slug = ? OR name = ?", fallbackCategorySlug, fallbackCategoryName).First(&category).Error
 	if err == nil {
 		if category.ID == deletingID {
 			return nil, nil
@@ -267,15 +285,15 @@ func ensureFallbackCategory(tx *gorm.DB, deletingID uint) (*uint, error) {
 
 	now := time.Now()
 	category = database.Category{
-		Name:      "Uncategorized",
-		Slug:      "uncategorized",
-		Desc:      "Uncategorized posts",
+		Name:      fallbackCategoryName,
+		Slug:      fallbackCategorySlug,
+		Desc:      "系统兜底分类，请勿删除",
 		CreatedAt: now,
 	}
 	if err := tx.Create(&category).Error; err != nil {
 		if isUniqueConstraintError(err) {
 			var loaded database.Category
-			if loadErr := tx.Where("(slug = ? OR name = ?) AND id <> ?", "uncategorized", "Uncategorized", deletingID).First(&loaded).Error; loadErr != nil {
+			if loadErr := tx.Where("(slug = ? OR name = ?) AND id <> ?", fallbackCategorySlug, fallbackCategoryName, deletingID).First(&loaded).Error; loadErr != nil {
 				return nil, loadErr
 			}
 			return &loaded.ID, nil
@@ -283,4 +301,10 @@ func ensureFallbackCategory(tx *gorm.DB, deletingID uint) (*uint, error) {
 		return nil, err
 	}
 	return &category.ID, nil
+}
+
+func isProtectedCategory(category database.Category) bool {
+	slug := strings.ToLower(strings.TrimSpace(category.Slug))
+	return slug == fallbackCategorySlug ||
+		strings.TrimSpace(category.Name) == fallbackCategoryName
 }

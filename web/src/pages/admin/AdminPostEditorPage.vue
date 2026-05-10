@@ -36,7 +36,6 @@ async function selectMedia(asset: AdminAssetRecord) {
     <header class="admin-page-heading admin-editor-page__header">
       <div>
         <h2>{{ editor.editorTitle }}</h2>
-        <p class="panel__text">使用 Editor.js 编辑，保存结果仍然是 Markdown。</p>
       </div>
       <div class="admin-editor-page__actions">
         <button class="button button--ghost" type="button" :disabled="editor.saving" @click="editor.saveDraft">
@@ -59,11 +58,14 @@ async function selectMedia(asset: AdminAssetRecord) {
         <label class="admin-form-field">
           <span>文章正文</span>
         </label>
-        <div class="admin-editor-toolbar">
-          <button class="button button--ghost" type="button" :disabled="editor.saving" @click="openContentMediaLibrary">插入多媒体</button>
-        </div>
 
-        <AdminEditorJsEditor ref="editorComponent" v-model="editor.form.contentMarkdown" class="admin-block-editor" :disabled="editor.saving" />
+        <AdminEditorJsEditor
+          ref="editorComponent"
+          v-model="editor.form.contentMarkdown"
+          class="admin-block-editor"
+          :disabled="editor.saving"
+          :open-media-library="openContentMediaLibrary"
+        />
       </section>
 
       <aside class="admin-editor-sidebar">

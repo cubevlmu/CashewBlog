@@ -10,7 +10,7 @@ const admin = reactive(useAdminLayout())
 </script>
 
 <template>
-  <section class="admin-page">
+  <section class="admin-page" :class="{ 'admin-page--compact-nav': admin.useCompactNav }">
     <aside class="admin-sidebar">
       <div class="admin-brand">
         <span class="admin-brand__mark">C</span>

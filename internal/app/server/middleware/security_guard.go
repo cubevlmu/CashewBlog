@@ -25,9 +25,10 @@ type GuardConfig struct {
 }
 
 type ipState struct {
-	windowStart time.Time
-	count       int
-	lastSeen    time.Time
+	windowStart   time.Time
+	count         int
+	lastSeen      time.Time
+	lastRequestAt time.Time
 }
 
 type duplicateState struct {
@@ -104,9 +105,9 @@ func (g *SecurityGuard) Handler() gin.HandlerFunc {
 
 		g.mu.Lock()
 		g.cleanup(now)
-		blocked, reason := g.checkIP(ip, now)
+		blocked, reason := g.checkIP(ip, now, !isStaticAssetRead(method, path))
 		g.mu.Unlock()
-		if blocked && reason == "too_fast" && !isStaticAssetRead(method, path) {
+		if blocked && reason == "too_fast" {
 			g.log.GetZap().Warn("security blocked",
 				zap.String("reason", "too_fast"),
 				zap.String("ip", ip),
@@ -149,19 +150,28 @@ func (g *SecurityGuard) Handler() gin.HandlerFunc {
 	}
 }
 
-func (g *SecurityGuard) checkIP(ip string, now time.Time) (bool, string) {
+func (g *SecurityGuard) checkIP(ip string, now time.Time, enforceMinInterval bool) (bool, string) {
 	state, ok := g.ipWindows[ip]
 	if !ok {
+		lastRequestAt := time.Time{}
+		if enforceMinInterval {
+			lastRequestAt = now
+		}
 		g.ipWindows[ip] = &ipState{
-			windowStart: now,
-			count:       1,
-			lastSeen:    now,
+			windowStart:   now,
+			count:         1,
+			lastSeen:      now,
+			lastRequestAt: lastRequestAt,
 		}
 		return false, ""
 	}
 
-	tooFast := now.Sub(state.lastSeen) < g.cfg.MinRequestInterval
 	state.lastSeen = now
+	tooFast := false
+	if enforceMinInterval {
+		tooFast = !state.lastRequestAt.IsZero() && now.Sub(state.lastRequestAt) < g.cfg.MinRequestInterval
+		state.lastRequestAt = now
+	}
 
 	if now.Sub(state.windowStart) >= g.cfg.WindowSize {
 		state.windowStart = now

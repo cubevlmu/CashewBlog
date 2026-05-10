@@ -27,6 +27,10 @@ function stripHtml(value: string) {
   return value.replace(/<[^>]+>/g, '')
 }
 
+function normalizeMediaType(value: unknown) {
+  return value === 'audio' ? 'audio' : 'video'
+}
+
 function markdownInlineToEditorHtml(value: unknown) {
   if (typeof value !== 'string') {
     return ''
@@ -107,6 +111,7 @@ export function markdownToEditorJsData(markdown: string): EditorJsOutputData {
     const line = lines[index]
     const heading = line.match(/^(#{1,6})\s+(.+)$/)
     const image = line.match(/^!\[([^\]]*)]\(([^)]+)\)$/)
+    const media = line.match(/^::(audio|video)\[([^\]]*)]\(([^)]+)\)$/)
     const quote = line.match(/^>\s?(.*)$/)
     const unordered = line.match(/^\s*[-*+]\s+(.+)$/)
     const ordered = line.match(/^\s*\d+\.\s+(.+)$/)
@@ -137,6 +142,12 @@ export function markdownToEditorJsData(markdown: string): EditorJsOutputData {
     if (image) {
       flushParagraph(paragraphLines, blocks)
       blocks.push(createBlock('image', { file: { url: image[2] }, caption: markdownInlineToEditorHtml(image[1]), withBorder: false, stretched: false, withBackground: false }))
+      continue
+    }
+
+    if (media) {
+      flushParagraph(paragraphLines, blocks)
+      blocks.push(createBlock('media', { mediaType: media[1], title: media[2], url: media[3] }))
       continue
     }
 
@@ -207,6 +218,12 @@ export function editorJsDataToMarkdown(data: EditorJsOutputData) {
         const url = file?.url ?? ''
         const caption = stripHtml(String(block.data.caption ?? ''))
         return url ? `![${caption}](${url})` : ''
+      }
+
+      if (block.type === 'media') {
+        const url = String(block.data.url ?? '')
+        const title = stripHtml(String(block.data.title ?? ''))
+        return url ? `::${normalizeMediaType(block.data.mediaType)}[${title}](${url})` : ''
       }
 
       return normalizeInlineHtml(block.data.text)

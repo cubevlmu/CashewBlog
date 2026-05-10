@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { computed, ref, toRef, watch } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
   faArrowLeft,
@@ -17,6 +17,8 @@ import { usePostDetail } from '@/composables/usePostDetail'
 import UserAvatar from '@/components/UserAvatar.vue'
 import type { HomePostCard } from '@/types/site'
 
+const fallbackCoverImage = '/default-cover.svg'
+
 const props = defineProps<{
   articleId: number | null
   previewPost?: HomePostCard | null
@@ -28,6 +30,7 @@ defineEmits<{
 
 const {
   loading,
+  loadError,
   replyValue,
   activeReplyId,
   replyDraft,
@@ -51,14 +54,33 @@ const {
   submitReply,
   goToPreviousCommentsPage,
   goToNextCommentsPage,
+  load,
 } = usePostDetail(toRef(props, 'articleId'), toRef(props, 'previewPost'))
+
+const coverLoadError = ref(false)
+
+const displayedCoverImage = computed(() =>
+  coverLoadError.value || !activePost.value?.coverImage ? fallbackCoverImage : activePost.value.coverImage,
+)
+
+watch(
+  () => activePost.value?.coverImage,
+  () => {
+    coverLoadError.value = false
+  },
+)
 </script>
 
 <template>
   <section class="article-panel">
-    <div v-if="activePost" class="article-page">
+    <div v-if="loading && !activePost" class="article-page__loading article-page__loading--full">
+      <FontAwesomeIcon :icon="faSpinner" class="article-page__loading-icon" />
+      <p class="article-page__loading-copy">加载文章...</p>
+    </div>
+
+    <div v-else-if="activePost" class="article-page">
       <div class="article-page__cover-shell">
-        <img class="article-page__cover" :src="activePost.coverImage" :alt="activePost.title" />
+        <img class="article-page__cover" :src="displayedCoverImage" :alt="activePost.title" @error="coverLoadError = true" />
       </div>
       <header class="article-page__header">
         <div class="article-page__title-row">
@@ -85,12 +107,17 @@ const {
             <span>{{ activePost.commentCount }}</span>
           </span>
           <RouterLink
+            v-if="activePost.category.slug"
             class="article-page__meta-item article-page__meta-link"
             :to="{ name: 'category', params: { slug: activePost.category.slug } }"
           >
             <FontAwesomeIcon :icon="faBookmark" />
             <span>{{ activePost.category.name }}</span>
           </RouterLink>
+          <span v-else class="article-page__meta-item">
+            <FontAwesomeIcon :icon="faBookmark" />
+            <span>{{ activePost.category.name }}</span>
+          </span>
           <span class="article-page__meta-item">
             <FontAwesomeIcon :icon="faFileLines" />
             <span>{{ activePost.wordCount }} 字</span>
@@ -102,14 +129,16 @@ const {
         </div>
       </header>
       <div class="article-page__tags">
-        <RouterLink
-          v-for="tag in activePost.tags"
-          :key="tag.slug"
-          class="article-page__tag"
-          :to="{ name: 'tag', params: { slug: tag.slug } }"
-        >
-          # {{ tag.name }}
-        </RouterLink>
+        <template v-for="tag in activePost.tags" :key="tag.slug || tag.name">
+          <RouterLink
+            v-if="tag.slug"
+            class="article-page__tag"
+            :to="{ name: 'tag', params: { slug: tag.slug } }"
+          >
+            # {{ tag.name }}
+          </RouterLink>
+          <span v-else class="article-page__tag article-page__tag--inactive"># {{ tag.name }}</span>
+        </template>
       </div>
       <article class="article-page__content" :class="{ 'is-loading': loading }">
         <div v-if="loading" class="article-page__loading">
@@ -140,6 +169,7 @@ const {
         </div>
       </div>
 
+      <template v-if="activePost.allowComment">
       <section class="comment-panel panel">
         <div class="comment-panel__header">
           <div>
@@ -223,6 +253,22 @@ const {
           </div>
         </div>
       </section>
+      </template>
+      <div v-else class="comment-panel panel">
+        <p class="panel__label">评论区</p>
+        <h2>评论已关闭</h2>
+        <p class="panel__text">作者已关闭本文的评论功能。</p>
+      </div>
+    </div>
+
+    <div v-else-if="loadError && !loading" class="page-shell__inner article-page__error">
+      <p class="eyebrow">加载失败</p>
+      <h1>文章加载失败</h1>
+      <p class="page-shell__lead">{{ loadError }}</p>
+      <div class="not-found-card__actions">
+        <button class="button button--primary" type="button" @click="load">重试</button>
+        <RouterLink class="button button--ghost" to="/">返回首页</RouterLink>
+      </div>
     </div>
 
     <div v-else-if="!loading" class="page-shell__inner">

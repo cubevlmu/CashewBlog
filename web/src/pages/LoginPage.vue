@@ -12,7 +12,6 @@ const login = reactive(useLoginPage())
       <div class="login-card__intro">
         <p class="panel__label">Auth</p>
         <h1>登录</h1>
-        <p class="panel__text">使用后端账号登录。</p>
       </div>
 
       <div v-if="login.authState.isLoggedIn" class="login-card__status">

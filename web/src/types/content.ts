@@ -36,6 +36,7 @@ export interface HomePostCard {
   category: PostTaxonomy
   tags: PostTaxonomy[]
   isPinned: boolean
+  allowComment: boolean
 }
 
 export interface ArticleNavLink {

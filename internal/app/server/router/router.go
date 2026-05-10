@@ -38,6 +38,7 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 	tagRepo := repositories.NewTagRepository(db.DB())
 	blogRepo.BindTaxonomyRepositories(categoryRepo, tagRepo)
 	blogRepo.BindReadRepository(readRepo)
+	blogRepo.StartViewSyncJob(0, 0, log)
 	commentRepo.BindReadRepository(readRepo)
 	settingRepo := repositories.NewSettingRepository(db.DB())
 	readService := services.NewReadService(readRepo, blogRepo, assetRepo, userRepo, commentRepo, settingRepo, tagRepo, categoryRepo, readCache)
@@ -63,10 +64,11 @@ func New(log *logger.Logger, authSvc *auth.Service, db *database.Client, sec Sec
 	v1.GET("/site/home", settingHandler.GetHomeSite)
 
 	v1.GET("/blogs", blogHandler.ListBlogs)
-	v1.GET("/blogs/:id", blogHandler.GetBlog)
-	v1.GET("/blogs/slug/:slug", blogHandler.GetBlogBySlug)
 	v1.GET("/blogs/slug/:slug/context", blogHandler.GetBlogContextBySlug)
+	v1.GET("/blogs/slug/:slug", blogHandler.GetBlogBySlug)
+	v1.GET("/blogs/:id/context", blogHandler.GetBlogContext)
 	v1.GET("/blogs/:id/comments", commentHandler.ListBlogComments)
+	v1.GET("/blogs/:id", blogHandler.GetBlog)
 	v1.GET("/home/posts", blogHandler.ListHomePosts)
 	v1.GET("/search", blogHandler.Search)
 

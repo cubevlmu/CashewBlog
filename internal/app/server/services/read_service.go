@@ -287,6 +287,9 @@ func (s *ReadService) ListTags(ctx context.Context, filter repositories.TagListF
 		if err != nil {
 			return nil, err
 		}
+		if s.tags != nil {
+			_ = s.tags.RefreshArticleCounts(ctx)
+		}
 		list := make([]TagView, 0, len(items))
 		for _, item := range items {
 			list = append(list, s.tagToView(item))
@@ -312,6 +315,9 @@ func (s *ReadService) GetTagRefByID(ctx context.Context, id uint, key string) (g
 		if err != nil || item == nil {
 			return nil, err
 		}
+		if s.tags != nil {
+			_ = s.tags.RefreshArticleCounts(ctx)
+		}
 		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "desc": item.Desc, "color": item.Color, "post_count": s.tagArticleCount(item.ID)}, nil
 	})
 }
@@ -321,6 +327,9 @@ func (s *ReadService) GetTagRefBySlug(ctx context.Context, slug string, key stri
 		item, err := s.repo.GetTagBySlug(ctx, slug)
 		if err != nil || item == nil {
 			return nil, err
+		}
+		if s.tags != nil {
+			_ = s.tags.RefreshArticleCounts(ctx)
 		}
 		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "desc": item.Desc, "color": item.Color, "post_count": s.tagArticleCount(item.ID)}, nil
 	})
@@ -382,6 +391,10 @@ func (s *ReadService) GetPublicCategory(ctx context.Context, id uint, key string
 			}
 		}
 
+		if s.categories != nil {
+			_ = s.categories.RefreshArticleCounts(ctx)
+		}
+
 		result := serverapi.CategoryItemFromModel(item, parent)
 		result.PostCount = s.categoryArticleCount(item.ID)
 		return &result, nil
@@ -394,6 +407,9 @@ func (s *ReadService) GetCategoryRefByID(ctx context.Context, id uint, key strin
 		if err != nil || item == nil {
 			return nil, err
 		}
+		if s.categories != nil {
+			_ = s.categories.RefreshArticleCounts(ctx)
+		}
 		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "post_count": s.categoryArticleCount(item.ID)}, nil
 	})
 }
@@ -403,6 +419,9 @@ func (s *ReadService) GetCategoryRefBySlug(ctx context.Context, slug string, key
 		item, err := s.repo.GetCategoryBySlug(ctx, slug)
 		if err != nil || item == nil {
 			return nil, err
+		}
+		if s.categories != nil {
+			_ = s.categories.RefreshArticleCounts(ctx)
 		}
 		return gin.H{"id": item.ID, "name": item.Name, "slug": item.Slug, "post_count": s.categoryArticleCount(item.ID)}, nil
 	})
@@ -521,6 +540,29 @@ func (s *ReadService) GetBlogContextBySlug(ctx context.Context, slug string, key
 		return detail, nil, err
 	}
 
+	contextData, err := s.getBlogContext(ctx, detail, key)
+	if err != nil {
+		return detail, nil, err
+	}
+
+	return detail, contextData, nil
+}
+
+func (s *ReadService) GetBlogContextByID(ctx context.Context, id uint, key string) (*BlogDetailResult, *BlogContextResult, error) {
+	detail, err := s.GetBlogDetailByID(ctx, id, key+":detail")
+	if err != nil || detail == nil {
+		return detail, nil, err
+	}
+
+	contextData, err := s.getBlogContext(ctx, detail, key)
+	if err != nil {
+		return detail, nil, err
+	}
+
+	return detail, contextData, nil
+}
+
+func (s *ReadService) getBlogContext(ctx context.Context, detail *BlogDetailResult, key string) (*BlogContextResult, error) {
 	contextData, err := cached(s.cache, key+":context", func() (*BlogContextResult, error) {
 		state := database.CommentStateNormal
 		comments, err := s.comments.ListAllByBlogID(ctx, detail.Detail.ID, &state)
@@ -590,10 +632,10 @@ func (s *ReadService) GetBlogContextBySlug(ctx context.Context, slug string, key
 		}, nil
 	})
 	if err != nil {
-		return detail, nil, err
+		return nil, err
 	}
 
-	return detail, contextData, nil
+	return contextData, nil
 }
 
 func (s *ReadService) GetMyBlog(ctx context.Context, userID uint, id uint, key string) (*serverapi.BlogDetail, error) {
@@ -1294,6 +1336,10 @@ func (s *ReadService) composePublicCategoryList(ctx context.Context, categories 
 	parents, err := s.repo.LoadCategoriesByIDs(ctx, collectCategoryParentIDs(categories))
 	if err != nil {
 		return nil, err
+	}
+
+	if s.categories != nil {
+		_ = s.categories.RefreshArticleCounts(ctx)
 	}
 
 	result := make([]serverapi.CategoryItem, 0, len(categories))

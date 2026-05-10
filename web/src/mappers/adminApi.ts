@@ -157,6 +157,7 @@ export function mapCategoryToAdminCategoryRecord(category: ApiCategoryItem): Adm
     parentId: category.parent?.id || null,
     parentName: category.parent?.name || '',
     level: category.parent?.id ? 2 : 1,
+    isDefault: category.slug === 'uncategorized',
   }
 }
 

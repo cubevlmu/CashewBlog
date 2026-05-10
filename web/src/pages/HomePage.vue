@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, reactive } from 'vue'
+import { defineAsyncComponent, defineComponent, h, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 
 import HomeNavbar from '@/components/HomeNavbar.vue'
@@ -7,12 +7,29 @@ import HomeSidebarContent from '@/components/HomeSidebarContent.vue'
 import PostFeedCard from '@/components/PostFeedCard.vue'
 import { useHomePage } from '@/composables/useHomePage'
 
-const ArticlePage = defineAsyncComponent(() => import('@/pages/ArticlePage.vue'))
-const SearchPage = defineAsyncComponent(() => import('@/pages/SearchPage.vue'))
-const TaxonomyPage = defineAsyncComponent(() => import('@/pages/TaxonomyPage.vue'))
-const UserPage = defineAsyncComponent(() => import('@/pages/UserPage.vue'))
-const SearchOverlay = defineAsyncComponent(() => import('@/components/SearchOverlay.vue'))
-const TaxonomyDialog = defineAsyncComponent(() => import('@/components/TaxonomyDialog.vue'))
+const AsyncError = defineComponent({
+  setup() {
+    return () =>
+      h('div', { class: 'panel home-error' }, [
+        h('p', { class: 'panel__label' }, '页面加载失败'),
+        h('h2', '组件无法加载'),
+        h('p', { class: 'panel__text' }, '请刷新页面重试，或检查网络连接。'),
+        h(
+          'button',
+          { class: 'button button--primary', type: 'button', onClick: () => window.location.reload() },
+          '刷新页面',
+        ),
+      ])
+  },
+})
+
+const asyncOptions = { errorComponent: AsyncError, timeout: 30000 }
+const ArticlePage = defineAsyncComponent({ ...asyncOptions, loader: () => import('@/pages/ArticlePage.vue') })
+const SearchPage = defineAsyncComponent({ ...asyncOptions, loader: () => import('@/pages/SearchPage.vue') })
+const TaxonomyPage = defineAsyncComponent({ ...asyncOptions, loader: () => import('@/pages/TaxonomyPage.vue') })
+const UserPage = defineAsyncComponent({ ...asyncOptions, loader: () => import('@/pages/UserPage.vue') })
+const SearchOverlay = defineAsyncComponent({ ...asyncOptions, loader: () => import('@/components/SearchOverlay.vue') })
+const TaxonomyDialog = defineAsyncComponent({ ...asyncOptions, loader: () => import('@/components/TaxonomyDialog.vue') })
 
 const route = useRoute()
 const home = reactive(useHomePage())
@@ -159,6 +176,15 @@ const home = reactive(useHomePage())
     <div v-else-if="home.loading" class="container">
       <div class="feed-skeleton">
         <div v-for="index in 4" :key="index" class="feed-skeleton__item" />
+      </div>
+    </div>
+
+    <div v-else class="container home-error-state">
+      <div class="panel home-error">
+        <p class="panel__label">加载失败</p>
+        <h2>首页数据不可用</h2>
+        <p class="panel__text">无法加载页面数据，请检查网络连接或稍后重试。后端服务可能未启动或网络不通。</p>
+        <button class="button button--primary" type="button" @click="home.loadHome">重试</button>
       </div>
     </div>
 

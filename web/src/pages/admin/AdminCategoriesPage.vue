@@ -14,7 +14,6 @@ const categories = reactive(useAdminCategoriesPage())
     <header class="admin-page-heading">
       <div>
         <h2>分类管理</h2>
-        <p class="panel__text">参考 WordPress 分类管理布局，顶部新增分类，底部列表支持层级展示、排序、批量删除和编辑弹窗。</p>
       </div>
     </header>
 

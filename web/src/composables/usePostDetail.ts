@@ -13,6 +13,7 @@ export function usePostDetail(articleId: Ref<number | null>, previewPost: Ref<Ho
   const commentsPageSize = 5
   const post = ref<HomePostCard | null>(null)
   const loading = ref(true)
+  const loadError = ref('')
   const articleContext = ref<ArticleContext | null>(null)
   const articleComments = ref<ArticleComment[]>([])
   const submitError = ref('')
@@ -21,7 +22,9 @@ export function usePostDetail(articleId: Ref<number | null>, previewPost: Ref<Ho
   const replyDraft = ref('')
   const commentsPage = ref(1)
 
-  const activePost = computed(() => post.value ?? previewPost.value ?? null)
+  let loadSerial = 0
+
+  const activePost = computed(() => (loadError.value ? null : post.value ?? previewPost.value ?? null))
   const comments = computed(() => articleComments.value)
   const commentsTotalPages = computed(() => Math.max(1, Math.ceil(comments.value.length / commentsPageSize)))
   const pagedComments = computed(() => {
@@ -61,25 +64,44 @@ export function usePostDetail(articleId: Ref<number | null>, previewPost: Ref<Ho
   }
 
   async function load() {
+    const serial = ++loadSerial
     loading.value = true
+    loadError.value = ''
     submitError.value = ''
+    post.value = null
+    articleContext.value = null
+    articleComments.value = []
+    commentsPage.value = 1
+    activeReplyId.value = null
+    replyDraft.value = ''
 
     try {
       if (!articleId.value) {
-        post.value = null
-        articleContext.value = null
-        articleComments.value = []
         return
       }
 
       const vm = await loadArticleContext(articleId.value)
+      if (serial !== loadSerial) {
+        return
+      }
+
       post.value = vm.post
       articleContext.value = vm.context
       articleComments.value = vm.context.comments
       syncCommentCount()
-      commentsPage.value = 1
+    } catch (error) {
+      if (serial !== loadSerial) {
+        return
+      }
+
+      post.value = null
+      articleContext.value = null
+      articleComments.value = []
+      loadError.value = error instanceof Error ? error.message : '文章加载失败'
     } finally {
-      loading.value = false
+      if (serial === loadSerial) {
+        loading.value = false
+      }
     }
   }
 
@@ -165,6 +187,7 @@ export function usePostDetail(articleId: Ref<number | null>, previewPost: Ref<Ho
 
   return {
     loading,
+    loadError,
     replyValue,
     activeReplyId,
     replyDraft,
@@ -188,5 +211,6 @@ export function usePostDetail(articleId: Ref<number | null>, previewPost: Ref<Ho
     submitReply,
     goToPreviousCommentsPage,
     goToNextCommentsPage,
+    load,
   }
 }

@@ -205,6 +205,7 @@ func seedDefaultCategories(db *gorm.DB, now time.Time) (map[string]uint, error) 
 	defaultCategories := []Category{
 		{Name: "Backend", Slug: "backend", Desc: "Backend engineering notes", CreatedAt: now},
 		{Name: "Product", Slug: "product", Desc: "Product and project notes", CreatedAt: now},
+		{Name: "未分类", Slug: "uncategorized", Desc: "尚未归类的内容", CreatedAt: now},
 	}
 
 	result := make(map[string]uint, len(defaultCategories))
@@ -346,6 +347,7 @@ const seedDefaultCoverSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1280
 func seedDefaultBlogs(db *gorm.DB, adminID uint, userID uint, assetIDs map[string]uint, categoryIDs map[string]uint, tagIDs map[string]uint, now time.Time) (map[string]uint, error) {
 	backendCategoryID := categoryIDs["backend"]
 	productCategoryID := categoryIDs["product"]
+	uncategorizedID := categoryIDs["uncategorized"]
 	coverID := assetIDs["default-cover.svg"]
 	defaultBlogs := []Blog{
 		{
@@ -409,6 +411,7 @@ func seedDefaultBlogs(db *gorm.DB, adminID uint, userID uint, assetIDs map[strin
 		err := db.Where("slug = ?", item.Slug).First(&blog).Error
 		if err == nil {
 			if err := db.Model(&blog).Updates(map[string]any{
+				"category":    item.Category,
 				"title_image": item.TitleImage,
 				"updated_at":  now,
 			}).Error; err != nil {
@@ -440,6 +443,11 @@ func seedDefaultBlogs(db *gorm.DB, adminID uint, userID uint, assetIDs map[strin
 			}
 		}
 	}
+
+	if uncategorizedID != 0 {
+		db.Model(&Blog{}).Where("category IS NULL").Update("category", uncategorizedID)
+	}
+
 	return result, nil
 }
 

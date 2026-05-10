@@ -56,6 +56,7 @@ export function useAdminLayout() {
   const actionDrawerOpen = ref(false)
 
   const pageTitle = computed(() => String(route.meta.adminTitle ?? '后台'))
+  const useCompactNav = computed(() => route.name === 'admin-post-editor')
   const visibleGroups = computed(() =>
     groups
       .map((group) => ({
@@ -102,6 +103,7 @@ export function useAdminLayout() {
     authState,
     groups: visibleGroups,
     pageTitle,
+    useCompactNav,
     navDrawerOpen,
     actionDrawerOpen,
     isActive,

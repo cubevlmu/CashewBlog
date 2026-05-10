@@ -34,6 +34,15 @@ function flushList(listType: 'ul' | 'ol' | null, items: string[], html: string[]
   items.length = 0
 }
 
+function renderMediaBlock(mediaType: 'audio' | 'video', title: string, url: string) {
+  const caption = title ? `<figcaption>${applyInlineMarkdown(title)}</figcaption>` : ''
+  const player = mediaType === 'audio'
+    ? `<audio controls preload="metadata" src="${url}"></audio>`
+    : `<video controls preload="metadata" src="${url}"></video>`
+
+  return `<figure class="article-media article-media--${mediaType}">${player}${caption}</figure>`
+}
+
 export function renderMarkdown(markdown: string) {
   const source = escapeHtml(markdown || '').replace(/\r\n/g, '\n')
 
@@ -85,6 +94,15 @@ export function renderMarkdown(markdown: string) {
       listType = null
       const level = headingMatch[1].length
       html.push(`<h${level}>${applyInlineMarkdown(headingMatch[2])}</h${level}>`)
+      continue
+    }
+
+    const mediaMatch = trimmed.match(/^::(audio|video)\[([^\]]*)]\(([^)]+)\)$/)
+    if (mediaMatch) {
+      flushParagraph(paragraphBuffer, html)
+      flushList(listType, listItems, html)
+      listType = null
+      html.push(renderMediaBlock(mediaMatch[1] as 'audio' | 'video', mediaMatch[2], mediaMatch[3]))
       continue
     }
 

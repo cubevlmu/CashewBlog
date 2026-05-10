@@ -81,7 +81,15 @@ func CacheKey(c *gin.Context, scope string) string {
 		userID = "guest"
 		role = "guest"
 	}
-	return fmt.Sprintf("%s|%s|uid=%s|role=%s|q=%s", c.FullPath(), scope, userID, role, normalizeQuery(c.Request.URL.Query()))
+	return fmt.Sprintf(
+		"%s|path=%s|%s|uid=%s|role=%s|q=%s",
+		c.FullPath(),
+		c.Request.URL.Path,
+		scope,
+		userID,
+		role,
+		normalizeQuery(c.Request.URL.Query()),
+	)
 }
 
 // IsAdminRequest reports whether the authenticated request is from an admin role.

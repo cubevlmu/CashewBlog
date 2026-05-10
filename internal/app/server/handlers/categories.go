@@ -217,13 +217,16 @@ func (h *CategoryHandler) respondCategoryBlogs(c *gin.Context, loadCategory func
 	}
 
 	page, pageSize := webutil.ParsePageParams(c)
-	categoryID, _ := category["id"].(uint)
-	publicState := database.BlogStatePublic
+	categoryID, ok := category["id"].(uint)
+	if !ok {
+		webutil.RespondError(c, http.StatusInternalServerError, 50000, "invalid category id")
+		return
+	}
 	filter := repositories.BlogListFilter{
 		Page:       page,
 		PageSize:   pageSize,
 		CategoryID: &categoryID,
-		State:      &publicState,
+		State:      new(database.BlogStatePublic),
 	}
 
 	result, err := h.Read.ListPublicBlogs(c.Request.Context(), filter, webutil.CacheKey(c, "category_blog_list")+fmtCategoryCacheSuffix(categoryID))
@@ -283,6 +286,8 @@ func respondCategoryWriteError(c *gin.Context, err error) {
 		webutil.RespondError(c, http.StatusConflict, 40900, "name or slug already exists")
 	case errors.Is(err, repositories.ErrInvalidCategoryRef):
 		webutil.RespondError(c, http.StatusBadRequest, 40000, "invalid parent_id")
+	case errors.Is(err, repositories.ErrProtectedCategory):
+		webutil.RespondError(c, http.StatusBadRequest, 40000, "protected category cannot be deleted")
 	default:
 		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
 	}

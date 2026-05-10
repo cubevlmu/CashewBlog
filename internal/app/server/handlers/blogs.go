@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
+	"hash/fnv"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -74,9 +77,36 @@ func (h *BlogHandler) GetBlog(c *gin.Context) {
 		webutil.RespondError(c, http.StatusBadRequest, 40000, err.Error())
 		return
 	}
-	h.respondBlogDetail(c, func() (*services.BlogDetailResult, error) {
-		return h.Read.GetBlogDetailByID(c.Request.Context(), blogID, webutil.CacheKey(c, "blog_detail"))
-	})
+
+	detail, contextData, err := h.Read.GetBlogContextByID(c.Request.Context(), blogID, webutil.CacheKey(c, "blog_detail"))
+	if err != nil {
+		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
+		return
+	}
+	if detail == nil || detail.State == database.BlogStateDeleted {
+		webutil.RespondError(c, http.StatusNotFound, 40400, "blog not found")
+		return
+	}
+	if !services.CanViewBlog(detail.State, detail.AuthorID, h.resolveBlogViewer(c)) {
+		webutil.RespondError(c, http.StatusNotFound, 40400, "blog not found")
+		return
+	}
+
+	blog := detail.Detail
+	if contextData != nil {
+		blog = contextData.Blog
+	}
+	h.recordPublicBlogView(c, detail.State, blog.ID)
+	blog.ViewCount = h.displayBlogViewCount(blog.ID, blog.ViewCount)
+
+	response := gin.H{"blog": blog}
+	if contextData != nil {
+		response["comments"] = contextData.Comments
+		response["prev_blog"] = contextData.PrevBlog
+		response["next_blog"] = contextData.NextBlog
+	}
+
+	webutil.RespondOK(c, response)
 }
 
 // GetBlogBySlug handles GET /api/v1/blogs/slug/:slug.
@@ -89,6 +119,41 @@ func (h *BlogHandler) GetBlogBySlug(c *gin.Context) {
 	}
 	h.respondBlogDetail(c, func() (*services.BlogDetailResult, error) {
 		return h.Read.GetBlogDetailBySlug(c.Request.Context(), slug, webutil.CacheKey(c, "blog_detail_slug"))
+	})
+}
+
+// GetBlogContext handles GET /api/v1/blogs/:id/context.
+// It loads the blog detail, comments, and adjacent public blogs after applying visibility rules.
+func (h *BlogHandler) GetBlogContext(c *gin.Context) {
+	blogID, err := webutil.ParseUintParam(c, "id")
+	if err != nil {
+		webutil.RespondError(c, http.StatusBadRequest, 40000, err.Error())
+		return
+	}
+
+	detail, contextData, err := h.Read.GetBlogContextByID(c.Request.Context(), blogID, webutil.CacheKey(c, "blog_context"))
+	if err != nil {
+		webutil.RespondError(c, http.StatusInternalServerError, 50000, err.Error())
+		return
+	}
+	if detail == nil || detail.State == database.BlogStateDeleted || contextData == nil {
+		webutil.RespondError(c, http.StatusNotFound, 40400, "blog not found")
+		return
+	}
+	if !services.CanViewBlog(detail.State, detail.AuthorID, h.resolveBlogViewer(c)) {
+		webutil.RespondError(c, http.StatusNotFound, 40400, "blog not found")
+		return
+	}
+
+	blog := contextData.Blog
+	h.recordPublicBlogView(c, detail.State, blog.ID)
+	blog.ViewCount = h.displayBlogViewCount(blog.ID, blog.ViewCount)
+
+	webutil.RespondOK(c, gin.H{
+		"blog":      blog,
+		"comments":  contextData.Comments,
+		"prev_blog": contextData.PrevBlog,
+		"next_blog": contextData.NextBlog,
 	})
 }
 
@@ -115,8 +180,12 @@ func (h *BlogHandler) GetBlogContextBySlug(c *gin.Context) {
 		return
 	}
 
+	blog := contextData.Blog
+	h.recordPublicBlogView(c, detail.State, blog.ID)
+	blog.ViewCount = h.displayBlogViewCount(blog.ID, blog.ViewCount)
+
 	webutil.RespondOK(c, gin.H{
-		"blog":      contextData.Blog,
+		"blog":      blog,
 		"comments":  contextData.Comments,
 		"prev_blog": contextData.PrevBlog,
 		"next_blog": contextData.NextBlog,
@@ -748,5 +817,33 @@ func (h *BlogHandler) respondBlogDetail(c *gin.Context, load func() (*services.B
 		return
 	}
 
-	webutil.RespondOK(c, gin.H{"blog": detail.Detail})
+	blog := detail.Detail
+	h.recordPublicBlogView(c, detail.State, blog.ID)
+	blog.ViewCount = h.displayBlogViewCount(blog.ID, blog.ViewCount)
+
+	webutil.RespondOK(c, gin.H{"blog": blog})
+}
+
+func (h *BlogHandler) recordPublicBlogView(c *gin.Context, state int, blogID uint) {
+	if h == nil || h.Blogs == nil || c == nil || state != database.BlogStatePublic || blogID == 0 {
+		return
+	}
+	h.Blogs.RecordView(blogID, h.blogViewActorKey(c), time.Now(), 0)
+}
+
+func (h *BlogHandler) displayBlogViewCount(blogID uint, base uint64) uint64 {
+	if h == nil || h.Blogs == nil {
+		return base
+	}
+	return h.Blogs.DisplayViewCount(blogID, base)
+}
+
+func (h *BlogHandler) blogViewActorKey(c *gin.Context) string {
+	viewer := h.resolveBlogViewer(c)
+	if viewer.UserID > 0 {
+		return fmt.Sprintf("user:%d", viewer.UserID)
+	}
+	uaHash := fnv.New64a()
+	_, _ = uaHash.Write([]byte(c.Request.UserAgent()))
+	return fmt.Sprintf("ip:%s|ua:%x", c.ClientIP(), uaHash.Sum64())
 }

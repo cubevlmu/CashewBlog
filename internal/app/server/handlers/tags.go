@@ -190,7 +190,11 @@ func (h *TagHandler) respondTagBlogs(c *gin.Context, loadTag func() (gin.H, erro
 
 	page, pageSize := webutil.ParsePageParams(c)
 	publicState := database.BlogStatePublic
-	tagID, _ := tag["id"].(uint)
+	tagID, ok := tag["id"].(uint)
+	if !ok {
+		webutil.RespondError(c, http.StatusInternalServerError, 50000, "invalid tag id")
+		return
+	}
 	filter := repositories.BlogListFilter{
 		Page:     page,
 		PageSize: pageSize,

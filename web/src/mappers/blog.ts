@@ -1,4 +1,4 @@
-import { mapBlogContextToArticleContext, mapBlogPageToFeed, mapBlogToHomePostCard } from '@/mappers/contentApi'
+import { fallbackCoverImage, mapBlogContextToArticleContext, mapBlogPageToFeed, mapBlogToHomePostCard } from '@/mappers/contentApi'
 import type {
   ApiAuthorBlogsData,
   ApiBlogContextData,
@@ -9,9 +9,6 @@ import type {
   ApiSearchResultItem,
 } from '@/types/api'
 import type { HomePageVM, PostCardVM, PostContextVM, SearchPageVM } from '@/types/vm'
-
-const fallbackCoverImage =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 720'%3E%3Crect width='1200' height='720' fill='%23e7e5e4'/%3E%3C/svg%3E"
 
 function estimateWordCount(text: string) {
   return Math.max(1, text.trim().length)
@@ -63,6 +60,7 @@ export function mapApiSearchResultToPostCardVM(item: ApiSearchResultItem): PostC
       slug: tag.slug,
     })),
     isPinned: false,
+    allowComment: true,
   }
 }
 

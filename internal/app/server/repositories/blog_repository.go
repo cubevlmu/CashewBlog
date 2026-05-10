@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	authpkg "CashewBlog/internal/pkg/auth"
 	"CashewBlog/internal/pkg/database"
+	"CashewBlog/internal/pkg/logger"
 
 	"gorm.io/gorm"
 )
@@ -25,7 +27,19 @@ type BlogRepository struct {
 	categories *CategoryRepository
 	tags       *TagRepository
 	read       *ReadRepository
+
+	viewMu          sync.Mutex
+	pendingViews    map[uint]uint64
+	recentViewers   map[string]time.Time
+	lastViewCleanup time.Time
+	viewFlushStop   chan struct{}
+	viewFlushDone   chan struct{}
 }
+
+const (
+	defaultViewFlushInterval = 10 * time.Second
+	defaultViewDedupTTL      = 30 * time.Minute
+)
 
 // BlogListFilter describes supported blog-list query conditions.
 type BlogListFilter struct {
@@ -80,7 +94,11 @@ func NewBlogRepository(db *gorm.DB) *BlogRepository {
 	if db == nil {
 		return nil
 	}
-	return &BlogRepository{db: db}
+	return &BlogRepository{
+		db:            db,
+		pendingViews:  make(map[uint]uint64),
+		recentViewers: make(map[string]time.Time),
+	}
 }
 
 // BindTaxonomyRepositories lets blog writes refresh cached tag/category article counts.
@@ -98,6 +116,177 @@ func (r *BlogRepository) BindReadRepository(read *ReadRepository) {
 		return
 	}
 	r.read = read
+}
+
+// StartViewSyncJob starts a periodic task that flushes buffered public blog view counts to the database.
+func (r *BlogRepository) StartViewSyncJob(interval time.Duration, dedupTTL time.Duration, log *logger.Logger) {
+	if r == nil || r.db == nil {
+		return
+	}
+	if interval <= 0 {
+		interval = defaultViewFlushInterval
+	}
+	if dedupTTL <= 0 {
+		dedupTTL = defaultViewDedupTTL
+	}
+	if log == nil {
+		log = logger.Nop()
+	}
+
+	r.viewMu.Lock()
+	if r.viewFlushStop != nil {
+		r.viewMu.Unlock()
+		return
+	}
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	r.viewFlushStop = stop
+	r.viewFlushDone = done
+	r.viewMu.Unlock()
+
+	runOnce := func() {
+		flushed, err := r.FlushPendingViews(context.Background(), dedupTTL)
+		if err != nil {
+			log.GetZap().Warn("blog view sync failed")
+			return
+		}
+		if flushed > 0 {
+			log.GetZap().Debug("blog view sync completed")
+		}
+	}
+
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				runOnce()
+			case <-stop:
+				runOnce()
+				return
+			}
+		}
+	}()
+}
+
+func (r *BlogRepository) StopViewSyncJob() {
+	if r == nil {
+		return
+	}
+
+	r.viewMu.Lock()
+	stop := r.viewFlushStop
+	done := r.viewFlushDone
+	if stop == nil {
+		r.viewMu.Unlock()
+		return
+	}
+	r.viewFlushStop = nil
+	r.viewFlushDone = nil
+	close(stop)
+	r.viewMu.Unlock()
+
+	<-done
+}
+
+func (r *BlogRepository) RecordView(blogID uint, viewerKey string, now time.Time, dedupTTL time.Duration) bool {
+	if r == nil || r.db == nil || blogID == 0 {
+		return false
+	}
+	if dedupTTL <= 0 {
+		dedupTTL = defaultViewDedupTTL
+	}
+	if viewerKey == "" {
+		viewerKey = "anonymous"
+	}
+
+	key := fmt.Sprintf("%d|%s", blogID, viewerKey)
+
+	r.viewMu.Lock()
+	defer r.viewMu.Unlock()
+
+	r.cleanupRecentViewsLocked(now, dedupTTL)
+	if expiresAt, ok := r.recentViewers[key]; ok && now.Before(expiresAt) {
+		return false
+	}
+
+	r.recentViewers[key] = now.Add(dedupTTL)
+	r.pendingViews[blogID]++
+	return true
+}
+
+func (r *BlogRepository) DisplayViewCount(blogID uint, base uint64) uint64 {
+	if r == nil || blogID == 0 {
+		return base
+	}
+
+	r.viewMu.Lock()
+	defer r.viewMu.Unlock()
+	return base + r.pendingViews[blogID]
+}
+
+func (r *BlogRepository) FlushPendingViews(ctx context.Context, dedupTTL time.Duration) (int, error) {
+	if r == nil || r.db == nil {
+		return 0, nil
+	}
+	if dedupTTL <= 0 {
+		dedupTTL = defaultViewDedupTTL
+	}
+
+	now := time.Now()
+	r.viewMu.Lock()
+	r.cleanupRecentViewsLocked(now, dedupTTL)
+	if len(r.pendingViews) == 0 {
+		r.viewMu.Unlock()
+		return 0, nil
+	}
+
+	pending := r.pendingViews
+	r.pendingViews = make(map[uint]uint64)
+	r.viewMu.Unlock()
+
+	flushed := 0
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for blogID, delta := range pending {
+			if delta == 0 {
+				continue
+			}
+			if err := tx.Model(&database.Blog{}).
+				Where("id = ?", blogID).
+				UpdateColumn("view_count", gorm.Expr("view_count + ?", delta)).Error; err != nil {
+				return err
+			}
+			flushed++
+		}
+		return nil
+	})
+	if err != nil {
+		r.viewMu.Lock()
+		for blogID, delta := range pending {
+			r.pendingViews[blogID] += delta
+		}
+		r.viewMu.Unlock()
+		return 0, err
+	}
+
+	return flushed, nil
+}
+
+func (r *BlogRepository) cleanupRecentViewsLocked(now time.Time, dedupTTL time.Duration) {
+	if dedupTTL <= 0 {
+		dedupTTL = defaultViewDedupTTL
+	}
+	if now.Sub(r.lastViewCleanup) < dedupTTL/2 && len(r.recentViewers) < 1024 {
+		return
+	}
+	for key, expiresAt := range r.recentViewers {
+		if !now.Before(expiresAt) {
+			delete(r.recentViewers, key)
+		}
+	}
+	r.lastViewCleanup = now
 }
 
 // GetByID loads one blog by primary key and optionally constrains visible states.

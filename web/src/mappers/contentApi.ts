@@ -15,8 +15,14 @@ function fallbackAvatar() {
   return '/placeholder-avatar.svg'
 }
 
+export const fallbackCoverImage = '/default-cover.svg'
+
 function pickAvatar(user?: ApiUserSummary | null) {
   return assetUrl(user?.avatar) || fallbackAvatar()
+}
+
+function pickCover(asset: ApiBlogListItem['title_image']) {
+  return assetUrl(asset) || fallbackCoverImage
 }
 
 function estimateWordCount(blog: Pick<ApiBlogListItem, 'summary'> & Partial<Pick<ApiBlogDetail, 'content_markdown'>>) {
@@ -36,7 +42,7 @@ export function mapBlogToHomePostCard(blog: ApiBlogListItem | ApiBlogDetail): Ho
     id: blog.id,
     title: blog.title,
     slug: blog.slug,
-    coverImage: assetUrl(blog.title_image),
+    coverImage: pickCover(blog.title_image),
     author: {
       id: blog.author?.id ?? 0,
       username: blog.author?.username ?? '',
@@ -58,6 +64,7 @@ export function mapBlogToHomePostCard(blog: ApiBlogListItem | ApiBlogDetail): Ho
     }),
     tags: blog.tags.map(mapTagToTaxonomyItem),
     isPinned: blog.is_top,
+    allowComment: blog.allow_comment,
   }
 }
 
