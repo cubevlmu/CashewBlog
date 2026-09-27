@@ -20,6 +20,7 @@ import {
 import { siteMarkdownProcessor } from "./src/utils/markdown-processor.mjs";
 
 const isDev = process.argv.includes("dev");
+const webRoot = fileURLToPath(new URL(".", import.meta.url)).replaceAll("\\", "/");
 const isBuild = process.argv.includes("build");
 
 /** Astro font declarations for the retained body/cjk/mono roles. */
@@ -67,6 +68,7 @@ function fontDeclarations() {
  * Expressive Code options live in ec.config.mjs.
  */
 export default defineConfig({
+	root: fileURLToPath(new URL(".", import.meta.url)),
 	output: "server",
 	adapter: node({ mode: "standalone" }),
 	trailingSlash: TRAILING_SLASH,
@@ -83,6 +85,24 @@ export default defineConfig({
 		}),
 	],
 	vite: {
+		root: fileURLToPath(new URL(".", import.meta.url)),
+		server: {
+			// Keep the dev server's file watcher inside the project. Vite 8 can
+			// otherwise follow pnpm workspace links to the drive root on Windows.
+			fs: { allow: [fileURLToPath(new URL(".", import.meta.url))] },
+			watch: {
+				ignored: (filePath) => {
+					const normalized = filePath.replaceAll("\\", "/");
+					return (
+						!normalized.startsWith(webRoot) ||
+						normalized.includes("/node_modules/") ||
+						normalized.includes("/System Volume Information")
+					);
+				},
+				followSymlinks: false,
+				usePolling: true,
+			},
+		},
 		resolve: {
 			alias: [
 				// Swap `@iconify/svelte` for the tree-shaken offline Icon wrapper.
@@ -94,7 +114,9 @@ export default defineConfig({
 				},
 			],
 		},
-		plugins: [tailwindcss()],
+		plugins: [
+			tailwindcss(),
+		],
 		optimizeDeps: { include: prebundleSpecifiers },
 		build: viteBuildShared,
 		...(isBuild
