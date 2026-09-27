@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+
+overrides:
+  serialize-javascript: 7.0.5
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
