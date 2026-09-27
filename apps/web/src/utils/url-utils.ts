@@ -1,13 +1,3 @@
-import type I18nKey from "../i18n/i18nKey.ts";
-import { i18n } from "../i18n/translation.ts";
-
-/**
- * 移除文件扩展名（.md, .mdx, .markdown）
- */
-export function removeFileExtension(id: string): string {
-	return id.replace(/\.(md|mdx|markdown)$/i, "");
-}
-
 export function pathsEqual(path1: string, path2: string): boolean {
 	const normalizedPath1 = path1.replace(/^\/|\/$/g, "").toLowerCase();
 	const normalizedPath2 = path2.replace(/^\/|\/$/g, "").toLowerCase();
@@ -20,38 +10,20 @@ function joinUrl(...parts: string[]): string {
 }
 
 export function getPostUrlBySlug(slug: string): string {
-	let slugWithoutExt = removeFileExtension(slug)
-		.replace(/^\/+/, "")
-		.replace(/\/+$/, "");
-	if (slugWithoutExt.startsWith("posts/")) {
-		slugWithoutExt = slugWithoutExt.replace(/^posts\//, "");
-	}
-	return url(`/posts/${slugWithoutExt}/`);
+	const trimmed = slug.replace(/^\/+|\/+$/g, "");
+	return url(`/posts/${encodeURIComponent(trimmed)}/`);
 }
 
-
-export function getPostUrl(
-	post: { id?: string; slug?: string; url?: string },
-): string {
-	if ("url" in post && typeof post.url === "string" && post.url.length > 0) return post.url;
-	const postId = post.id ?? post.slug ?? "";
-	return getPostUrlBySlug(postId);
+/** Archive view filtered by tag slug. */
+export function getTagUrl(slug: string): string {
+	if (!slug) return url("/archive/");
+	return url(`/archive/?tag=${encodeURIComponent(slug)}`);
 }
 
-export function getTagUrl(tag: string): string {
-	if (!tag) return url("/archive/");
-	return url(`/archive/?tag=${encodeURIComponent(tag.trim())}`);
-}
-
-export function getCategoryUrl(category: string | null): string {
-	if (
-		!category ||
-		category.trim() === "" ||
-		category.trim().toLowerCase() ===
-			i18n("uncategorized" as I18nKey).toLowerCase()
-	)
-		return url("/archive/?uncategorized=true");
-	return url(`/archive/?category=${encodeURIComponent(category.trim())}`);
+/** Archive view filtered by category slug; `null` lists uncategorized posts. */
+export function getCategoryUrl(slug: string | null): string {
+	if (!slug) return url("/archive/?uncategorized=true");
+	return url(`/archive/?category=${encodeURIComponent(slug)}`);
 }
 
 export function getSeriesUrl(series: string): string {

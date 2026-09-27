@@ -1,11 +1,8 @@
 ---
 import { Icon } from "astro-icon/components";
-import { announcementConfig } from "@/config/announcementConfig";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import WidgetLayout from "./WidgetLayout.astro";
-
-const config = announcementConfig;
 
 interface Props {
 	class?: string;
@@ -13,18 +10,19 @@ interface Props {
 }
 const className = Astro.props.class;
 const style = Astro.props.style;
-const contentText = config.content || config.text || "";
-const link = config.link;
+const config = Astro.locals.site.announcementConfig;
+const contentText = config?.content ?? "";
+const link = config?.link;
 const hasLink = link && link.enable !== false && link.text && link.url;
 const isExternal =
 	hasLink &&
 	(link.external === true ||
 		(/^https?:\/\//i.test(link.url) && link.external !== false));
-const closeDuration = Number(config.closeDuration ?? 86400);
+const closeDuration = Number(config?.closeDuration ?? 86400);
 ---
 
-<!-- 组件显示由 sidebarConfig 统一控制，有内容时渲染 -->
-{contentText && (
+<!-- 组件显示由侧栏设置统一控制，公告启用且有内容时渲染 -->
+{config && contentText && (
 	<WidgetLayout
 		name={config.title || i18n(I18nKey.announcement)}
 		id="announcement"

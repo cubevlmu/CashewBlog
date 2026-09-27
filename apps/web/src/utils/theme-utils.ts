@@ -5,10 +5,6 @@ import {
 	type McStyle,
 	resolveScheme,
 } from "@utils/mc-utils";
-import { getDefaultSpec, getDefaultStyle } from "@/config";
-
-const STYLE_KEY = "mc-style";
-const SPEC_KEY = "mc-spec";
 
 /** CSS custom-property names emitted for each M3/M3E role. */
 const ROLE_TO_CSS: Record<string, string> = {
@@ -73,24 +69,19 @@ export function isMcSpec(v: string): v is McSpec {
 	return (MC_SPECS as readonly string[]).includes(v);
 }
 
+/** 管理员设置的配色风格与规范，由 ConfigCarrier 以 data 属性下发。 */
+function carrierValue(key: "style" | "spec"): string {
+	return document.getElementById("config-carrier")?.dataset[key] ?? "";
+}
+
 export function getStyle(): McStyle {
-	const stored = localStorage.getItem(STYLE_KEY);
-	return stored && isMcStyle(stored) ? stored : (getDefaultStyle() as McStyle);
+	const value = carrierValue("style");
+	return isMcStyle(value) ? value : "tonalSpot";
 }
 
 export function getSpec(): McSpec {
-	const stored = localStorage.getItem(SPEC_KEY);
-	return stored && isMcSpec(stored) ? stored : (getDefaultSpec() as McSpec);
-}
-
-export function setStyle(style: McStyle): void {
-	localStorage.setItem(STYLE_KEY, style);
-	applyCurrentScheme();
-}
-
-export function setSpec(spec: McSpec): void {
-	localStorage.setItem(SPEC_KEY, spec);
-	applyCurrentScheme();
+	const value = carrierValue("spec");
+	return isMcSpec(value) ? value : "2025";
 }
 
 /**

@@ -3,7 +3,6 @@ import MetaIcon from "@components/atoms/display/MetaIcon.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { Icon } from "astro-icon/components";
-import { resolveUmamiOptions, umamiConfig } from "@/config";
 
 interface Props {
 	variant?: "profile" | "meta";
@@ -13,7 +12,7 @@ interface Props {
 }
 
 const { variant = "meta", path, class: className, style } = Astro.props;
-const enabled = resolveUmamiOptions(umamiConfig) !== null;
+const enabled = Astro.locals.site.umami !== null;
 const pageViewsLabel = i18n(I18nKey.profileStatsPageViews);
 const visitsLabel = i18n(I18nKey.profileStatsVisits);
 const rootClass = [

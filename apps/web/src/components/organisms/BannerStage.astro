@@ -1,10 +1,7 @@
 ---
-import { getImage } from "astro:assets";
 import BannerWaves from "@components/molecules/BannerWaves.astro";
-import { resolveImageAsset } from "@utils/asset-utils";
 import { url } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
-import { siteConfig } from "@/config";
 import type { SidebarPage } from "@/types/sidebarConfig";
 
 interface Props {
@@ -15,6 +12,7 @@ interface Props {
 }
 
 const { page, title = "", description = "", date = "" } = Astro.props;
+const { banner } = Astro.locals.site.siteConfig;
 const normalizedTitle = title.trim();
 const normalizedDescription = description.trim();
 const initialSupportingText =
@@ -23,139 +21,33 @@ const initialDate = date.trim();
 const initialCopyMode =
 	page === "home" ? "home" : page && normalizedTitle ? "context" : "none";
 const initialLabel =
-	initialCopyMode === "context"
-		? normalizedTitle
-		: siteConfig.banner.homeText.title;
+	initialCopyMode === "context" ? normalizedTitle : banner.homeText.title;
 
-interface ResponsiveBannerImage {
-	fallback: string;
-	avifSrcset: string;
-	webpSrcset: string;
-	width?: number;
-	height?: number;
-}
-
-const optimizeBannerImage = async (
-	src: string,
-	viewport: "desktop" | "mobile",
-): Promise<ResponsiveBannerImage> => {
-	const resolved = await resolveImageAsset(src);
-	if (typeof resolved === "string") {
-		return {
-			fallback: resolved.startsWith("/") ? url(resolved) : resolved,
-			avifSrcset: "",
-			webpSrcset: "",
-		};
-	}
-
-	const requestedWidths =
-		viewport === "desktop" ? [1280, 1600, 1920] : [640, 828, 1080];
-	const widths = [
-		...new Set([
-			...requestedWidths.filter((width) => width <= resolved.width),
-			Math.min(requestedWidths.at(-1) ?? resolved.width, resolved.width),
-		]),
-	].sort((a, b) => a - b);
-	const createCandidates = async (format: "avif" | "webp", quality: number) =>
-		Promise.all(
-			widths.map(async (width) => ({
-				width,
-				image: await getImage({ src: resolved, width, format, quality }),
-			})),
-		);
-	const [avif, webp] = await Promise.all([
-		createCandidates("avif", 55),
-		createCandidates("webp", 68),
-	]);
-	const fallback = webp.at(-1)?.image.src ?? resolved.src;
-	return {
-		fallback,
-		avifSrcset: avif
-			.map(({ image, width }) => `${image.src} ${width}w`)
-			.join(", "),
-		webpSrcset: webp
-			.map(({ image, width }) => `${image.src} ${width}w`)
-			.join(", "),
-		width: resolved.width,
-		height: resolved.height,
-	};
+// 横幅图片来自媒体库（已是优化后的 WebP 展示图）；客户端脚本沿用
+// light/dark 双列表结构，两套相同。
+const toUrl = (src: string) => (src.startsWith("/") ? url(src) : src);
+const toThemeLists = (list: string[]) => {
+	const urls = list.map(toUrl);
+	return { light: urls, dark: urls };
 };
+const desktopImages = toThemeLists(banner.src.desktop);
+const mobileImages = toThemeLists(banner.src.mobile);
 
-function normalizeBannerSource(source: unknown, name: string): { light: string[]; dark: string[] } {
-	if (Array.isArray(source)) {
-		const list = source.filter((item): item is string => typeof item === "string");
-		return { light: list, dark: list };
-	}
-	if (typeof source === "object" && source !== null) {
-		const obj = source as Record<string, unknown>;
-		if (!Array.isArray(obj.light) || !Array.isArray(obj.dark)) {
-			throw new Error(
-				`[config] site.banner.src.${name} 对象形式必须同时提供 light 与 dark 数组。若亮暗两色使用相同图片，请直接使用数组形式。`,
-			);
-		}
-		return {
-			light: obj.light.filter((item): item is string => typeof item === "string"),
-			dark: obj.dark.filter((item): item is string => typeof item === "string"),
-		};
-	}
-	return { light: [], dark: [] };
-}
-
-const desktopSource = normalizeBannerSource(siteConfig.banner.src.desktop, "desktop");
-const mobileSource = normalizeBannerSource(siteConfig.banner.src.mobile, "mobile");
-
-// 对图片按路径去重进行优化缓存
-const optimizationCache = new Map<string, Promise<ResponsiveBannerImage>>();
-const getOptimized = (src: string, viewport: "desktop" | "mobile") => {
-	const key = `${viewport}:${src}`;
-	let p = optimizationCache.get(key);
-	if (!p) {
-		p = optimizeBannerImage(src, viewport);
-		optimizationCache.set(key, p);
-	}
-	return p;
-};
-
-const desktopLightResponsive = await Promise.all(
-	desktopSource.light.map((src) => getOptimized(src, "desktop")),
-);
-const desktopDarkResponsive = await Promise.all(
-	desktopSource.dark.map((src) => getOptimized(src, "desktop")),
-);
-const mobileLightResponsive = await Promise.all(
-	mobileSource.light.map((src) => getOptimized(src, "mobile")),
-);
-const mobileDarkResponsive = await Promise.all(
-	mobileSource.dark.map((src) => getOptimized(src, "mobile")),
-);
-
-const desktopImages = {
-	light: desktopLightResponsive.map(({ fallback }) => fallback),
-	dark: desktopDarkResponsive.map(({ fallback }) => fallback),
-};
-const mobileImages = {
-	light: mobileLightResponsive.map(({ fallback }) => fallback),
-	dark: mobileDarkResponsive.map(({ fallback }) => fallback),
-};
-
-const dimOpacity = Math.min(Math.max(siteConfig.banner.dim.opacity, 0), 1);
-const rawSubtitles = siteConfig.banner.homeText.subtitle;
+const dimOpacity = Math.min(Math.max(banner.dim.opacity, 0), 1);
+const rawSubtitles = banner.homeText.subtitle;
 const subtitleArray = Array.isArray(rawSubtitles)
 	? rawSubtitles
 	: [rawSubtitles];
 const defaultInitialSubtitle = subtitleArray[0] ?? "";
-const typewriter = siteConfig.banner.homeText.typewriter;
+const typewriter = banner.homeText.typewriter;
 const carouselFadeDuration = Math.min(
-	Math.max(siteConfig.banner.carousel?.fadeDuration ?? 1200, 300),
+	Math.max(banner.carousel.fadeDuration ?? 1200, 300),
 	3000,
 );
-const carouselAnimation = siteConfig.banner.carousel?.animation ?? "ken-burns";
+const carouselAnimation = banner.carousel.animation ?? "ken-burns";
 const initialDesktopSrc = desktopImages.light[0] ?? "";
 const initialMobileSrc = mobileImages.light[0] ?? "";
 const initialSrc = initialDesktopSrc || initialMobileSrc;
-const initialDesktopImage = desktopLightResponsive[0];
-const initialMobileImage = mobileLightResponsive[0];
-const initialImage = initialDesktopImage ?? initialMobileImage;
 const initialMobileBanner = page === "home";
 ---
 
@@ -167,13 +59,13 @@ const initialMobileBanner = page === "home";
 	data-context-motion="idle"
 	data-desktop-images={JSON.stringify(desktopImages)}
 	data-mobile-images={JSON.stringify(mobileImages)}
-	data-carousel-enabled={String(siteConfig.banner.carousel.enable)}
-	data-carousel-interval={String(Math.max(siteConfig.banner.carousel.interval, 3000))}
+	data-carousel-enabled={String(banner.carousel.enable)}
+	data-carousel-interval={String(Math.max(banner.carousel.interval, 3000))}
 	data-carousel-fade-duration={String(carouselFadeDuration)}
 	data-carousel-animation={carouselAnimation}
 	style={`--banner-fade-duration: ${carouselFadeDuration}ms;`}
-	data-position={siteConfig.banner.position ?? "center"}
-	data-home-title={siteConfig.banner.homeText.title}
+	data-position={banner.position ?? "center"}
+	data-home-title={banner.homeText.title}
 	data-home-subtitles={JSON.stringify(subtitleArray)}
 	data-subtitle-typewriter-enabled={String(typewriter.enable)}
 	data-subtitle-typewriter-loop={String(typewriter.loop)}
@@ -183,44 +75,30 @@ const initialMobileBanner = page === "home";
 >
 	<div class="banner-stage__media" aria-hidden="true">
 		<picture>
-			{initialDesktopImage?.avifSrcset && (
-				<source media="(min-width: 1024px)" type="image/avif" srcset={initialDesktopImage.avifSrcset} sizes="100vw" />
+			{initialDesktopSrc && (
+				<source media="(min-width: 1024px)" srcset={initialDesktopSrc} />
 			)}
-			{initialDesktopImage?.webpSrcset && (
-				<source media="(min-width: 1024px)" type="image/webp" srcset={initialDesktopImage.webpSrcset} sizes="100vw" />
-			)}
-			{initialDesktopImage && !initialDesktopImage.avifSrcset && !initialDesktopImage.webpSrcset && (
-				<source media="(min-width: 1024px)" srcset={initialDesktopImage.fallback} />
-			)}
-			{initialMobileBanner && initialMobileImage?.avifSrcset && (
-				<source media="(max-width: 1023.98px)" type="image/avif" srcset={initialMobileImage.avifSrcset} sizes="100vw" />
-			)}
-			{initialMobileBanner && initialMobileImage?.webpSrcset && (
-				<source media="(max-width: 1023.98px)" type="image/webp" srcset={initialMobileImage.webpSrcset} sizes="100vw" />
-			)}
-			{initialMobileBanner && initialMobileImage && !initialMobileImage.avifSrcset && !initialMobileImage.webpSrcset && (
-				<source media="(max-width: 1023.98px)" srcset={initialMobileImage.fallback} />
+			{initialMobileBanner && initialMobileSrc && (
+				<source media="(max-width: 1023.98px)" srcset={initialMobileSrc} />
 			)}
 			<img
 				class="banner-stage__image banner-stage__image--front banner-stage__image--active"
 				src={initialMobileBanner ? initialSrc || undefined : undefined}
-				width={initialImage?.width}
-				height={initialImage?.height}
 				fetchpriority="high"
 				loading="eager"
 				decoding="async"
 				alt=""
-				style={`object-position: ${siteConfig.banner.position ?? "center"};`}
+				style={`object-position: ${banner.position ?? "center"};`}
 			/>
 		</picture>
 		<img class="banner-stage__image banner-stage__image--back" alt="" />
 	</div>
-	{siteConfig.banner.dim.enable && (
+	{banner.dim.enable && (
 		<div class="banner-stage__scrim" style={`--banner-dim-opacity: ${dimOpacity}`}></div>
 	)}
-	{siteConfig.banner.homeText.enable && (
+	{banner.homeText.enable && (
 		<div class="banner-stage__copy banner-stage__copy--home" data-banner-home-copy>
-			<h1>{siteConfig.banner.homeText.title}</h1>
+			<h1>{banner.homeText.title}</h1>
 			<p
 				aria-label={defaultInitialSubtitle}
 				data-subtitle-state="complete"
@@ -248,7 +126,7 @@ const initialMobileBanner = page === "home";
 			</div>
 		</div>
 	</div>
-	{siteConfig.banner.waves.enable && <BannerWaves />}
+	{banner.waves.enable && <BannerWaves />}
 </section>
 
 <script>
@@ -263,8 +141,8 @@ const initialMobileBanner = page === "home";
 		EASING_DECELERATE,
 		prefersReducedMotion,
 	} from "@utils/motion";
-	import { getStoredWallpaperMode } from "@utils/setting-utils";
-	import { WALLPAPER_MODE_CHANGE_EVENT, THEME_CHANGE_EVENT } from "@constants/constants";
+	import { getWallpaperMode } from "@utils/setting-utils";
+	import { THEME_CHANGE_EVENT } from "@constants/constants";
 	import type { SidebarPage } from "@/types/sidebarConfig";
 
 	interface BannerRuntime {
@@ -886,7 +764,7 @@ const initialMobileBanner = page === "home";
 
 		const page = pageOverride ?? currentPage();
 		const state = resolveBannerState({
-			mode: getStoredWallpaperMode(),
+			mode: getWallpaperMode(),
 			page,
 			viewport,
 			imageCount: images.length,
@@ -947,7 +825,6 @@ const initialMobileBanner = page === "home";
 		syncBanner();
 		if (!window.__shironeBannerBound) {
 			window.__shironeBannerBound = true;
-			window.addEventListener(WALLPAPER_MODE_CHANGE_EVENT, () => syncBanner());
 			window.addEventListener(THEME_CHANGE_EVENT, () => syncBanner());
 			window.addEventListener("resize", () => {
 				if (currentViewport() === "desktop" && stage?.hidden === false) {

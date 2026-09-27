@@ -4,7 +4,6 @@
  * 自己的声明走——它们升级改了选项形状时,这里会跟着报错,而不是悄悄失配。
  */
 
-import type mdx from "@astrojs/mdx";
 import type swup from "@swup/astro";
 import type expressiveCode from "astro-expressive-code";
 import type icon from "astro-icon";
@@ -207,11 +206,6 @@ export function svelteCompilerOptions(isDev: boolean) {
 	};
 }
 
-/** `@astrojs/mdx` 的选项。 */
-export const mdxOptions: NonNullable<Parameters<typeof mdx>[0]> = {
-	syntaxHighlight: false as const,
-	optimize: true,
-};
 
 /**
  * 两侧共用的 `vite.build` 选项。

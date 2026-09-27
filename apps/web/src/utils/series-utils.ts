@@ -1,16 +1,5 @@
-import type { CollectionEntry } from "astro:content";
-
-export type SeriesEntity = CollectionEntry<"series">;
-
-/**
- * 系列 slug 的唯一规范化点：schema 落在 `post.data.series` 上的是 trim 后的值，
- * 组件/工具再做比较时也走这里，避免「卡片显示正常但计数/分类回退失效」。
- * 另：系列实体必须平铺在 `content/series/` 根下，slug 即单个路由段，
- * 不使用 `a/b` 形式的嵌套目录。
- */
-export function normaliseSeriesSlug(raw: string | null | undefined): string {
-	return (raw ?? "").trim();
-}
+import type { SeriesStatus, SeriesSummaryDto } from "@/lib/api/types";
+import type { PostDetailView } from "@/lib/content/posts";
 
 export interface SeriesPostRef {
 	slug: string;
@@ -18,11 +7,9 @@ export interface SeriesPostRef {
 }
 
 export interface SeriesContext {
-	/** 系列 slug（集合条目 id） */
 	slug: string;
 	title: string;
-	status: "ongoing" | "completed";
-	defaultCategory: string;
+	status: SeriesStatus;
 	/** 系列内文章，按阅读顺序 */
 	posts: SeriesPostRef[];
 	total: number;
@@ -33,6 +20,31 @@ export interface SeriesPostContext extends SeriesContext {
 	index: number;
 	prev: SeriesPostRef | null;
 	next: SeriesPostRef | null;
+}
+
+/**
+ * 文章所在系列的阅读上下文。`seriesPosts` 由后端按系列顺序返回；
+ * 当前文章不在其中（数据不一致）时不生成上下文，避免死链。
+ */
+export function buildSeriesPostContext(
+	post: Pick<PostDetailView, "slug" | "series" | "seriesPosts">,
+	catalog: readonly SeriesSummaryDto[],
+): SeriesPostContext | null {
+	if (!post.series) return null;
+	const posts = post.seriesPosts.map(({ slug, title }) => ({ slug, title }));
+	const position = posts.findIndex((ref) => ref.slug === post.slug);
+	if (position < 0) return null;
+	const summary = catalog.find((s) => s.slug === post.series?.slug);
+	return {
+		slug: post.series.slug,
+		title: post.series.title,
+		status: summary?.status ?? "ongoing",
+		posts,
+		total: posts.length,
+		index: position + 1,
+		prev: position > 0 ? posts[position - 1] : null,
+		next: position < posts.length - 1 ? posts[position + 1] : null,
+	};
 }
 
 /**
@@ -59,125 +71,4 @@ export function excerptFromMarkdown(markdown: string, maxChars = 160): string {
 	const cut = text.slice(0, maxChars);
 	const lastSpace = cut.lastIndexOf(" ");
 	return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
-}
-
-export interface UnknownSeriesReference {
-	/** 被引用但目录里不存在的系列 slug */
-	slug: string;
-	/** 第一个引用它的文章 slug（用于报错定位） */
-	postSlug: string;
-}
-
-/**
- * 收集「文章引用了目录中不存在的系列」的引用（每个未知 slug 取首篇）。
- * 纯函数：调用方（数据层）决定如何提示；行为上这些引用会被静默忽略。
- */
-export function findUnknownSeriesSlugs(
-	posts: readonly { slug: string; series?: string }[],
-	catalog: ReadonlyMap<string, unknown>,
-): UnknownSeriesReference[] {
-	const firstSeen = new Map<string, string>();
-	for (const post of posts) {
-		const seriesSlug = normaliseSeriesSlug(post.series);
-		if (!seriesSlug || catalog.has(seriesSlug)) continue;
-		if (!firstSeen.has(seriesSlug)) {
-			firstSeen.set(seriesSlug, post.slug);
-		}
-	}
-	return [...firstSeen.entries()].map(([slug, postSlug]) => ({
-		slug,
-		postSlug,
-	}));
-}
-
-export interface SeriesMemberInput {
-	slug: string;
-	title: string;
-	published: Date;
-	/** 所属系列 slug（空 = 不属于任何系列） */
-	series?: string;
-	seriesOrder?: number;
-}
-
-/**
- * 系列内阅读顺序：显式 `seriesOrder` 优先；缺省回退为按发布日期升序。
- * 部分标注时，未标注的按日期排在已标注之后，保证确定性。
- */
-export function orderSeriesMembers<T extends SeriesMemberInput>(
-	members: readonly T[],
-): T[] {
-	return [...members].sort((a, b) => {
-		const aOrder = typeof a.seriesOrder === "number" ? a.seriesOrder : null;
-		const bOrder = typeof b.seriesOrder === "number" ? b.seriesOrder : null;
-		if (aOrder !== null && bOrder !== null && aOrder !== bOrder) {
-			return aOrder - bOrder;
-		}
-		if (aOrder !== null && bOrder === null) return -1;
-		if (aOrder === null && bOrder !== null) return 1;
-		const dateDiff = a.published.getTime() - b.published.getTime();
-		return dateDiff !== 0 ? dateDiff : a.slug.localeCompare(b.slug);
-	});
-}
-
-/**
- * 有效 category 的唯一解析点（回退链，非强制）：
- * 显式 post.category → series.defaultCategory → ""（未分类）。
- */
-export function resolveSeriesPostCategory(
-	category: string | null | undefined,
-	seriesData: { defaultCategory?: string } | undefined,
-): string {
-	const explicit = (category ?? "").trim();
-	if (explicit) return explicit;
-	return (seriesData?.defaultCategory ?? "").trim();
-}
-
-export interface BuildSeriesContextsOptions {
-	catalog: Map<string, SeriesEntity>;
-	posts: readonly SeriesMemberInput[];
-}
-
-/**
- * 为每篇文章构建系列上下文（阅读顺序、index/total、组内上一篇/下一篇）。
- * 没有系列、或引用了目录中不存在的系列的文章 → 不生成上下文（不产生死链）。
- */
-export function buildSeriesContexts(
-	options: BuildSeriesContextsOptions,
-): Map<string, SeriesPostContext> {
-	const { catalog, posts } = options;
-
-	const groups = new Map<string, SeriesMemberInput[]>();
-	for (const post of posts) {
-		const seriesSlug = normaliseSeriesSlug(post.series);
-		if (!seriesSlug || !catalog.has(seriesSlug)) continue;
-		const group = groups.get(seriesSlug) ?? [];
-		group.push(post);
-		groups.set(seriesSlug, group);
-	}
-
-	const contexts = new Map<string, SeriesPostContext>();
-	for (const [slug, members] of groups) {
-		const entity = catalog.get(slug);
-		if (!entity) continue;
-		const ordered = orderSeriesMembers(members);
-		const refs: SeriesPostRef[] = ordered.map((member) => ({
-			slug: member.slug,
-			title: member.title,
-		}));
-		ordered.forEach((member, index) => {
-			contexts.set(member.slug, {
-				slug,
-				title: entity.data.title,
-				status: entity.data.status,
-				defaultCategory: entity.data.defaultCategory,
-				posts: refs,
-				total: refs.length,
-				index: index + 1,
-				prev: index > 0 ? refs[index - 1] : null,
-				next: index < refs.length - 1 ? refs[index + 1] : null,
-			});
-		});
-	}
-
-	return contexts;
 }

@@ -1,6 +1,10 @@
 ---
-// Optional Umami assets are mounted once in the persistent layout shell.
+// Optional Umami assets are mounted once in the persistent layout shell, and
+// only when the administrator enabled Umami (Layout renders this conditionally).
+const shareUrl = Astro.locals.site.umami?.shareUrl ?? "";
 ---
+
+<template id="oddmisc-config" data-share-url={shareUrl}></template>
 
 <style is:inline data-shirone-umami-runtime>
 	.shirone-umami-stats {
@@ -201,4 +205,11 @@
 		document.addEventListener("swup:content:replace", schedule);
 		document.addEventListener("swup:page:view", schedule);
 	})();
+</script>
+
+<script>
+	import { initUmamiRuntime } from "oddmisc";
+
+	const shareUrl = document.getElementById("oddmisc-config")?.dataset.shareUrl;
+	if (shareUrl) initUmamiRuntime({ shareUrl });
 </script>

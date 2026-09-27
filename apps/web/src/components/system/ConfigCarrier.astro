@@ -1,17 +1,28 @@
 ---
-import { resolveTextureOptions, siteConfig } from "@/config";
+/**
+ * 把管理员外观设置以 data 属性下发给客户端脚本（setting-utils / theme-utils），
+ * 客户端不再持有构建期配置副本。
+ */
+import { AUTO_MODE } from "@constants/constants";
 
-const textureOptions = resolveTextureOptions();
+const { siteConfig } = Astro.locals.site;
+const { themeColor, texture } = siteConfig;
+const defaultMode =
+	siteConfig.defaultMode === "system" ? AUTO_MODE : siteConfig.defaultMode;
 ---
 
 <div
 	id="config-carrier"
-	data-hue={siteConfig.themeColor.hue}
+	data-hue={themeColor.hue}
+	data-style={themeColor.style}
+	data-spec={themeColor.spec}
+	data-default-mode={defaultMode}
+	data-allow-mode-switch={String(siteConfig.allowModeSwitch)}
 	data-wallpaper-mode={siteConfig.wallpaperMode.defaultMode}
-	{...(textureOptions.enable
+	{...(texture.enable
 		? {
-				"data-texture-preset": textureOptions.defaultPreset,
-				"data-texture-opacity": textureOptions.defaultOpacity,
+				"data-texture-preset": texture.defaultPreset,
+				"data-texture-opacity": texture.defaultOpacity,
 			}
 		: {})}
 >

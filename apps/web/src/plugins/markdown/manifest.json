@@ -146,7 +146,7 @@
 				"network": []
 			},
 			"docs": [
-				"src/content/posts/markdown-abbreviations.md",
+				"seed/content/posts/markdown-abbreviations.md",
 				"docs/markdown-extensions.md"
 			],
 			"tests": [
@@ -210,7 +210,7 @@
 					"viewport preloading or explicit activation: https://www.acfun.cn/player/{acid}"
 				]
 			},
-			"docs": ["src/content/posts/video.md"],
+			"docs": ["seed/content/posts/video.md"],
 			"tests": [
 				"tests/plugins/markdown/leaf/acfun.test.mjs",
 				"tests/site/markdown-runtime.spec.ts"
@@ -273,7 +273,7 @@
 				"network": []
 			},
 			"docs": [
-				"src/content/posts/admonitions.md",
+				"seed/content/posts/admonitions.md",
 				"docs/markdown-extensions.md"
 			],
 			"tests": [
@@ -335,7 +335,7 @@
 					"author-declared video source; preload accepts none or auto"
 				]
 			},
-			"docs": ["src/content/posts/video.md"],
+			"docs": ["seed/content/posts/video.md"],
 			"tests": [
 				"tests/plugins/markdown/leaf/artplayer.test.mjs",
 				"tests/site/markdown-runtime.spec.ts"
@@ -389,8 +389,7 @@
 				]
 			},
 			"docs": [
-				"src/content/posts/audio-reader.md",
-				".agents/skills/shirone-markdown-syntax/SKILL.md"
+				"seed/content/posts/audio-reader.md"
 			],
 			"tests": [
 				"tests/plugins/markdown/inline/audio-reader.test.mjs",
@@ -457,7 +456,7 @@
 					"viewport preloading or explicit activation: https://player.bilibili.com/player.html?bvid={bvid}&p={p}&high_quality=1&danmaku=0"
 				]
 			},
-			"docs": ["src/content/posts/video.md"],
+			"docs": ["seed/content/posts/video.md"],
 			"tests": [
 				"tests/plugins/markdown/leaf/bilibili.test.mjs",
 				"tests/site/markdown-runtime.spec.ts"
@@ -473,17 +472,12 @@
 			"status": "stable",
 			"category": "container",
 			"source": "shirone",
-			"summary": "将多文件代码示例或本地目录渲染为可折叠目录导航与可切换代码面板。",
+			"summary": "将多文件代码示例渲染为可折叠目录导航与可切换代码面板。",
 			"forms": [
 				{
 					"kind": "container-directive",
 					"pattern": ":::code-tree{title=\"...\" height=\"...\" entry=\"...\" icon=\"colored|simple\"} ... :::",
 					"example": ":::code-tree{title=\"组件示例\" height=\"420px\" entry=\"Button.svelte\"}\n```svelte title=\"Button.svelte\"\n<button>Click</button>\n```\n:::"
-				},
-				{
-					"kind": "custom-pattern",
-					"pattern": "@[code-tree title=\"...\" height=\"...\" entry=\"...\"](dir_path)",
-					"example": "@[code-tree title=\"站点配置\" entry=\"siteConfig.ts\"](/src/config)"
 				}
 			],
 			"attributes": [
@@ -530,7 +524,7 @@
 				"modules": ["src/utils/code-tree.ts"],
 				"network": []
 			},
-			"docs": ["src/content/posts/markdown-enhancements.md"],
+			"docs": ["seed/content/posts/markdown-enhancements.md"],
 			"tests": [
 				"tests/plugins/markdown/containers/code-tree.test.mjs",
 				"tests/site/code-tree.spec.ts"
@@ -594,7 +588,7 @@
 				"network": []
 			},
 			"docs": [
-				"src/content/posts/collapse-panels.md",
+				"seed/content/posts/collapse-panels.md",
 				"docs/markdown-extensions.md"
 			],
 			"tests": [
@@ -643,7 +637,7 @@
 				"modules": [],
 				"network": []
 			},
-			"docs": ["src/content/posts/content-annotations.md"],
+			"docs": ["seed/content/posts/content-annotations.md"],
 			"tests": [
 				"tests/plugins/markdown/inline/content-annotations.test.mjs",
 				"tests/site/content-annotations.spec.ts"
@@ -735,8 +729,8 @@
 				"modules": ["src/utils/code-copy.ts", "src/utils/code-collapse.ts"],
 				"network": []
 			},
-			"docs": ["src/content/posts/expressive-code.md"],
-			"tests": ["tests/site/post-encryption.spec.ts"],
+			"docs": ["seed/content/posts/expressive-code.md"],
+			"tests": [],
 			"notes": ["元数据具体解析规则由 Expressive Code 及已注册插件定义。"]
 		},
 		{
@@ -757,7 +751,7 @@
 			"registeredIn": "src/utils/markdown-processor.mjs",
 			"styles": ["src/styles/markdown/fields.css"],
 			"runtime": {"mode": "none", "modules": [], "network": []},
-			"docs": ["src/content/posts/markdown-fields.md", "docs/markdown-extensions.md"],
+			"docs": ["seed/content/posts/markdown-fields.md", "docs/markdown-extensions.md"],
 			"tests": ["tests/plugins/markdown/containers/fields.test.mjs"],
 			"notes": ["无效或不完整的字段标签保留为可读 Markdown；组件为纯 SSR 输出，不增加客户端运行时。"]
 		},
@@ -811,7 +805,7 @@
 				"network": []
 			},
 			"docs": [
-				"src/content/posts/markdown-enhancements.md",
+				"seed/content/posts/markdown-enhancements.md",
 				"docs/markdown-extensions.md"
 			],
 			"tests": [
@@ -858,8 +852,8 @@
 				]
 			},
 			"docs": [
-				"src/content/posts/markdown-extended.md",
-				"src/content/posts/guide/index.md"
+				"seed/content/posts/markdown-extended.md",
+				"seed/content/posts/guide/index.md"
 			],
 			"tests": [
 				"tests/plugins/markdown/leaf/github-card.test.mjs",
@@ -912,7 +906,7 @@
 				"modules": ["src/utils/fancybox-handler.ts"],
 				"network": ["author-declared image URLs only"]
 			},
-			"docs": ["src/content/posts/image-grid-demo/index.md"],
+			"docs": ["seed/content/posts/image-grid-demo/index.md"],
 			"tests": [
 				"tests/plugins/image-grid.test.mjs",
 				"tests/site/image-grid.spec.ts"
@@ -956,68 +950,11 @@
 				"network": ["author-declared image URLs only"]
 			},
 			"docs": [
-				"src/content/posts/spoilers.md",
+				"seed/content/posts/spoilers.md",
 				"docs/markdown-extensions.md"
 			],
 			"tests": ["tests/plugins/rehype-markdown-images.test.mjs"],
 			"notes": ["非法或越界宽度令牌保留在 alt，不静默改写。"]
-		},
-		{
-			"id": "include",
-			"name": "File Include",
-			"status": "stable",
-			"category": "inline-extension",
-			"source": "shirone",
-			"summary": "在构建期将仓库内 Markdown 文件或其中的行范围、命名区域展开到当前文章。",
-			"forms": [
-				{
-					"kind": "comment-directive",
-					"pattern": "<!-- @include: path -->",
-					"example": "<!-- @include: ../snippets/example.md -->"
-				},
-				{
-					"kind": "comment-directive-range",
-					"pattern": "<!-- @include: path{start-end} -->",
-					"example": "<!-- @include: ../snippets/example.md{2-6} -->"
-				},
-				{
-					"kind": "comment-directive-region",
-					"pattern": "<!-- @include: path#region -->",
-					"example": "<!-- @include: ../snippets/example.md#public-api -->"
-				}
-			],
-			"attributes": [
-				{
-					"name": "path",
-					"required": true,
-					"values": "repository-relative path (current-file-relative when a source path is available)",
-					"default": null
-				},
-				{
-					"name": "range or region",
-					"required": false,
-					"values": "{start-end}, {start-}, {-end}, or #region",
-					"default": null
-				}
-			],
-			"implementation": ["src/plugins/markdown/remark-includes.mjs"],
-			"registeredIn": "src/utils/markdown-processor.mjs",
-			"styles": [],
-			"runtime": {
-				"mode": "none",
-				"modules": [],
-				"network": []
-			},
-			"docs": [
-				"src/content/posts/markdown-includes.md",
-				"docs/markdown-extensions.md"
-			],
-			"tests": ["tests/plugins/markdown/inline/includes.test.mjs"],
-			"notes": [
-				"只处理独立一行且位于 fenced code 之外的注释；缺失、越界、未闭合或递归包含保留原注释。",
-				"文件读取限制在仓库根目录内，展开结果继续经过同一 Markdown 处理链。",
-				"这是构建期纯文本展开，不增加 CSS、客户端脚本、hydration 或网络请求。"
-			]
 		},
 		{
 			"id": "marker",
@@ -1058,7 +995,7 @@
 				"network": []
 			},
 			"docs": [
-				"src/content/posts/marker-highlights.md",
+				"seed/content/posts/marker-highlights.md",
 				"docs/markdown-extensions.md"
 			],
 			"tests": [
@@ -1099,13 +1036,12 @@
 				"network": []
 			},
 			"docs": [
-				"src/content/posts/guide/index.md",
-				"src/content/posts/markdown.md"
+				"seed/content/posts/guide/index.md",
+				"seed/content/posts/markdown.md"
 			],
 			"tests": [
 				"tests/plugins/markdown/katex-version.test.mjs",
-				"tests/site/math.spec.ts",
-				"tests/site/post-encryption.spec.ts"
+				"tests/site/math.spec.ts"
 			],
 			"notes": ["解析由 remark-math 与 rehype-katex 提供。"]
 		},
@@ -1133,8 +1069,8 @@
 				"network": []
 			},
 			"docs": [
-				"src/content/posts/markdown-mermaid.md",
-				"src/content/posts/guide/index.md"
+				"seed/content/posts/markdown-mermaid.md",
+				"seed/content/posts/guide/index.md"
 			],
 			"tests": ["tests/site/mermaid.spec.ts"],
 			"notes": [
@@ -1187,7 +1123,7 @@
 				"network": []
 			},
 			"docs": [
-				"src/content/posts/option-groups.md",
+				"seed/content/posts/option-groups.md",
 				"docs/markdown-extensions.md"
 			],
 			"tests": [
@@ -1223,7 +1159,7 @@
 				"modules": ["src/utils/spoilers.ts"],
 				"network": []
 			},
-			"docs": ["src/content/posts/markdown-extended.md"],
+			"docs": ["seed/content/posts/markdown-extended.md"],
 			"tests": [
 				"tests/plugins/markdown/inline/spoilers.test.mjs",
 				"tests/site/spoilers.spec.ts"
@@ -1271,7 +1207,7 @@
 				"modules": [],
 				"network": []
 			},
-			"docs": ["src/content/posts/steps.md"],
+			"docs": ["seed/content/posts/steps.md"],
 			"tests": [
 				"tests/plugins/markdown/containers/steps.test.mjs",
 				"tests/site/steps.spec.ts"
@@ -1330,7 +1266,7 @@
 					"viewport preloading or explicit activation: https://www.youtube-nocookie.com/embed/{id}?rel=0&modestbranding=1"
 				]
 			},
-			"docs": ["src/content/posts/video.md"],
+			"docs": ["seed/content/posts/video.md"],
 			"tests": [
 				"tests/plugins/markdown/leaf/youtube.test.mjs",
 				"tests/site/markdown-runtime.spec.ts"

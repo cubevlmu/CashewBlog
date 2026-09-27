@@ -3,6 +3,8 @@ enum I18nKey {
 	notFound = "notFound",
 	notFoundTitle = "notFoundTitle",
 	notFoundDescription = "notFoundDescription",
+	serverErrorTitle = "serverErrorTitle",
+	serverErrorDescription = "serverErrorDescription",
 	about = "about",
 	archive = "archive",
 	/** 归档分组切换（Tabs）：tablist 无障碍名称 */
@@ -69,6 +71,7 @@ enum I18nKey {
 	stats = "stats",
 	statsPosts = "statsPosts",
 	statsWords = "statsWords",
+	statsViews = "statsViews",
 	statsDays = "statsDays",
 	statsUpdated = "statsUpdated",
 	statsToday = "statsToday",

@@ -2,8 +2,7 @@
 import CategoryList from "@components/atoms/blog/CategoryList.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { getCategoryList } from "@utils/content-utils";
-import { url } from "@utils/url-utils";
+import { getCategoryUrl, url } from "@utils/url-utils";
 /**
  * 分类侧栏组件（消费 blog/CategoryList 原子）。
  * 只负责取数转 props：分类名 + URL + 计数。
@@ -14,8 +13,6 @@ import { Icon } from "astro-icon/components";
 import type { CategoriesWidget } from "@/types/sidebarConfig";
 import WidgetLayout from "./WidgetLayout.astro";
 
-const categories = await getCategoryList();
-
 interface Props {
 	class?: string;
 	style?: string;
@@ -23,13 +20,14 @@ interface Props {
 }
 const className = Astro.props.class;
 const style = Astro.props.style;
+const { categories } = Astro.locals.site;
 
 const DISPLAY_LIMIT = Math.max(1, Astro.props.widget?.collapseAfter ?? 5);
 const hasOverflow = categories.length > DISPLAY_LIMIT;
 
 const categoryItems = categories.slice(0, DISPLAY_LIMIT).map((c) => ({
-	name: c.name.trim(),
-	href: c.url,
+	name: c.name,
+	href: getCategoryUrl(c.slug),
 	count: c.count,
 }));
 ---

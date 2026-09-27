@@ -1,23 +1,24 @@
 import rss from "@astrojs/rss";
-import { getFeedPosts } from "@utils/feed";
-import type { APIContext } from "astro";
-import { siteConfig } from "@/config";
+import { toFeedItems } from "@utils/feed";
+import type { APIRoute } from "astro";
 
-export async function GET(context: APIContext): Promise<Response> {
-	const site = context.site ?? new URL(siteConfig.site);
-	const posts = await getFeedPosts(site);
+export const GET: APIRoute = async ({ locals }) => {
+	const { site, api } = locals;
+	const origin = new URL(site.siteConfig.site);
+	const items = toFeedItems(await api.getFeed(20), origin);
 
 	return rss({
-		title: siteConfig.title,
-		description: siteConfig.subtitle || "No description",
-		site: site.href,
-		items: posts.map((post) => ({
-			title: post.title,
-			pubDate: post.pubDate,
-			description: post.description,
-			link: post.link,
-			content: post.contentHtml,
+		title: site.siteConfig.title,
+		description: site.siteConfig.subtitle || site.settings.general.description || site.siteConfig.title,
+		site: origin.href,
+		items: items.map((item) => ({
+			title: item.title,
+			pubDate: item.pubDate,
+			description: item.description,
+			link: item.link,
+			content: item.contentHtml,
+			categories: [item.category, ...item.tags].filter((c): c is string => Boolean(c)),
 		})),
-		customData: `<language>${siteConfig.lang}</language>`,
+		customData: `<language>${site.settings.general.language}</language>`,
 	});
-}
+};

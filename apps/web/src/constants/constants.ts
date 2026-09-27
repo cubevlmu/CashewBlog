@@ -1,16 +1,10 @@
 export const LIGHT_MODE = "light",
 	DARK_MODE = "dark",
 	AUTO_MODE = "auto";
-export const DEFAULT_THEME = AUTO_MODE;
 export const THEME_CHANGE_EVENT = "shirone:theme-change";
 
-export const WALLPAPER_MODE_KEY = "wallpaper-mode";
-export const WALLPAPER_MODE_CHANGE_EVENT = "wallpaper-mode:change";
 export const WALLPAPER_MODE_OPTIONS = ["none", "banner"] as const;
 
-export const TEXTURE_PRESET_KEY = "texture-preset";
-export const TEXTURE_OPACITY_KEY = "texture-opacity";
-export const TEXTURE_CHANGE_EVENT = "texture:change";
 export const TEXTURE_PRESETS = [
 	"none",
 	"starlight",

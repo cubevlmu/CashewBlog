@@ -2,14 +2,13 @@
 /**
  * 站点统计侧栏 widget（规格表风格）。
  * 行 = MetaIcon tonal 徽标 + 标签 + 点线引导 + 表格数字，
- * 与 PostMeta 的元信息语言同源；数据来自 utils/site-stats（备忘化汇总）。
+ * 与 PostMeta 的元信息语言同源；数据来自站点 bootstrap（后端汇总）。
  */
 import MetaIcon from "@components/atoms/display/MetaIcon.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
-import { getSiteStats } from "@utils/site-stats";
-import { seriesConfig } from "@/config";
+import { toCalendarDate } from "@/lib/content/posts";
 import type { StatsWidget } from "@/types/sidebarConfig";
 import WidgetLayout from "./WidgetLayout.astro";
 
@@ -22,14 +21,31 @@ interface Props {
 const className = Astro.props.class;
 const style = Astro.props.style;
 
-const stats = await getSiteStats();
-// 千位分隔固定 en-US：构建产物数值稳定，不随构建机 locale 漂移
+const { stats: siteStats, categories, tags, series } = Astro.locals.site;
+const stats = {
+	posts: siteStats.postCount,
+	categories: categories.length,
+	tags: tags.length,
+	series: series.filter((item) => item.count > 0).length,
+	words: siteStats.totalWords,
+	views: siteStats.totalViews,
+	days: siteStats.siteStartDate
+		? Math.max(
+				0,
+				Math.floor((Date.now() - Date.parse(siteStats.siteStartDate)) / 86_400_000),
+			)
+		: 0,
+	lastActivity: siteStats.lastUpdatedAt,
+};
+// 千位分隔固定 en-US：数值展示不随服务器 locale 漂移
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-// 最近更新：SSR 渲染绝对日期（构建产物稳定、无 JS 也可读），
+// 最近更新：SSR 渲染绝对日期（无 JS 也可读），
 // 页面加载后由底部脚本升级为相对时间（今天/昨天/N 天前）
 const lastActivityText = stats.lastActivity
-	? formatDateToYYYYMMDD(new Date(stats.lastActivity))
+	? formatDateToYYYYMMDD(
+			toCalendarDate(new Date(stats.lastActivity), Astro.locals.site.siteConfig.timeZone),
+		)
 	: "—";
 const todayText = i18n(I18nKey.statsToday);
 const yesterdayText = i18n(I18nKey.statsYesterday);
@@ -51,20 +67,20 @@ const rows = [
 		label: i18n(I18nKey.tags),
 		value: fmt(stats.tags),
 	},
-	// 系列功能关闭时不产出统计行（零额外负担）
-	...(seriesConfig.enable
-		? [
-				{
-					icon: "material-symbols:auto-stories-outline-rounded",
-					label: i18n(I18nKey.series),
-					value: fmt(stats.series),
-				},
-			]
-		: []),
+	{
+		icon: "material-symbols:auto-stories-outline-rounded",
+		label: i18n(I18nKey.series),
+		value: fmt(stats.series),
+	},
 	{
 		icon: "material-symbols:edit-note-outline-rounded",
 		label: i18n(I18nKey.statsWords),
 		value: fmt(stats.words),
+	},
+	{
+		icon: "material-symbols:visibility-outline-rounded",
+		label: i18n(I18nKey.statsViews),
+		value: fmt(stats.views),
 	},
 	{
 		icon: "material-symbols:calendar-month-outline-rounded",

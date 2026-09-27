@@ -9,7 +9,6 @@ import type { MarkdownHeading } from "astro";
  * M3 Surface Container High 风格，支持平滑滚动跳转、当前大纲高亮与键盘无障碍退出。
  */
 import { Icon } from "astro-icon/components";
-import { siteConfig } from "@/config";
 
 interface Props {
 	headings?: MarkdownHeading[];
@@ -19,7 +18,7 @@ interface Props {
 
 const {
 	headings = [],
-	maxDepth = siteConfig.toc.depth,
+	maxDepth = Astro.locals.site.siteConfig.toc.depth,
 	closeOnSelect = true,
 } = Astro.props;
 

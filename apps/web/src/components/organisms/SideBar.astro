@@ -1,6 +1,6 @@
 ---
 /**
- * 侧边栏（数据驱动）：遍历 sidebarConfig.components 渲染 widget。
+ * 侧边栏（数据驱动）：遍历管理员侧栏设置中的 widget 渲染。
  * componentMap 是唯一的 widget 注册表——新增 widget 时在
  * src/types/sidebarConfig.ts 扩展联合分支，并在此注册组件。
  * 职责仅是编排，不取数；widget 自己的配置经 `widget` prop 透传。
@@ -12,6 +12,7 @@
  */
 import Announcement from "@components/molecules/Announcement.astro";
 import Categories from "@components/molecules/Categories.astro";
+import RecentPosts from "@components/molecules/RecentPosts.astro";
 import Series from "@components/molecules/Series.astro";
 import SidebarTOC from "@components/molecules/SidebarTOC.astro";
 import SiteStats from "@components/molecules/SiteStats.astro";
@@ -19,7 +20,6 @@ import Tags from "@components/molecules/Tags.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { isWidgetVisibleOnPage, pagesToAttribute } from "@utils/sidebar-page";
-import { sidebarConfig } from "@/config/sidebarConfig";
 import type {
 	SidebarColumn,
 	SidebarPage,
@@ -60,6 +60,7 @@ const componentMap = {
 	categories: Categories,
 	tags: Tags,
 	series: Series,
+	recentPosts: RecentPosts,
 	announcement: Announcement,
 	stats: SiteStats,
 	toc: SidebarTOC,
@@ -69,6 +70,7 @@ type WidgetRenderer = (props: Record<string, unknown>) => unknown;
 
 // 按列取整：SSR 不做页面过滤（全量渲染，swup 导航后客户端才能恢复
 // 被隐藏的 widget），页面可见性仅体现在包装层的 hidden 标记上
+const { sidebarConfig } = Astro.locals.site;
 const widgets = sidebarConfig.enable
 	? sidebarConfig.components.filter(
 			(widget) =>
@@ -108,7 +110,7 @@ const hasVisibleSticky = stickyWidgets.some(isVisible);
 						<Component
 							widget={widget}
 							headings={widget.type === "toc" ? headings : undefined}
-							priority={widget.type === "profile" && currentPage === "about"}
+							priority={widget.type === "profile" && currentPage === "home"}
 						/>
 					</div>
 				);
@@ -135,7 +137,7 @@ const hasVisibleSticky = stickyWidgets.some(isVisible);
 						<Component
 							widget={widget}
 							headings={widget.type === "toc" ? headings : undefined}
-							priority={widget.type === "profile" && currentPage === "about"}
+							priority={widget.type === "profile" && currentPage === "home"}
 							class="onload-animation"
 							style={`animation-delay: ${animationDelay(index)}`}
 						/>

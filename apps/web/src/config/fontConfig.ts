@@ -1,5 +1,4 @@
 import type { FontConfig, ResolvedFontOptions } from "../types/fontConfig.ts";
-import { withUserConfig } from "../utils/config-overlay.ts";
 import { resolveFontOptions as resolve } from "../utils/font-options.ts";
 
 /**
@@ -37,7 +36,7 @@ import { resolveFontOptions as resolve } from "../utils/font-options.ts";
  *   3. `pnpm.cmd fonts:check`  -> 校验字体格式与体积预算
  * ─────────────────────────────────────────────────────────────────────────────
  */
-export const fontConfig: FontConfig = withUserConfig("font", {
+export const fontConfig: FontConfig = {
 	/**
 	 * 构建模式：
 	 * - `"custom"`: 启用自定义字体（加载下方 fontFamilies 中配置的字体）
@@ -111,7 +110,7 @@ export const fontConfig: FontConfig = withUserConfig("font", {
 			preload: false,
 		},
 	],
-});
+};
 
 /** 经过校验与标准化处理后的字体配置对象，由 Astro 模板与 CSS 消费 */
 export const resolvedFontOptions: ResolvedFontOptions = resolve(fontConfig);

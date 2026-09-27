@@ -20,7 +20,6 @@ interface Props {
 	/** 封面图地址（省略则无封面，右侧显示进入箭头按钮） */
 	image?: string;
 	imageSrcset?: string;
-	imageAvifSrcset?: string;
 	imageSizes?: string;
 	imageWidth?: number;
 	imageHeight?: number;
@@ -42,7 +41,6 @@ const {
 	description,
 	image,
 	imageSrcset,
-	imageAvifSrcset,
 	imageSizes,
 	imageWidth,
 	imageHeight,
@@ -106,7 +104,6 @@ const titleLabel = pinned ? `${title}, ${pinnedLabel}` : title;
 		<a class="m3-blog-postcard__cover" href={href} aria-label={title}>
 			<span class="m3-blog-postcard__cover-loading" aria-hidden="true"></span>
 			<picture>
-				{imageAvifSrcset && <source type="image/avif" srcset={imageAvifSrcset} sizes={imageSizes} />}
 				<img
 					src={image}
 					srcset={imageSrcset}

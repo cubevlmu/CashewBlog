@@ -11,10 +11,9 @@ import PageHeader from "@components/atoms/display/PageHeader.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { getTagList } from "@utils/content-utils";
 import { getTagUrl } from "@utils/url-utils";
 
-const tags = await getTagList();
+const { tags } = Astro.locals.site;
 const totalPosts = tags.reduce((sum, tag) => sum + tag.count, 0);
 const tagSummary = `${tags.length} ${i18n(I18nKey.tagsCount)} · ${totalPosts} ${i18n(I18nKey.postsCount)}`;
 ---
@@ -30,7 +29,7 @@ const tagSummary = `${tags.length} ${i18n(I18nKey.tagsCount)} · ${totalPosts} $
 			<div class="tag-index__cloud">
 				{tags.map((tag) => (
 					<Chip
-						href={getTagUrl(tag.name)}
+						href={getTagUrl(tag.slug)}
 						variant="tonal"
 						class="tag-index__chip"
 						label={`View all posts with the ${tag.name} tag`}

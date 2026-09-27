@@ -2,14 +2,13 @@
 import ArticleDiscoveryItem from "@components/molecules/ArticleDiscoveryItem.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import type { PostForList } from "@utils/content-utils";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
-import { getPostUrlBySlug } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
+import type { PostView } from "@/lib/content/posts";
 
 interface Props {
-	related: PostForList[];
-	random: PostForList[];
+	related: PostView[];
+	random: PostView[];
 	class?: string;
 }
 
@@ -41,10 +40,10 @@ const hasRandom = random.length > 0;
 					<ul class="article-discovery__list">
 						{related.map((article) => (
 							<ArticleDiscoveryItem
-								href={article.url ?? getPostUrlBySlug(article.slug)}
-								title={article.data.title}
-								published={formatDateToYYYYMMDD(article.data.published)}
-								category={article.data.category}
+								href={article.url}
+								title={article.title}
+								published={formatDateToYYYYMMDD(article.published)}
+								category={article.category?.name}
 								lane="related"
 							/>
 						))}
@@ -64,10 +63,10 @@ const hasRandom = random.length > 0;
 					<ul class="article-discovery__list">
 						{random.map((article) => (
 							<ArticleDiscoveryItem
-								href={article.url ?? getPostUrlBySlug(article.slug)}
-								title={article.data.title}
-								published={formatDateToYYYYMMDD(article.data.published)}
-								category={article.data.category}
+								href={article.url}
+								title={article.title}
+								published={formatDateToYYYYMMDD(article.published)}
+								category={article.category?.name}
 								lane="random"
 							/>
 						))}

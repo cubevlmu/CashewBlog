@@ -1,0 +1,32 @@
+---
+/**
+ * 最近文章侧栏组件（复用 CategoryList 原子的「整行文字按钮」形态）。
+ * 数据来自站点 bootstrap（后端按发布时间倒序给出最近的公开文章）。
+ */
+import CategoryList from "@components/atoms/blog/CategoryList.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { getPostUrlBySlug } from "@utils/url-utils";
+import type { RecentPostsWidget } from "@/types/sidebarConfig";
+import WidgetLayout from "./WidgetLayout.astro";
+
+interface Props {
+	class?: string;
+	style?: string;
+	widget?: RecentPostsWidget;
+}
+
+const className = Astro.props.class;
+const style = Astro.props.style;
+const limit = Math.max(1, Astro.props.widget?.collapseAfter ?? 5);
+const items = Astro.locals.site.recentPosts.slice(0, limit).map((post) => ({
+	name: post.title,
+	href: getPostUrlBySlug(post.slug),
+}));
+---
+
+{items.length > 0 && (
+	<WidgetLayout name={i18n(I18nKey.recentPosts)} id="recent-posts" class={className} style={style}>
+		<CategoryList categories={items} />
+	</WidgetLayout>
+)}

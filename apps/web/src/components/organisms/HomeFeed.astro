@@ -1,0 +1,20 @@
+---
+/** 首页文章流：文章卡片列表 + 分页器。 */
+import Pagination from "@components/molecules/Pagination.astro";
+import type { HomeFeed } from "@/lib/content/home";
+import PostPage from "./PostPage.astro";
+
+interface Props {
+	feed: HomeFeed;
+}
+
+const { feed } = Astro.props;
+---
+
+<PostPage posts={feed.posts} />
+<Pagination
+	class="mx-auto onload-animation"
+	currentPage={feed.currentPage}
+	totalPages={feed.totalPages}
+	style={`animation-delay: calc(var(--content-delay) + ${feed.posts.length * 50}ms)`}
+/>

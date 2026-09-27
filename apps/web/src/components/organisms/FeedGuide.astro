@@ -7,20 +7,20 @@ import AccentBar from "@components/atoms/display/AccentBar.svelte";
 import Card from "@components/atoms/display/Card.svelte";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { getSortedPosts } from "@utils/content-utils";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
-import { getPostUrl, url } from "@utils/url-utils";
+import { url } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
-import { siteConfig } from "@/config";
+import { toPostView } from "@/lib/content/posts";
 
 const title = i18n(I18nKey.rss);
 const subtitle = i18n(I18nKey.rssSubtitle);
 const feedUrl = url("rss.xml");
-const siteBase = Astro.site ? Astro.site.href : siteConfig.site;
+const { site, api } = Astro.locals;
+const siteBase = site.siteConfig.site;
 const feedAbsoluteUrl = new URL(feedUrl, siteBase).href;
 
-const allPosts = await getSortedPosts();
-const posts = allPosts.slice(0, 6);
+const latest = await api.getPosts({ page: 1, pageSize: 6 });
+const posts = latest.items.map((dto) => toPostView(dto, site.siteConfig.timeZone));
 ---
 
 <div class="feed-guide w-full">
@@ -118,27 +118,27 @@ const posts = allPosts.slice(0, 6);
 		<div class="flex flex-col gap-3">
 			{posts.map((post) => (
 				<a
-					href={getPostUrl(post)}
+					href={post.url}
 					class="group flex flex-col md:flex-row md:items-center justify-between p-4 rounded-[var(--shape-corner-m)] bg-[var(--surface-container-low)] hover:bg-[var(--surface-container-high)] border border-[var(--outline-variant)] transition-all"
 				>
 					<div class="min-w-0 flex-1 md:mr-4">
 						<h3 class="font-semibold text-base text-[var(--on-surface)] group-hover:text-[var(--primary)] transition-colors truncate mb-1">
-							{post.data.title}
+							{post.title}
 						</h3>
-						{post.data.description && (
+						{post.description && (
 							<p class="text-xs text-[var(--on-surface-variant)] line-clamp-1">
-								{post.data.description}
+								{post.description}
 							</p>
 						)}
 					</div>
 					<div class="flex items-center gap-3 shrink-0 mt-2 md:mt-0 text-xs text-[var(--on-surface-variant)]">
-						{post.data.category && (
+						{post.category && (
 							<span class="px-2 py-0.5 rounded-full bg-[var(--surface-container-highest)] font-medium text-[var(--on-surface)]">
-								{post.data.category}
+								{post.category.name}
 							</span>
 						)}
-						<time datetime={new Date(post.data.published).toISOString()}>
-							{formatDateToYYYYMMDD(post.data.published)}
+						<time datetime={post.publishedAt.toISOString()}>
+							{formatDateToYYYYMMDD(post.published)}
 						</time>
 					</div>
 				</a>

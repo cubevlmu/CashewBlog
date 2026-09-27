@@ -1,21 +1,15 @@
-import { pluginCollapsibleSections } from "@expressive-code/plugin-collapsible-sections";
-import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
-import mdx from "@astrojs/mdx";
-import sitemap from "@astrojs/sitemap";
+import { fileURLToPath } from "node:url";
+import node from "@astrojs/node";
 import svelte, { vitePreprocess } from "@astrojs/svelte";
 import swup from "@swup/astro";
 import tailwindcss from "@tailwindcss/vite";
-import { fileURLToPath } from "node:url";
 import { defineConfig, fontProviders } from "astro/config";
 import expressiveCode from "astro-expressive-code";
 import icon from "astro-icon";
-import { expressiveCodeConfig } from "./src/config/expressiveCodeConfig.ts";
 import { resolvedFontOptions } from "./src/config/fontConfig.ts";
 import {
-	expressiveCodeShared,
 	IMAGE_ENDPOINT_ROUTE,
 	iconInclude,
-	mdxOptions,
 	prebundleSpecifiers,
 	svelteCompilerOptions,
 	swupForwardOptions,
@@ -23,9 +17,6 @@ import {
 	TRAILING_SLASH,
 	viteBuildShared,
 } from "./src/config/integrationsConfig.ts";
-import { siteConfig } from "./src/config/siteConfig.ts";
-import { pluginCustomCopyButton } from "./src/plugins/expressive-code/custom-copy-button.ts";
-import { pluginLanguageBadge } from "./src/plugins/expressive-code/language-badge.ts";
 import { siteMarkdownProcessor } from "./src/utils/markdown-processor.mjs";
 
 const isDev = process.argv.includes("dev");
@@ -70,8 +61,14 @@ function fontDeclarations() {
 	return declarations;
 }
 
+/**
+ * Public site: Astro SSR behind the ASP.NET gateway. Site URL, theme and all
+ * content are runtime data from the CashewBlog API, not build configuration.
+ * Expressive Code options live in ec.config.mjs.
+ */
 export default defineConfig({
-	site: siteConfig.site,
+	output: "server",
+	adapter: node({ mode: "standalone" }),
 	trailingSlash: TRAILING_SLASH,
 	image: { endpoint: { route: IMAGE_ENDPOINT_ROUTE } },
 	fonts: fontDeclarations(),
@@ -79,25 +76,11 @@ export default defineConfig({
 	integrations: [
 		swup({ ...swupOptions, ...swupForwardOptions }),
 		icon({ include: iconInclude }),
-		expressiveCode({
-			themes: [
-				expressiveCodeConfig.lightTheme ?? expressiveCodeConfig.theme,
-				expressiveCodeConfig.darkTheme ?? expressiveCodeConfig.theme,
-			],
-			plugins: [
-				pluginCollapsibleSections(),
-				pluginLineNumbers(),
-				pluginLanguageBadge(),
-				pluginCustomCopyButton(),
-			],
-			...expressiveCodeShared,
-		}),
+		expressiveCode(),
 		svelte({
 			preprocess: [vitePreprocess({ script: true })],
 			compilerOptions: svelteCompilerOptions(isDev),
 		}),
-		sitemap(),
-		mdx(mdxOptions),
 	],
 	vite: {
 		resolve: {

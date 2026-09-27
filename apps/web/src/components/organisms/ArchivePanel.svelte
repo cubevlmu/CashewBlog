@@ -15,25 +15,38 @@ import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import Icon from "@iconify/svelte";
 import { formatCalendarDate } from "@utils/content-date";
-import { getPostUrlBySlug, url } from "@utils/url-utils";
-import { onMount } from "svelte";
+import { url } from "@utils/url-utils";
 
-interface Post {
+interface TaxonomyRef {
+	name: string;
 	slug: string;
-	url?: string;
-	data: {
-		title: string;
-		tags: string[];
-		category: string | null;
-		published: Date;
-	};
 }
 
-let { sortedPosts = [] as Post[] }: { sortedPosts?: Post[] } = $props();
+/** 归档条目（由页面从 PostView 精简而来，可序列化为 island props） */
+interface ArchivePost {
+	url: string;
+	title: string;
+	/** 站点时区日历日期（UTC 零点编码） */
+	published: Date;
+	category: TaxonomyRef | null;
+	tags: TaxonomyRef[];
+}
 
-let category = $state("");
-let tag = $state("");
-let uncategorized = $state(false);
+/** 定向浏览筛选（由页面按 URL 参数解析；slug + 展示名） */
+interface ArchiveFilter {
+	category?: TaxonomyRef;
+	tag?: TaxonomyRef;
+	uncategorized?: boolean;
+}
+
+let {
+	sortedPosts = [] as ArchivePost[],
+	filter = {} as ArchiveFilter,
+}: { sortedPosts?: ArchivePost[]; filter?: ArchiveFilter } = $props();
+
+const category = $derived(filter.category?.slug ?? "");
+const tag = $derived(filter.tag?.slug ?? "");
+const uncategorized = $derived(filter.uncategorized === true);
 /** 分组维度（SegmentedButton 驱动）：year / category / tag，string 以匹配 bind:value */
 let groupBy = $state<string>("year");
 let restoredCollapsed = $state<Record<string, boolean> | undefined>(undefined);
@@ -83,14 +96,14 @@ const filterCrumb = $derived.by(() => {
 		return {
 			href: url("/categories/"),
 			label: i18n(I18nKey.categories),
-			value: category,
+			value: filter.category?.name ?? category,
 		};
 	}
 	if (tag) {
 		return {
 			href: url("/tags/"),
 			label: i18n(I18nKey.tags),
-			value: `#${tag}`,
+			value: `#${filter.tag?.name ?? tag}`,
 		};
 	}
 	return null;
@@ -105,9 +118,9 @@ const groupOptions = [
 /** 筛选后的文章（分组维度与之正交，均在下方消费） */
 const filtered = $derived(
 	sortedPosts.filter((p) => {
-		if (uncategorized && p.data.category) return false;
-		if (category && p.data.category !== category) return false;
-		if (tag && !p.data.tags.includes(tag)) return false;
+		if (uncategorized && p.category) return false;
+		if (category && p.category?.slug !== category) return false;
+		if (tag && !p.tags.some((t) => t.slug === tag)) return false;
 		return true;
 	}),
 );
@@ -116,13 +129,13 @@ function formatDate(date: Date) {
 	return formatCalendarDate(date).slice(5);
 }
 
-function toItem(post: Post): ArchiveItem {
+function toItem(post: ArchivePost): ArchiveItem {
 	return {
-		title: post.data.title,
-		href: post.url ?? getPostUrlBySlug(post.slug),
-		date: formatDate(post.data.published),
-		category: post.data.category ?? undefined,
-		tags: post.data.tags,
+		title: post.title,
+		href: post.url,
+		date: formatDate(post.published),
+		category: post.category?.name,
+		tags: post.tags.map((t) => t.name),
 	};
 }
 
@@ -141,15 +154,15 @@ const groups = $derived.by((): ArchiveGroup[] => {
 	};
 	if (groupBy === "category") {
 		for (const p of filtered) {
-			add(p.data.category ?? i18n(I18nKey.uncategorized), toItem(p));
+			add(p.category?.name ?? i18n(I18nKey.uncategorized), toItem(p));
 		}
 	} else if (groupBy === "tag") {
 		for (const p of filtered) {
-			for (const t of p.data.tags) add(`#${t}`, toItem(p));
+			for (const t of p.tags) add(`#${t.name}`, toItem(p));
 		}
 	} else {
 		for (const p of filtered) {
-			add(formatCalendarDate(p.data.published).slice(0, 4), toItem(p));
+			add(formatCalendarDate(p.published).slice(0, 4), toItem(p));
 		}
 	}
 	const list = [...buckets.entries()].map(([id, items]) => ({
@@ -163,14 +176,6 @@ const groups = $derived.by((): ArchiveGroup[] => {
 	return list.sort((a, b) =>
 		a.title.toLowerCase().localeCompare(b.title.toLowerCase()),
 	);
-});
-
-onMount(() => {
-	const params = new URLSearchParams(window.location.search);
-	category = params.get("category") || "";
-	tag = params.get("tag") || "";
-	uncategorized = params.has("uncategorized");
-	readCollapsedState();
 });
 
 $effect(() => {

@@ -3,13 +3,44 @@ import ArchivePanel from "@components/organisms/ArchivePanel.svelte";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { getSortedPostsList } from "../utils/content-utils";
+import { toPostView } from "@/lib/content/posts";
 
-const sortedPostsList = await getSortedPostsList();
-const archiveSummary = `${sortedPostsList.length} ${i18n(I18nKey.postsCount)}`;
+const { site, api } = Astro.locals;
+const posts = (await api.getArchive()).map((dto) =>
+	toPostView(dto, site.siteConfig.timeZone),
+);
+const archivePosts = posts.map(({ url, title, published, category, tags }) => ({
+	url,
+	title,
+	published,
+	category,
+	tags,
+}));
+
+// 定向浏览视图（?category= / ?tag= / ?uncategorized）：按 slug 查出展示名
+const params = Astro.url.searchParams;
+const findBySlug = (list: { name: string; slug: string }[], slug: string | null) =>
+	slug ? list.find((item) => item.slug === slug) : undefined;
+const categoryParam = params.get("category");
+const tagParam = params.get("tag");
+const filter = {
+	category: categoryParam
+		? (findBySlug(site.categories, categoryParam) ?? { name: categoryParam, slug: categoryParam })
+		: undefined,
+	tag: tagParam
+		? (findBySlug(site.tags, tagParam) ?? { name: tagParam, slug: tagParam })
+		: undefined,
+	uncategorized: params.has("uncategorized"),
+};
+const filterName = filter.category?.name ?? (filter.tag ? `#${filter.tag.name}` : undefined);
+const archiveSummary = `${posts.length} ${i18n(I18nKey.postsCount)}`;
 ---
 
-<MainGridLayout title={i18n(I18nKey.archive)} description={archiveSummary} page="archive">
-    <ArchivePanel sortedPosts={sortedPostsList} client:visible></ArchivePanel>
+<MainGridLayout
+	title={filterName ? `${filterName} - ${i18n(I18nKey.archive)}` : i18n(I18nKey.archive)}
+	description={archiveSummary}
+	page="archive"
+	canonicalPath={Astro.url.pathname + Astro.url.search}
+>
+	<ArchivePanel sortedPosts={archivePosts} filter={filter} client:visible></ArchivePanel>
 </MainGridLayout>
-

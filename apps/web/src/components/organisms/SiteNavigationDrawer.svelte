@@ -1,63 +1,74 @@
 <script lang="ts">
 /**
  * 全站导航抽屉（M3 ModalNavigationDrawer 应用，自包含实现，不改原子）。
- * 顶部栏菜单按钮派发 site-drawer:toggle 事件开合；内容：
- *   一级导航（navBarConfig）+ 可折叠「分类」分组（多级扩展点）。
- * 链接由 Swup 自动接管，点击后收起抽屉；高亮与当前路由/分类筛选同步。
+ * 顶部栏菜单按钮派发 site-drawer:toggle 事件开合；内容为管理员配置的两级导航。
+ * 可点击的父级在展开组内作为首项出现。链接由 Swup 自动接管，点击后收起抽屉；
+ * 高亮与当前路由同步（见 utils/nav-utils）。
  */
+import type { IconifyJSON } from "@iconify/types";
 import Icon from "@iconify/svelte";
-import { resolveNavBarLinks, resolvePageKey } from "@utils/nav-utils";
+import { addCollection } from "@shirone/iconify-offline-functions";
+import { navKeyForLink, resolveNavKeys } from "@utils/nav-utils";
 import { url } from "@utils/url-utils";
 import { onMount, tick } from "svelte";
-import { siteConfig } from "@/config";
-import { navBarConfig } from "@/config/navBarConfig";
+import type { NavBarLink } from "@/types/navBarConfig";
+
+let {
+	links,
+	siteTitle,
+	siteSubtitle = "",
+	icons = [],
+}: {
+	links: NavBarLink[];
+	siteTitle: string;
+	siteSubtitle?: string;
+	/** 管理员所选图标的离线数据（SSR 解析，见 lib/site/icons） */
+	icons?: IconifyJSON[];
+} = $props();
+
+for (const collection of icons) addCollection(collection);
 
 let open = $state(false);
-let activePrimary = $state("");
+let activeKeys = $state<string[]>([]);
 const openGroups = $state<Record<string, boolean>>({});
 
-const links = resolveNavBarLinks(navBarConfig.links);
+interface DrawerItem {
+	value: string;
+	label: string;
+	icon?: string;
+	href?: string;
+	external: boolean;
+	navKey: string;
+}
 
-const primaryItems = links.map((link) => {
-	const key = link.name.toLowerCase();
+const toItem = (link: NavBarLink, value: string): DrawerItem => ({
+	value,
+	label: link.name,
+	icon: link.icon,
+	href: link.url ? (link.external ? link.url : url(link.url)) : undefined,
+	external: !!link.external,
+	navKey: navKeyForLink(link),
+});
+
+const primaryItems = links.map((link, index) => {
+	const item = toItem(link, String(index));
+	const children = link.children?.map((child, childIndex) =>
+		toItem(child, `${index}-${childIndex}`),
+	);
 	return {
-		value: key,
-		label: link.name,
-		icon: link.icon,
-		href: link.url ? (link.external ? link.url : url(link.url)) : undefined,
-		external: !!link.external,
-		pageKey: link.pageKey ?? "",
-		children: link.children?.map((child) => ({
-			value: child.name.toLowerCase(),
-			label: child.name,
-			icon: child.icon,
-			href: child.url
-				? child.external
-					? child.url
-					: url(child.url)
-				: undefined,
-			external: !!child.external,
-			pageKey: child.pageKey ?? "",
-		})),
+		...item,
+		// 可点击的父级作为组内首项
+		children: children && item.href ? [{ ...item, value: `${index}-self` }, ...children] : children,
 	};
 });
 
+const isActive = (item: DrawerItem) =>
+	item.navKey !== "" && activeKeys.includes(item.navKey);
+
 function syncFromRoute() {
-	const pageKey = resolvePageKey(new URL(window.location.href));
-	activePrimary = "";
+	activeKeys = resolveNavKeys(new URL(window.location.href));
 	for (const item of primaryItems) {
-		if (item.pageKey && item.pageKey === pageKey) {
-			activePrimary = item.value;
-			break;
-		}
-		const activeChild = item.children?.find(
-			(child) => child.pageKey && child.pageKey === pageKey,
-		);
-		if (activeChild) {
-			activePrimary = activeChild.value;
-			openGroups[item.value] = true;
-			break;
-		}
+		if (item.children?.some(isActive)) openGroups[item.value] = true;
 	}
 }
 
@@ -106,18 +117,18 @@ let drawerEl: HTMLElement | undefined = $state();
 		class="site-drawer__panel"
 		role="dialog"
 		aria-modal="true"
-		aria-label={siteConfig.title}
+		aria-label={siteTitle}
 	>
 		<div class="site-drawer__brand">
-			<div class="site-drawer__title">{siteConfig.title}</div>
-			<div class="site-drawer__subtitle">{siteConfig.subtitle}</div>
+			<div class="site-drawer__title">{siteTitle}</div>
+			{#if siteSubtitle}<div class="site-drawer__subtitle">{siteSubtitle}</div>{/if}
 		</div>
 
 		<nav class="site-drawer__nav" aria-label="Navigation drawer">
 			{#each primaryItems as item (item.value)}
 				{#if item.children}
 					<div class="site-drawer__group">
-						<button type="button" class="site-drawer__group-head" class:site-drawer__item--active={item.children.some((child) => activePrimary === child.value)} onclick={() => toggleGroup(item.value)} aria-expanded={openGroups[item.value] ?? false}>
+						<button type="button" class="site-drawer__group-head" class:site-drawer__item--active={item.children.some(isActive)} onclick={() => toggleGroup(item.value)} aria-expanded={openGroups[item.value] ?? false}>
 							{#if item.icon}<span class="site-drawer__group-icon" aria-hidden="true"><Icon icon={item.icon} /></span>{/if}
 							<span class="site-drawer__group-label">{item.label}</span>
 							<Icon class={openGroups[item.value] ? "site-drawer__group-arrow site-drawer__group-arrow--open" : "site-drawer__group-arrow"} icon="material-symbols:keyboard-arrow-down" />
@@ -125,7 +136,7 @@ let drawerEl: HTMLElement | undefined = $state();
 						{#if openGroups[item.value]}
 							<div class="site-drawer__group-body">
 								{#each item.children as child (child.value)}
-									<a href={child.href} class="site-drawer__item site-drawer__item--child" class:site-drawer__item--active={activePrimary === child.value} aria-current={activePrimary === child.value ? "page" : undefined} target={child.external ? "_blank" : undefined} rel={child.external ? "noopener noreferrer" : undefined} onclick={handleNavClick}>
+									<a href={child.href} class="site-drawer__item site-drawer__item--child" class:site-drawer__item--active={isActive(child)} aria-current={isActive(child) ? "page" : undefined} target={child.external ? "_blank" : undefined} rel={child.external ? "noopener noreferrer" : undefined} onclick={handleNavClick}>
 										{#if child.icon}<span class="site-drawer__item-icon" aria-hidden="true"><Icon icon={child.icon} /></span>{/if}
 										<span class="site-drawer__item-label">{child.label}</span>
 									</a>
@@ -134,7 +145,7 @@ let drawerEl: HTMLElement | undefined = $state();
 						{/if}
 					</div>
 				{:else if item.href}
-					<a href={item.href} class="site-drawer__item" class:site-drawer__item--active={activePrimary === item.value} aria-current={activePrimary === item.value ? "page" : undefined} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined} onclick={handleNavClick}>
+					<a href={item.href} class="site-drawer__item" class:site-drawer__item--active={isActive(item)} aria-current={isActive(item) ? "page" : undefined} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined} onclick={handleNavClick}>
 						{#if item.icon}<span class="site-drawer__item-icon" aria-hidden="true"><Icon icon={item.icon} /></span>{/if}
 						<span class="site-drawer__item-label">{item.label}</span>
 					</a>

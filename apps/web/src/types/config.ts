@@ -5,34 +5,15 @@ export type WallpaperMode = "banner" | "none";
 
 export type TopAppBarContentAlign = "left" | "center";
 
-export type DisplaySettingsConfig = {
-	/** 是否在显示设置面板展示配色风格（9 宫格）选择器（默认 true） */
-	colorStyle?: boolean;
-	/** 是否在显示设置面板展示 Color Spec（调色规范 2021 / 2025）切换器（默认 true） */
-	colorSpec?: boolean;
-	/** 是否在显示设置面板展示 Page background（页面背景 纯色 / 横幅）切换器（默认 true） */
-	wallpaperMode?: boolean;
-	/** 是否在显示设置面板展示 Layout（文章列表布局 列表 / 网格）切换器（默认 true） */
-	layoutMode?: boolean;
-	/** 是否在显示设置面板展示 Reduce motion（减少动效）切换器（默认 true） */
-	reduceMotion?: boolean;
-	/** 是否在显示设置面板展示背景纹理选择器（默认 true，且受 texture.enable 控制） */
-	texture?: boolean;
-};
-
-export type BannerThemeSource = {
-	light: string[];
-	dark: string[];
-};
-
-export type BannerSourceValue = string[] | BannerThemeSource;
-
 export type BannerConfig = {
+	/** 媒体库图片 URL，数组顺序即轮播顺序 */
 	src: {
-		desktop: BannerSourceValue;
-		mobile: BannerSourceValue;
+		desktop: string[];
+		mobile: string[];
 	};
 	position?: "top" | "center" | "bottom";
+	/** 横幅高度档位 */
+	height: "short" | "default" | "tall";
 	dim: {
 		enable: boolean;
 		opacity: number;
@@ -85,8 +66,6 @@ export type SiteConfig = {
 		contentAlign: TopAppBarContentAlign;
 	};
 
-	/** 显示设置浮层各切换项的前端可见性控制 */
-	displaySettings?: DisplaySettingsConfig;
 
 	lang: "zh_CN";
 
@@ -99,11 +78,14 @@ export type SiteConfig = {
 		style: string;
 		spec: string;
 	};
+	/** 默认明暗模式；访客仅在 allowModeSwitch 时可切换（选择存 localStorage） */
+	defaultMode: "light" | "dark" | "system";
+	allowModeSwitch: boolean;
 	wallpaperMode: {
 		defaultMode: WallpaperMode;
 	};
-	/** 页面背景纹理系统配置，支持布尔值直接开关或详细配置对象 */
-	texture?: boolean | TextureConfig;
+	/** 页面背景纹理（管理员设置；访客不可切换） */
+	texture: TextureConfig;
 	banner: BannerConfig;
 	/** Markdown 正文图片处理配置。 */
 	imageOptimization?: {
@@ -146,28 +128,6 @@ export type LIGHT_DARK_MODE =
 	| typeof LIGHT_MODE
 	| typeof DARK_MODE
 	| typeof AUTO_MODE;
-
-export type BlogPostData = {
-	body: string;
-	title: string;
-	published: Date;
-	publishedAt?: Date;
-	updated?: Date;
-	updatedAt?: Date;
-	description: string;
-	tags: string[];
-	draft?: boolean;
-	image?: string;
-	category?: string;
-	alias?: string;
-	permalink?: string;
-	prevTitle?: string;
-	prevUrl?: string;
-	nextUrl?: string;
-	prevSlug?: string;
-	nextTitle?: string;
-	nextSlug?: string;
-};
 
 export type ExpressiveCodeConfig = {
 	theme: string;

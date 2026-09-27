@@ -4,7 +4,6 @@ import TocList from "@components/atoms/blog/TocList.astro";
 import WidgetLayout from "./WidgetLayout.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { siteConfig } from "@/config/siteConfig";
 
 interface Props {
 	headings?: MarkdownHeading[];
@@ -23,7 +22,7 @@ const removeTailingHash = (text: string) => {
 	return text.substring(0, lastIndexOfHash);
 };
 
-const maxLevel = siteConfig.toc.depth;
+const maxLevel = Astro.locals.site.siteConfig.toc.depth;
 
 const tocHeadings = headings.map((heading) => ({
 	depth: heading.depth,

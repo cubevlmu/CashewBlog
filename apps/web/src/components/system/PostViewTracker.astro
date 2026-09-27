@@ -1,0 +1,30 @@
+---
+/**
+ * 阅读量上报：公开文章页渲染一个标记，浏览器（而非 SSR 服务器）调用
+ * `POST /api/posts/{slug}/view`，访客 IP / UA 才是真实访客的；后端做 30 分钟去重。
+ */
+interface Props {
+	slug: string;
+}
+
+const { slug } = Astro.props;
+---
+
+<span hidden data-post-view={slug}></span>
+
+<script>
+	function reportView() {
+		const marker = document.querySelector<HTMLElement>("[data-post-view]");
+		const slug = marker?.dataset.postView;
+		if (!marker || !slug || marker.dataset.reported) return;
+		marker.dataset.reported = "true";
+		const path = `/api/posts/${encodeURIComponent(slug)}/view`;
+		// sendBeacon survives quick navigations; fall back to keepalive fetch.
+		if (!navigator.sendBeacon?.(path)) {
+			void fetch(path, { method: "POST", keepalive: true }).catch(() => {});
+		}
+	}
+
+	reportView();
+	document.addEventListener("swup:page:view", reportView);
+</script>

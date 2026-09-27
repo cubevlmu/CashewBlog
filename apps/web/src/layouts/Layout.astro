@@ -3,17 +3,9 @@ import { Font } from "astro:assets";
 import Snackbar from "@components/atoms/overlay/Snackbar.svelte";
 import ConfigCarrier from "@components/system/ConfigCarrier.astro";
 import UmamiRuntime from "@components/system/UmamiRuntime.astro";
-import { resolveAsset } from "@utils/asset-utils";
 import { pathsEqual, toAbsoluteUrl, url } from "@utils/url-utils";
-import {
-	expressiveCodeConfig,
-	profileConfig,
-	resolvedFontOptions,
-	resolveTextureOptions,
-	resolveUmamiOptions,
-	siteConfig,
-	umamiConfig,
-} from "@/config";
+import { splitTrustedHtml } from "@/lib/site/trusted-html";
+import { expressiveCodeConfig, resolvedFontOptions } from "@/config";
 import type { SidebarPage } from "@/types/sidebarConfig";
 import {
 	AUTO_MODE,
@@ -21,12 +13,11 @@ import {
 	BANNER_HEIGHT_EXTEND,
 	BANNER_HEIGHT_HOME,
 	DARK_MODE,
-	DEFAULT_THEME,
 	LIGHT_MODE,
 	MAIN_PANEL_OVERLAPS_BANNER_HEIGHT,
 } from "../constants/constants";
 import { defaultFavicons } from "../constants/icon";
-import type { BannerSourceValue, Favicon } from "../types/config";
+import type { Favicon } from "../types/config";
 import { createFontRoleStyle } from "../utils/font-options";
 import { resolvePageWidth } from "../utils/responsive-utils";
 import "../styles/main.css";
@@ -38,73 +29,70 @@ interface Props {
 	banner?: string;
 	ogImage?: string;
 	description?: string;
-	lang?: string;
 	setOGTypeArticle?: boolean;
 	page?: SidebarPage;
+	/** Canonical path override (defaults to the request path). */
+	canonicalPath?: string;
+	noindex?: boolean;
 }
 
-let { title, banner, ogImage, description, lang, setOGTypeArticle, page } =
-	Astro.props;
+const {
+	title,
+	banner,
+	ogImage,
+	description,
+	setOGTypeArticle,
+	page,
+	canonicalPath,
+	noindex,
+} = Astro.props;
+const { site } = Astro.locals;
+const { siteConfig, profileConfig, settings, umami: umamiOptions } = site;
 
 const initialPage =
 	page ?? (pathsEqual(Astro.url.pathname, url("/")) ? "home" : undefined);
 
-// `Astro.url` in a static build does not inherit a `site` set through an
-// integration's `updateConfig()` — Astro snapshots the build origin in the
-// build constructor before the `astro:config:setup` hook runs. Derive the
-// absolute URL from `Astro.site` ourselves so og/twitter URLs stay correct.
-const canonicalUrl = Astro.site
-	? new URL(Astro.url.pathname + Astro.url.search, Astro.site)
-	: Astro.url;
-function getFirstBannerImage(source: BannerSourceValue | undefined): string {
-	if (!source) return "";
-	if (Array.isArray(source)) return source[0] || "";
-	return source.light[0] || source.dark[0] || "";
-}
-
-function hasBannerImages(source: BannerSourceValue | undefined): boolean {
-	if (!source) return false;
-	if (Array.isArray(source)) return source.length > 0;
-	return source.light.length > 0 || source.dark.length > 0;
-}
+// The public origin is the administrator-configured site URL; the SSR server
+// itself only ever sees the loopback proxy request.
+const siteOrigin = new URL(siteConfig.site);
+const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteOrigin);
 
 const defaultSocialImage =
 	siteConfig.ogImage ||
-	getFirstBannerImage(siteConfig.banner.src.desktop) ||
-	getFirstBannerImage(siteConfig.banner.src.mobile) ||
+	siteConfig.banner.src.desktop[0] ||
+	siteConfig.banner.src.mobile[0] ||
 	"";
 const candidateOgImage = ogImage || banner || defaultSocialImage;
-const resolvedOgImage = await resolveAsset(candidateOgImage);
-const absoluteOgImage = toAbsoluteUrl(resolvedOgImage, canonicalUrl);
+const absoluteOgImage = toAbsoluteUrl(candidateOgImage, siteOrigin);
 
-const configHue = siteConfig.themeColor.hue;
 const lightTheme =
 	expressiveCodeConfig.lightTheme ?? expressiveCodeConfig.theme;
 const darkTheme = expressiveCodeConfig.darkTheme ?? expressiveCodeConfig.theme;
-const defaultWallpaperMode = siteConfig.wallpaperMode.defaultMode;
-const textureOptions = resolveTextureOptions();
-const defaultTexturePreset = textureOptions.defaultPreset;
-const defaultTextureOpacity = textureOptions.defaultOpacity;
-const textureEnabled = textureOptions.enable;
-const umamiOptions = resolveUmamiOptions(umamiConfig);
+const defaultTheme =
+	siteConfig.defaultMode === "system" ? AUTO_MODE : siteConfig.defaultMode;
+const allowModeSwitch = siteConfig.allowModeSwitch;
+const texture = siteConfig.texture;
+const textureEnabled = texture.enable;
 
-const hasDesktopBanner = hasBannerImages(siteConfig.banner.src.desktop);
-const hasMobileBanner = hasBannerImages(siteConfig.banner.src.mobile);
+const hasDesktopBanner = siteConfig.banner.src.desktop.length > 0;
+const hasMobileBanner = siteConfig.banner.src.mobile.length > 0;
 
-let pageTitle: string;
-if (title) {
-	pageTitle = `${title} - ${siteConfig.title}`;
-} else {
-	pageTitle = `${siteConfig.title} - ${siteConfig.subtitle}`;
-}
+const separator = settings.seo.titleSeparator;
+const pageTitle = title
+	? `${title}${separator}${siteConfig.title}`
+	: siteConfig.subtitle
+		? `${siteConfig.title}${separator}${siteConfig.subtitle}`
+		: siteConfig.title;
+const pageDescription =
+	description || settings.seo.defaultDescription || settings.general.description || pageTitle;
+const keywords = settings.seo.keywords.length > 0 ? settings.seo.keywords : settings.general.keywords;
 
 const favicons: Favicon[] =
 	siteConfig.favicon.length > 0 ? siteConfig.favicon : defaultFavicons;
 
-if (!lang) {
-	lang = `${siteConfig.lang}`;
-}
-const siteLang = lang.replace("_", "-");
+const siteLang = settings.general.language || "zh-CN";
+// Trusted administrator footer scripts, emitted once per document.
+const footerScripts = splitTrustedHtml(site.footerHtml).scripts;
 const fontRoleStyle = createFontRoleStyle(resolvedFontOptions);
 const customFontsEnabled = resolvedFontOptions.mode === "custom";
 const hasBodyFont =
@@ -113,23 +101,40 @@ const hasCjkFont =
 	customFontsEnabled && Boolean(resolvedFontOptions.roles.cjk.family);
 const hasMonoFont =
 	customFontsEnabled && Boolean(resolvedFontOptions.roles.mono.family);
+
+const rootStyle = [
+	`--hue: ${siteConfig.themeColor.hue}`,
+	textureEnabled ? `--texture-opacity: ${texture.defaultOpacity}` : "",
+]
+	.filter(Boolean)
+	.join("; ");
 ---
 
 <!DOCTYPE html>
-<html lang={siteLang} class="bg-[var(--page-bg)] transition text-[14px] md:text-[16px]">
+<html
+	lang={siteLang}
+	class="bg-[var(--page-bg)] transition text-[14px] md:text-[16px]"
+	style={rootStyle}
+	data-wallpaper-mode={siteConfig.wallpaperMode.defaultMode}
+	data-banner-height={siteConfig.banner.height}
+	data-texture-preset={textureEnabled ? texture.defaultPreset : undefined}
+>
 	<head>
 		<style is:inline>@layer properties, theme, base, components, utilities;</style>
 
 		<title>{pageTitle}</title>
 
 		<meta charset="UTF-8" />
-		<meta name="description" content={description || pageTitle}>
+		<meta name="description" content={pageDescription}>
 		<meta name="author" content={profileConfig.name}>
+		{keywords.length > 0 && <meta name="keywords" content={keywords.join(", ")}>}
+		{noindex && <meta name="robots" content="noindex, nofollow">}
+		<link rel="canonical" href={canonicalUrl}>
 
 		<meta property="og:site_name" content={siteConfig.title}>
 		<meta property="og:url" content={canonicalUrl}>
 		<meta property="og:title" content={pageTitle}>
-		<meta property="og:description" content={description || pageTitle}>
+		<meta property="og:description" content={pageDescription}>
 		{absoluteOgImage && <meta property="og:image" content={absoluteOgImage} />}
 		{setOGTypeArticle ? (
 			<meta property="og:type" content="article" />
@@ -140,7 +145,8 @@ const hasMonoFont =
 		<meta name="twitter:card" content={absoluteOgImage ? "summary_large_image" : "summary"}>
 		<meta property="twitter:url" content={canonicalUrl}>
 		<meta name="twitter:title" content={pageTitle}>
-		<meta name="twitter:description" content={description || pageTitle}>
+		<meta name="twitter:description" content={pageDescription}>
+		{settings.seo.twitterHandle && <meta name="twitter:site" content={settings.seo.twitterHandle}>}
 		{absoluteOgImage && <meta name="twitter:image" content={absoluteOgImage} />}
 
 		<meta name="viewport" content="width=device-width" />
@@ -161,52 +167,23 @@ const hasMonoFont =
 			/>
 		))}
 
-		<script is:inline define:vars={{DEFAULT_THEME, LIGHT_MODE, DARK_MODE, AUTO_MODE, BANNER_HEIGHT_EXTEND, configHue, lightTheme, darkTheme, defaultWallpaperMode, defaultTexturePreset, defaultTextureOpacity, textureEnabled}}>
-			const theme = localStorage.getItem('theme') || DEFAULT_THEME;
-			let isDark = false;
-			switch (theme) {
-				case LIGHT_MODE:
-					document.documentElement.classList.remove('dark');
-					break
-				case DARK_MODE:
-					document.documentElement.classList.add('dark');
-					isDark = true;
-					break
-				case AUTO_MODE:
-					if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-						document.documentElement.classList.add('dark');
-						isDark = true;
-					} else {
-						document.documentElement.classList.remove('dark');
-					}
-			}
-
+		<script is:inline define:vars={{defaultTheme, allowModeSwitch, LIGHT_MODE, DARK_MODE, AUTO_MODE, BANNER_HEIGHT_EXTEND, lightTheme, darkTheme}}>
+			const stored = allowModeSwitch ? localStorage.getItem('theme') : null;
+			const theme = stored === LIGHT_MODE || stored === DARK_MODE || stored === AUTO_MODE ? stored : defaultTheme;
+			const isDark = theme === DARK_MODE || (theme === AUTO_MODE && window.matchMedia('(prefers-color-scheme: dark)').matches);
+			document.documentElement.classList.toggle('dark', isDark);
 			document.documentElement.setAttribute('data-theme', isDark ? darkTheme : lightTheme);
-			const hue = configHue;
-			document.documentElement.style.setProperty('--hue', hue);
-			const wallpaperMode = defaultWallpaperMode;
-			document.documentElement.dataset.wallpaperMode = wallpaperMode;
-
-			if (textureEnabled) {
-				const texturePreset = defaultTexturePreset;
-				document.documentElement.dataset.texturePreset = texturePreset;
-				const textureOpacity = defaultTextureOpacity;
-				if (!isNaN(textureOpacity)) {
-					document.documentElement.style.setProperty('--texture-opacity', String(textureOpacity));
-				}
-			}
 
 			let offset = Math.floor(window.innerHeight * (BANNER_HEIGHT_EXTEND / 100));
 			offset = offset - offset % 4;
 			document.documentElement.style.setProperty('--banner-height-extend', `${offset}px`);
 		</script>
 		<style define:vars={{
-			configHue,
-			'page-width': resolvePageWidth(),
+			'page-width': resolvePageWidth(site.sidebarConfig),
 		}}></style>
 
 		<slot name="head"></slot>
-		<link rel="alternate" type="application/rss+xml" title={profileConfig.name} href={`${Astro.site}rss.xml`}/>
+		<link rel="alternate" type="application/rss+xml" title={siteConfig.title} href={new URL("/rss.xml", siteOrigin)}/>
 	</head>
 	<body
 		class="min-h-screen transition"
@@ -229,6 +206,7 @@ const hasMonoFont =
 		<Snackbar client:only="svelte"></Snackbar>
 		<slot />
 		<div id="page-height-extend" class="hidden h-[300vh]"></div>
+		{footerScripts && <Fragment set:html={footerScripts} />}
 	</body>
 </html>
 
@@ -243,6 +221,9 @@ const hasMonoFont =
 }}>
 @reference "../styles/main.css";
 	@layer components {
+		/* 管理员设置的横幅高度档位（default 使用 BANNER_HEIGHT_HOME） */
+		html[data-banner-height="short"] { --banner-height-home: 50vh; }
+		html[data-banner-height="tall"] { --banner-height-home: 80vh; }
 		:root {
 			--banner-stage-height: var(--banner-height-home);
 			--banner-content-top: calc(var(--banner-stage-height) - var(--banner-panel-overlap));
@@ -274,7 +255,7 @@ const hasMonoFont =
 <script>
 import { initLastUpdatedNotices } from "../utils/last-updated-notice";
 import { getStoredTheme, setTheme } from "../utils/setting-utils";
-import { WALLPAPER_MODE_CHANGE_EVENT, BANNER_HEIGHT, BANNER_HEIGHT_EXTEND } from "../constants/constants";
+import { BANNER_HEIGHT, BANNER_HEIGHT_EXTEND } from "../constants/constants";
 import { copyPageLink } from "../utils/copy-page-link";
 
 function setClickOutsideToClose(panel: string, ignores: string[]) {
@@ -358,7 +339,6 @@ window.addEventListener('resize', () => {
 	scrollFunction();
 });
 new MutationObserver(scrollFunction).observe(document.body, { attributes: true, attributeFilter: ['data-banner-visible', 'data-banner-layout'] });
-window.addEventListener(WALLPAPER_MODE_CHANGE_EVENT, () => requestAnimationFrame(scrollFunction));
 document.addEventListener('swup:page:view', scrollFunction);
 scrollFunction();
 </script>

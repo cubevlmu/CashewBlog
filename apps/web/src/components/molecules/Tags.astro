@@ -2,7 +2,6 @@
 import TagList from "@components/atoms/blog/TagList.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { getTagList } from "@utils/content-utils";
 import { getTagUrl, url } from "@utils/url-utils";
 /**
  * 标签侧栏组件（消费 blog/TagList 原子）。
@@ -14,8 +13,6 @@ import { Icon } from "astro-icon/components";
 import type { TagsWidget } from "@/types/sidebarConfig";
 import WidgetLayout from "./WidgetLayout.astro";
 
-const tags = await getTagList();
-
 interface Props {
 	class?: string;
 	style?: string;
@@ -23,13 +20,14 @@ interface Props {
 }
 const className = Astro.props.class;
 const style = Astro.props.style;
+const { tags } = Astro.locals.site;
 
 const DISPLAY_LIMIT = Math.max(1, Astro.props.widget?.collapseAfter ?? 20);
 const hasOverflow = tags.length > DISPLAY_LIMIT;
 
 const tagItems = tags.slice(0, DISPLAY_LIMIT).map((t) => ({
-	name: t.name.trim(),
-	href: getTagUrl(t.name),
+	name: t.name,
+	href: getTagUrl(t.slug),
 }));
 ---
 <WidgetLayout name={i18n(I18nKey.tags)} id="tags" class={className} style={style}>

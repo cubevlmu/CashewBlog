@@ -9,18 +9,17 @@ import Chip from "@components/atoms/action/Chip.astro";
 import Card from "@components/atoms/display/Card.svelte";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { getCategoryList } from "@utils/content-utils";
-import { pathsEqual, url } from "@utils/url-utils";
+import { getCategoryUrl, pathsEqual, url } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
 
 interface Props {
-	/** 文章页所属分类名：非首页/归档时对该分类做弱高亮 */
+	/** 文章页所属分类 slug：非首页/归档时对该分类做弱高亮 */
 	currentPostCategory?: string;
 }
 
 const { currentPostCategory } = Astro.props;
 
-const categories = await getCategoryList();
+const { categories } = Astro.locals.site;
 const homeUrl = url("/");
 const archiveUrl = url("/archive/");
 
@@ -33,7 +32,7 @@ const postCategory = (currentPostCategory || "").trim();
 // - 首页 → home 强高亮；归档 → archive 强高亮；
 // - 文章页 → 所属分类弱高亮（soft）；
 // - 其它（关于等）→ 无高亮。
-// query 分类（?category=）在静态站点构建期不可知，由客户端校正。
+// query 分类（?category=）由客户端在加载与 swup 导航后校正。
 const softCategory = !isHome && !isArchive && postCategory ? postCategory : "";
 ---
 
@@ -69,9 +68,9 @@ const softCategory = !isHome && !isArchive && postCategory ? postCategory : "";
 				{categories.map((cat) => (
 					<Chip
 						variant="tonal"
-						href={cat.url}
+						href={getCategoryUrl(cat.slug)}
 						selected={false}
-						soft={cat.name === softCategory}
+						soft={cat.slug === softCategory}
 						class="shrink-0"
 					>
 						{cat.name}

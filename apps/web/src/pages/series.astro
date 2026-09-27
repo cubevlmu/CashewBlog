@@ -10,17 +10,10 @@ import PageHeader from "@components/atoms/display/PageHeader.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { seriesConfig } from "@/config";
-
-if (!seriesConfig.enable) {
-	return Astro.redirect("/404/");
-}
-
-import { getSeriesCatalog, getSortedPostsList } from "@utils/content-utils";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
-import { resolveI18nText } from "@utils/i18n-utils";
-import { excerptFromMarkdown, normaliseSeriesSlug } from "@utils/series-utils";
+import { excerptFromMarkdown } from "@utils/series-utils";
 import { getSeriesUrl } from "@utils/url-utils";
+import { toCalendarDate } from "@/lib/content/posts";
 
 interface SeriesIndexItem {
 	slug: string;
@@ -28,46 +21,34 @@ interface SeriesIndexItem {
 	status: "ongoing" | "completed";
 	count: number;
 	latest: Date | null;
-	/** 系列默认分类（可空） */
+	/** 系列默认分类名（可空） */
 	category: string;
 	/** 总览摘要（可空 = 系列未写总览） */
 	overview: string;
 }
 
-const catalog = await getSeriesCatalog();
-const posts = await getSortedPostsList();
-
-const items: SeriesIndexItem[] = [];
-for (const [slug, entity] of catalog) {
-	const members = posts.filter(
-		(post) => normaliseSeriesSlug(post.data.series) === slug,
-	);
-	const latest = members.reduce<Date | null>((acc, post) => {
-		const published = post.data.published;
-		return acc === null || published > acc ? published : acc;
-	}, null);
-	items.push({
-		slug,
-		title: entity.data.title,
-		status: entity.data.status,
-		count: members.length,
-		latest,
-		category: entity.data.defaultCategory.trim(),
-		overview: excerptFromMarkdown(entity.body ?? ""),
-	});
-}
-items.sort((a, b) => (b.latest?.getTime() ?? 0) - (a.latest?.getTime() ?? 0));
+const { site } = Astro.locals;
+// 后端已按最近更新排序；空系列（无公开文章）不展示
+const items: SeriesIndexItem[] = site.series
+	.filter((series) => series.count > 0)
+	.map((series) => ({
+		slug: series.slug,
+		title: series.title,
+		status: series.status,
+		count: series.count,
+		latest: series.latestPublishedAt
+			? toCalendarDate(new Date(series.latestPublishedAt), site.siteConfig.timeZone)
+			: null,
+		category: series.defaultCategory?.name ?? "",
+		overview: excerptFromMarkdown(series.description ?? ""),
+	}));
 
 const totalPosts = items.reduce((sum, item) => sum + item.count, 0);
 const seriesSummary = `${items.length} ${i18n(items.length === 1 ? I18nKey.seriesCount : I18nKey.seriesCounts)} · ${totalPosts} ${i18n(I18nKey.postsCount)}`;
-const pageTitle = resolveI18nText(seriesConfig.title, I18nKey.series);
-// 描述：未配置时退回动态汇总；配置了（$t: 或字面量）则整体替换
-const pageDescription = seriesConfig.description
-	? resolveI18nText(seriesConfig.description)
-	: seriesSummary;
+const pageTitle = i18n(I18nKey.series);
 ---
 
-<MainGridLayout title={pageTitle} description={pageDescription} page="series">
+<MainGridLayout title={pageTitle} description={seriesSummary} page="series">
 	<Card color="var(--card-bg)" radius="l" class="series-index px-8 py-6">
 		<PageHeader
 			icon="material-symbols:auto-stories-rounded"

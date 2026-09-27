@@ -3,14 +3,16 @@ import Icon from "@iconify/svelte";
 
 /**
  * M3E 博客原子 — SearchPanel 搜索结果面板。
- * 数据驱动：results 为 { url, title, excerpt }[]（excerpt 可含 <mark> 高亮）；
+ * 数据驱动：results 为 { url, title, titleHtml?, excerpt }[]（titleHtml / excerpt 为
+ * 已转义、仅含 <mark> 高亮的 HTML）；
  * placeholder 传入时渲染面板内胶囊搜索输入（移动端，hideInputOnDesktop 时 lg+ 隐藏）。
  * 开合 / 定位由调用方通过 class 控制（float-panel float-panel-closed + 定位类），
- * 与 DisplaySettings 面板同款约定，Layout 的点击外部关闭可直接复用。
+ * Layout 的点击外部关闭可直接复用。
  */
 export interface SearchResultItem {
 	url: string;
 	title: string;
+	titleHtml?: string;
 	excerpt: string;
 }
 
@@ -44,7 +46,7 @@ let {
 	{#each results as item, i (i)}
 		<a class="m3-blog-searchpanel__item" href={item.url}>
 			<span class="m3-blog-searchpanel__title">
-				{item.title}
+				{#if item.titleHtml}{@html item.titleHtml}{:else}{item.title}{/if}
 				<Icon icon="fa6-solid:chevron-right" />
 			</span>
 			<span class="m3-blog-searchpanel__excerpt">{@html item.excerpt}</span>

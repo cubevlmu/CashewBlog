@@ -1,7 +1,4 @@
-import {
-	formatCalendarDate,
-	formatInstantDateTimeInSiteTimeZone,
-} from "./content-date";
+import { formatCalendarDate } from "./content-date";
 
 export function formatDateToYYYYMMDD(date: Date): string {
 	return formatCalendarDate(date);
@@ -44,7 +41,3 @@ export function resolveLastUpdatedNoticeState(
 	};
 }
 
-/** 动态流时间戳：YYYY-MM-DD HH:mm（站点时区，用于社交式短内容） */
-export function formatDateToYYYYMMDDHHmm(date: Date): string {
-	return formatInstantDateTimeInSiteTimeZone(date);
-}

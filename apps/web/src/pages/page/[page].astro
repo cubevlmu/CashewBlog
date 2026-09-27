@@ -1,0 +1,16 @@
+---
+import HomeFeed from "@components/organisms/HomeFeed.astro";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { loadHomeFeed } from "@/lib/content/home";
+
+const page = Number(Astro.params.page);
+if (!Number.isInteger(page) || page < 1) return Astro.rewrite("/404/");
+if (page === 1) return Astro.redirect("/", 301);
+
+const feed = await loadHomeFeed(Astro.locals, page);
+if (!feed) return Astro.rewrite("/404/");
+---
+
+<MainGridLayout page="home">
+	<HomeFeed feed={feed} />
+</MainGridLayout>

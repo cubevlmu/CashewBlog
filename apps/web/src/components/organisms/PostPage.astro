@@ -1,15 +1,18 @@
 ---
-import type { CollectionEntry } from "astro:content";
-import { getPostUrl } from "@utils/url-utils";
-import { POST_CARD_MIN_WIDTH, postListConfig } from "@/config/postListConfig";
+import type { PostView } from "@/lib/content/posts";
+import { POST_CARD_MIN_WIDTH } from "@/config/postListConfig";
 import PostCard from "./PostCard.astro";
 
-const { page } = Astro.props;
+interface Props {
+	posts: PostView[];
+}
+
+const { posts } = Astro.props;
 
 let delay = 0;
 const interval = 50;
 
-const { mode, cover, cardWidth } = postListConfig.layout;
+const { mode, cover, cardWidth } = Astro.locals.site.postListConfig.layout;
 ---
 
 <!-- 卡片间留白分隔（gap = --m3e-space-4，无容器底色 / 无虚线）。
@@ -26,19 +29,9 @@ const { mode, cover, cardWidth } = postListConfig.layout;
         data-layout-mode={mode}
         style={`--post-card-min: ${POST_CARD_MIN_WIDTH[cardWidth]};`}
     >
-        {page.data.map((entry: CollectionEntry<"posts">) => (
+        {posts.map((post) => (
             <PostCard
-                entry={entry}
-                title={entry.data.title}
-                tags={entry.data.tags}
-                category={entry.data.category}
-                published={entry.data.published}
-                updated={entry.data.updated}
-                pinned={entry.data.pinned}
-                url={getPostUrl(entry)}
-                image={entry.data.image}
-                description={entry.data.description}
-                draft={entry.data.draft}
+                post={post}
                 class:list="onload-animation"
                 style={`animation-delay: calc(var(--content-delay) + ${delay++ * interval}ms);`}
             ></PostCard>
@@ -88,23 +81,12 @@ activate-post-grid()
 			activate-post-grid()
 </style>
 
-<!-- 首屏防闪：SSR 输出的是站点默认模式，访客偏好（localStorage）在容器
-     解析后立即覆盖（is:inline 无依赖、随 HTML 流式执行；swup 导航由
-     Layout 的 content:replace 钩子兜底，见 utils/layout-mode.ts）。
-     grid 模式需同步做一次最简瀑布流打包（与 utils/masonry.ts 同算法），
-     避免未打包的 8px 行轨道在首帧叠加渲染。 -->
+<!-- 首屏防闪：grid 模式在容器解析后立即做一次最简瀑布流打包
+     （与 utils/masonry.ts 同算法），避免未打包的 8px 行轨道在首帧叠加渲染。 -->
 <script is:inline>
 (function () {
 	var el = document.getElementById("post-list");
-	if (!el) return;
-	var m = localStorage.getItem("post-list-mode");
-	if (m !== "list" && m !== "grid") return;
-	if (m !== el.getAttribute("data-layout-mode")) {
-		el.classList.remove("m3e-post-list--list", "m3e-post-list--grid");
-		el.classList.add("m3e-post-list--" + m);
-		el.setAttribute("data-layout-mode", m);
-	}
-	if (m !== "grid") return;
+	if (!el || el.getAttribute("data-layout-mode") !== "grid") return;
 	var cols = getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length;
 	if (cols <= 1) return;
 	var heights = new Array(cols).fill(0);
@@ -122,12 +104,15 @@ activate-post-grid()
 </script>
 
 <script>
-	// 首载挂接瀑布流（打包 + ResizeObserver）；字体加载后卡片高度可能微调，重排一次。
-	// swup 导航由 Layout 的 content:replace 钩子调用 applyStoredLayoutMode 兜底。
+	// 挂接瀑布流（打包 + ResizeObserver）；字体加载后卡片高度可能微调，重排一次。
+	// 模块脚本只执行一次，swup 换入新列表时重新挂接。
 	import { packMasonry, setupMasonry } from "@utils/masonry";
-	const container = document.getElementById("post-list");
-	if (container) {
+	function mountMasonry() {
+		const container = document.getElementById("post-list");
+		if (!container) return;
 		setupMasonry(container);
 		document.fonts?.ready.then(() => packMasonry(container));
 	}
+	mountMasonry();
+	document.addEventListener("swup:content:replace", mountMasonry);
 </script>

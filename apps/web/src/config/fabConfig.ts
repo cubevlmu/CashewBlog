@@ -1,5 +1,4 @@
 import type { FabConfig } from "@/types/fabConfig";
-import { withUserConfig } from "../utils/config-overlay.ts";
 
 /**
  * 右下角悬浮控制流（FAB）导航配置。
@@ -18,7 +17,7 @@ import { withUserConfig } from "../utils/config-overlay.ts";
  *
  * 架构规范见 docs/fab-system.md。
  */
-export const fabConfig: FabConfig = withUserConfig("fab", {
+export const fabConfig: FabConfig = {
 	enable: true,
 	align: "end",
 	size: "regular",
@@ -47,4 +46,4 @@ export const fabConfig: FabConfig = withUserConfig("fab", {
 			onlySubPages: true,
 		},
 	],
-});
+};

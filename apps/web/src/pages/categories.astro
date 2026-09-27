@@ -11,9 +11,9 @@ import PageHeader from "@components/atoms/display/PageHeader.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { getCategoryList } from "@utils/content-utils";
+import { getCategoryUrl } from "@utils/url-utils";
 
-const categories = await getCategoryList();
+const { categories } = Astro.locals.site;
 const totalPosts = categories.reduce(
 	(sum, category) => sum + category.count,
 	0,
@@ -32,7 +32,7 @@ const categorySummary = `${categories.length} ${i18n(I18nKey.categoriesCount)} Â
 			<ul class="category-index__list">
 				{categories.map((category) => (
 					<li>
-						<a class="category-index__row m3-state-layer" href={category.url}>
+						<a class="category-index__row m3-state-layer" href={getCategoryUrl(category.slug)}>
 							<MetaIcon icon="material-symbols:folder-outline-rounded" />
 							<span class="category-index__name">{category.name}</span>
 							<span class="category-index__rule" aria-hidden="true"></span>

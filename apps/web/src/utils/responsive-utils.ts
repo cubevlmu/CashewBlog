@@ -1,4 +1,4 @@
-import { sidebarConfig } from "@/config/sidebarConfig";
+import type { SidebarConfig } from "@/types/sidebarConfig";
 import { PAGE_WIDTH, PAGE_WIDTH_DUAL } from "../constants/constants";
 
 export interface ResponsiveSidebarConfig {
@@ -15,7 +15,9 @@ export interface ResponsiveSidebarConfig {
  * - 1024px 以上：两列（侧栏 --sidebar-width + 内容）；
  * - dual 编排且副栏有 widget 时，1280px（xl）起升为三列。
  */
-export function getResponsiveSidebarConfig(): ResponsiveSidebarConfig {
+export function getResponsiveSidebarConfig(
+	sidebarConfig: SidebarConfig,
+): ResponsiveSidebarConfig {
 	const widgets = sidebarConfig.enable
 		? sidebarConfig.components.filter((widget) => widget.enable)
 		: [];
@@ -119,7 +121,10 @@ export function generateMainContentClasses(
 		"overflow-hidden",
 		"min-w-0",
 	];
-	if (isDualColumn(config)) {
+	if (!config.hasPrimary) {
+		// 无侧栏：单列网格，内容独占整行
+		base.push("lg:col-span-2");
+	} else if (isDualColumn(config)) {
 		base.push("lg:col-start-2", "xl:col-start-2");
 	} else if (config.side === "left") {
 		base.push("lg:col-start-2");
@@ -133,7 +138,7 @@ export function generateMainContentClasses(
  * 页框宽度按侧栏编排自动解析：dual 升为三列时加宽一档（96rem），
  * 其余维持 85rem。Layout.astro 注入为全局 --page-width。
  */
-export function resolvePageWidth(): string {
-	const config = getResponsiveSidebarConfig();
+export function resolvePageWidth(sidebarConfig: SidebarConfig): string {
+	const config = getResponsiveSidebarConfig(sidebarConfig);
 	return isDualColumn(config) ? `${PAGE_WIDTH_DUAL}rem` : `${PAGE_WIDTH}rem`;
 }

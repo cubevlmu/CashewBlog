@@ -1,15 +1,12 @@
 ---
-import { getImage } from "astro:assets";
 import Button from "@components/atoms/action/Button.svelte";
 import IconButton from "@components/atoms/action/IconButton.svelte";
 import Avatar from "@components/atoms/display/Avatar.svelte";
 import Card from "@components/atoms/display/Card.svelte";
 import Tooltip from "@components/atoms/overlay/Tooltip.svelte";
 import UmamiStats from "@components/organisms/UmamiStats.astro";
-import { resolveImageAsset } from "@utils/asset-utils";
 import { url } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
-import { profileConfig } from "@/config";
 import type { ProfileWidget } from "@/types/sidebarConfig";
 
 interface Props {
@@ -23,52 +20,23 @@ const className = Astro.props.class;
 const style = Astro.props.style;
 const priority = Astro.props.priority ?? false;
 
-const config = profileConfig;
-const avatarAsset = await resolveImageAsset(config.avatar ?? "");
-let avatarUrl = typeof avatarAsset === "string" ? avatarAsset : avatarAsset.src;
-let avatarSrcset: string | undefined;
-let avatarWidth: number | undefined;
-let avatarHeight: number | undefined;
-if (typeof avatarAsset !== "string") {
-	const widths = [128, 256, 384, 512].filter(
-		(width) => width <= avatarAsset.width,
-	);
-	const candidates = await Promise.all(
-		widths.map(async (width) => ({
-			width,
-			image: await getImage({
-				src: avatarAsset,
-				width,
-				format: "webp",
-				quality: 72,
-			}),
-		})),
-	);
-	avatarUrl =
-		candidates.find(({ width }) => width === 256)?.image.src ??
-		candidates.at(-1)?.image.src ??
-		avatarAsset.src;
-	avatarSrcset = candidates
-		.map(({ image, width }) => `${image.src} ${width}w`)
-		.join(", ");
-	avatarWidth = avatarAsset.width;
-	avatarHeight = avatarAsset.height;
-}
+const { profileConfig: config, pages } = Astro.locals.site;
+const avatarUrl = config.avatar || url("/assets/default-avatar.webp");
+// 头像链接到「关于」自定义页（存在时）
+const aboutHref = pages.some((page) => page.slug === "about")
+	? url("/about/")
+	: undefined;
 ---
 <div class={className} style={style}>
 	<Card color="var(--card-bg)" radius="l" class="m3-profile p-3">
-    <a aria-label="Go to About Page" href={url('/about/')}
+    <a aria-label="Go to About Page" href={aboutHref}
        class="m3-profile__avatar-link group">
-        <div class="m3-profile__avatar-overlay">
+        {aboutHref && <div class="m3-profile__avatar-overlay">
             <Icon name="fa6-regular:address-card"
                   class="m3-profile__avatar-icon" />
-        </div>
+        </div>}
         <Avatar
             src={avatarUrl}
-			srcset={avatarSrcset}
-			sizes="(min-width: 1024px) 256px, 176px"
-			width={avatarWidth}
-			height={avatarHeight}
 			loading={priority ? "eager" : "lazy"}
 			fetchPriority={priority ? "high" : undefined}
             alt="Profile Image of the Author"

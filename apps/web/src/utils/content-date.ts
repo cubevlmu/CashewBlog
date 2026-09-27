@@ -1,5 +1,3 @@
-import { siteConfig } from "@/config/siteConfig";
-
 export type PublicationMetadata = {
 	pinned?: boolean;
 	published: Date;
@@ -83,57 +81,12 @@ export function formatInstantDateTimeInTimeZone(
 	return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
-export function formatInstantDateInSiteTimeZone(date: Date): string {
-	return formatInstantDateInTimeZone(date, siteConfig.timeZone);
-}
-
-export function formatInstantDateTimeInSiteTimeZone(date: Date): string {
-	return formatInstantDateTimeInTimeZone(date, siteConfig.timeZone);
-}
-
 export function getPublishedInstant(data: PublicationMetadata): Date {
 	return data.publishedAt ?? data.published;
 }
 
 export function getUpdatedInstant(data: PublicationMetadata): Date {
 	return data.updatedAt ?? data.updated ?? getPublishedInstant(data);
-}
-
-/**
- * A timestamp supplements a post's calendar date; it may not silently move the
- * article to a different day when interpreted in the configured site time zone.
- */
-export function validatePublicationMetadata(
-	entry: PublicationEntry,
-	timeZone: string = siteConfig.timeZone,
-): void {
-	if (!isValidTimeZone(timeZone)) {
-		throw new Error(`siteConfig.timeZone must be a valid IANA time zone; received "${timeZone}".`);
-	}
-
-	const publishedDate = formatCalendarDate(entry.data.published);
-	if (
-		entry.data.publishedAt &&
-		formatInstantDateInTimeZone(entry.data.publishedAt, timeZone) !== publishedDate
-	) {
-		throw new Error(
-			`Post "${entry.id}" has publishedAt outside its published calendar date in ${timeZone}.`,
-		);
-	}
-
-	if (
-		entry.data.updated &&
-		entry.data.updatedAt &&
-		formatInstantDateInTimeZone(entry.data.updatedAt, timeZone) !==
-			formatCalendarDate(entry.data.updated)
-	) {
-		throw new Error(
-			`Post "${entry.id}" has updatedAt outside its updated calendar date in ${timeZone}.`,
-		);
-	}
-	if (entry.data.updatedAt && !entry.data.updated) {
-		throw new Error(`Post "${entry.id}" must define updated alongside updatedAt.`);
-	}
 }
 
 /** Sorts pinned posts first, then calendar date, exact instant, and finally ID. */

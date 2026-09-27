@@ -2,11 +2,8 @@
 import CategoryList from "@components/atoms/blog/CategoryList.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { getSeriesCatalog, getSortedPostsList } from "@utils/content-utils";
-import { normaliseSeriesSlug } from "@utils/series-utils";
 import { getSeriesUrl, url } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
-import { seriesConfig } from "@/config";
 import type { SeriesWidget } from "@/types/sidebarConfig";
 import WidgetLayout from "./WidgetLayout.astro";
 
@@ -15,8 +12,7 @@ import WidgetLayout from "./WidgetLayout.astro";
  * 复用数据驱动的 CategoryList 原子）。
  * 超过侧栏展示上限（collapseAfter）时只展示前 N 项，并在卡片底部提供
  * 「查看全部系列」入口指向系列索引页（/series/）。
- * 站点没有任何系列时不渲染整个组件；seriesConfig.enable 为 false 时
- * 连取数都跳过（零额外负担：导航与 sitemap 已裁剪，侧栏入口必须同步消失）。
+ * 站点没有任何有公开文章的系列时不渲染整个组件。
  */
 interface Props {
 	class?: string;
@@ -29,36 +25,8 @@ const style = Astro.props.style;
 
 const DISPLAY_LIMIT = Math.max(1, Astro.props.widget?.collapseAfter ?? 5);
 
-interface SeriesItem {
-	slug: string;
-	title: string;
-	count: number;
-	latest: Date | null;
-}
-
-// 功能关闭时短路：不查集合、不产出 DOM
-const catalog = seriesConfig.enable ? await getSeriesCatalog() : null;
-const posts = catalog ? await getSortedPostsList() : [];
-
-const seriesItems: SeriesItem[] = !catalog
-	? []
-	: [...catalog.entries()]
-			.map(([slug, entity]) => {
-				const members = posts.filter(
-					(post) => normaliseSeriesSlug(post.data.series) === slug,
-				);
-				const latest = members.reduce<Date | null>((acc, post) => {
-					const published = post.data.published;
-					return acc === null || published > acc ? published : acc;
-				}, null);
-				return {
-					slug,
-					title: entity.data.title,
-					count: members.length,
-					latest,
-				};
-			})
-			.sort((a, b) => (b.latest?.getTime() ?? 0) - (a.latest?.getTime() ?? 0));
+// 后端按最近更新排序并附带公开文章数；空系列不进入侧栏
+const seriesItems = Astro.locals.site.series.filter((item) => item.count > 0);
 
 const visibleItems = seriesItems.slice(0, DISPLAY_LIMIT).map((item) => ({
 	name: item.title.trim(),

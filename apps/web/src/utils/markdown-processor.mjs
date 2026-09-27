@@ -6,7 +6,6 @@ import rehypeSlug from "rehype-slug";
 import remarkDirective from "remark-directive"; /* Handle directives */
 import remarkMath from "remark-math";
 import remarkSectionize from "remark-sectionize";
-import { siteConfig } from "../config/siteConfig.ts";
 import { i18n } from "../i18n/translation.ts";
 import { remarkCodeTree } from "../plugins/markdown/code/remark-code-tree.mjs";
 import { remarkFileTree } from "../plugins/markdown/code/remark-file-tree.mjs";
@@ -34,7 +33,6 @@ import { remarkBilibili } from "../plugins/markdown/remark-bilibili.mjs";
 import { remarkCollapsePanels } from "../plugins/markdown/remark-collapse-panels.mjs";
 import { remarkContentAnnotations } from "../plugins/markdown/remark-content-annotations.mjs";
 import { remarkFields } from "../plugins/markdown/remark-fields.mjs";
-import { remarkIncludes } from "../plugins/markdown/remark-includes.mjs";
 import { remarkMarker } from "../plugins/markdown/remark-marker.mjs";
 import { remarkOptionGroups } from "../plugins/markdown/remark-option-groups.mjs";
 import { remarkYouTube } from "../plugins/markdown/remark-youtube.mjs";
@@ -70,7 +68,6 @@ const fieldI18nKeys = {
  */
 export const siteRemarkPlugins = [
 	remarkEscapeNumericColons,
-	remarkIncludes,
 	remarkContentAnnotations,
 	remarkAbbreviations,
 	remarkAdmonitions,
@@ -154,7 +151,6 @@ export const siteRehypePlugins = [
 				tagName: "span",
 				properties: {
 					className: ["anchor-icon"],
-					"data-pagefind-ignore": true,
 				},
 				children: [
 					{
@@ -170,7 +166,8 @@ export const siteRehypePlugins = [
 	[
 		rehypeMarkdownImages,
 		{
-			noReferrerDomains: siteConfig.imageOptimization?.noReferrerDomains ?? [],
+			// Image CDNs that reject cross-origin referrers (Bilibili).
+			noReferrerDomains: ["*.hdslb.com"],
 		},
 	],
 	rehypeResponsiveTables,

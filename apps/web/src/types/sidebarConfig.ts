@@ -30,14 +30,15 @@ export type SidebarPage =
 	| "notFound" // 404 页面
 	| "home" // 首页（[...page].astro 及其分页）
 	| "archive" // 归档
-	| "about" // 关于
 	| "categories" // 分类索引
 	| "tags" // 标签索引
 	| "series" // 系列索引
 	| "rss" // RSS 订阅指南
+	| "search" // 搜索结果
+	| "page" // 自定义页面
 	| "post"; // 文章详情页
 
-/** 资料卡（内容来自 profileConfig，无 WidgetLayout 标题外壳） */
+/** 资料卡（内容来自资料设置，无 WidgetLayout 标题外壳） */
 export interface ProfileWidget {
 	type: "profile";
 	enable: boolean;
@@ -83,7 +84,18 @@ export interface SeriesWidget {
 	pages?: SidebarPage[];
 }
 
-/** 公告（内容来自 announcementConfig，text 为空时不渲染） */
+/** 最近文章（最多 collapseAfter 篇，默认 5） */
+export interface RecentPostsWidget {
+	type: "recentPosts";
+	enable: boolean;
+	slot: SidebarWidgetSlot;
+	column?: SidebarColumn;
+	collapseAfter?: number;
+	/** 限定显示的页面，省略或空数组表示所有页面 */
+	pages?: SidebarPage[];
+}
+
+/** 公告（管理员设置，未启用或内容为空时不渲染） */
 export interface AnnouncementWidget {
 	type: "announcement";
 	enable: boolean;
@@ -119,6 +131,7 @@ export type SidebarWidget =
 	| CategoriesWidget
 	| TagsWidget
 	| SeriesWidget
+	| RecentPostsWidget
 	| AnnouncementWidget
 	| StatsWidget
 	| TocWidget;

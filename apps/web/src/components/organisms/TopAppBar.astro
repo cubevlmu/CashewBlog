@@ -2,31 +2,29 @@
 /**
  * M3 Top App Bar — 全站顶栏（替代 Fuwari 卡片式 Navbar）。
  * fixed 全宽、surface 底色 + 底部细分隔线；左侧菜单按钮（开全端导航抽屉）、
- * 站点标题（回首页）、右侧搜索/显示设置/主题切换。
+ * 站点标题（回首页）、右侧搜索/主题切换。
  * 菜单按钮点击派发 site-drawer:toggle 事件，由 SiteNavigationDrawer 监听开合。
  */
 import IconButton from "@components/atoms/action/IconButton.svelte";
-import { resolveNavBarLinks, resolvePageKey } from "@utils/nav-utils";
+import { navKeyForLink, resolveNavKeys } from "@utils/nav-utils";
 import { url } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
-import { siteConfig } from "@/config";
-import { navBarConfig } from "@/config/navBarConfig";
+import type { NavBarLink } from "@/types/navBarConfig";
 import LightDarkSwitch from "./LightDarkSwitch.svelte";
 import Search from "./Search.svelte";
 
 const className = Astro.props.class;
-const links = resolveNavBarLinks(navBarConfig.links);
-const currentPageKey = resolvePageKey(Astro.url);
+const { siteConfig, navLinks: links } = Astro.locals.site;
+const currentKeys = resolveNavKeys(Astro.url);
 
-function hrefFor(path?: string) {
-	return path ? url(path) : undefined;
+function hrefFor(link: NavBarLink) {
+	if (!link.url) return undefined;
+	return link.external ? link.url : url(link.url);
 }
 
-function isActive(link: (typeof links)[number]): boolean {
-	return Boolean(
-		(link.pageKey && link.pageKey === currentPageKey) ||
-			link.children?.some(isActive),
-	);
+function isActive(link: NavBarLink): boolean {
+	const key = navKeyForLink(link);
+	return Boolean((key && currentKeys.includes(key)) || link.children?.some(isActive));
 }
 ---
 
@@ -50,34 +48,36 @@ function isActive(link: (typeof links)[number]): boolean {
 		</a>
 		<nav class:list={["top-app-bar__nav hidden h-full items-center gap-1 lg:flex", siteConfig.topAppBar.contentAlign === "center" ? "lg:absolute lg:left-1/2 lg:-translate-x-1/2" : "ml-4"]} aria-label="Main navigation">
 			{links.map((link) => {
-				const href = link.external ? link.url : hrefFor(link.url);
+				const href = hrefFor(link);
 				const active = isActive(link);
+				const linkClass = [
+					"top-app-bar__nav-link m3-state-layer relative flex h-10 items-center gap-1 px-3 text-sm font-bold text-[var(--on-surface-variant)] transition-colors hover:text-[var(--on-surface)]",
+					active && "top-app-bar__nav-link--active",
+				];
 				return (
 					<div class="top-app-bar__nav-group" data-nav-group>
-						{link.children ? (
-							<button class:list={[
-								"top-app-bar__nav-link m3-state-layer relative flex h-10 items-center gap-1 px-3 text-sm font-bold text-[var(--on-surface-variant)] transition-colors hover:text-[var(--on-surface)]",
-								active && "top-app-bar__nav-link--active",
-							]} aria-expanded="false">
+						{link.children && !href ? (
+							<button class:list={linkClass} aria-expanded="false">
 								{link.icon && <Icon name={link.icon} class="text-[1.1rem]"></Icon>}
 								{link.name}
 								<Icon name="material-symbols:keyboard-arrow-down-rounded" class="text-[1rem]"></Icon>
 							</button>
 						) : (
 							<a href={href} target={link.external ? "_blank" : undefined} rel={link.external ? "noopener noreferrer" : undefined}
-								aria-current={active ? "page" : undefined} data-nav-key={link.pageKey ?? ""}
-								class:list={["top-app-bar__nav-link m3-state-layer relative flex h-10 items-center gap-1 px-3 text-sm font-bold text-[var(--on-surface-variant)] transition-colors hover:text-[var(--on-surface)]", active && "top-app-bar__nav-link--active"]}>
+								aria-current={active ? "page" : undefined} data-nav-key={navKeyForLink(link)}
+								aria-haspopup={link.children ? "true" : undefined}
+								class:list={linkClass}>
 								{link.icon && <Icon name={link.icon} class="text-[1.1rem]"></Icon>}{link.name}
 								{link.external && <Icon name="material-symbols:arrow-outward-rounded" class="ml-1 text-[0.875rem]"></Icon>}
+								{link.children && <Icon name="material-symbols:keyboard-arrow-down-rounded" class="text-[1rem]"></Icon>}
 							</a>
 						)}
 						{link.children && <div class="top-app-bar__submenu" role="menu">
-							{link.children.map((child) => {
-								const childHref = child.external ? child.url : hrefFor(child.url);
-							return <a href={childHref} target={child.external ? "_blank" : undefined} rel={child.external ? "noopener noreferrer" : undefined} role="menuitem" data-nav-key={child.pageKey ?? ""} class="top-app-bar__submenu-item">
+							{link.children.map((child) => (
+								<a href={hrefFor(child)} target={child.external ? "_blank" : undefined} rel={child.external ? "noopener noreferrer" : undefined} role="menuitem" data-nav-key={navKeyForLink(child)} class="top-app-bar__submenu-item">
 									{child.icon && <Icon name={child.icon} class="text-[1.2rem]"></Icon>}{child.name}{child.external && <Icon name="material-symbols:arrow-outward-rounded" class="ml-auto text-[0.875rem]"></Icon>}
-								</a>;
-							})}
+								</a>
+							))}
 						</div>}
 					</div>
 				);
@@ -90,25 +90,29 @@ function isActive(link: (typeof links)[number]): boolean {
 </div>
 
 <script>
-	import { resolvePageKey } from "@utils/nav-utils";
+	import { resolveNavKeys } from "@utils/nav-utils";
 
 	function syncTopAppBarNavigation() {
-		setTopAppBarNavigation(resolvePageKey(new URL(window.location.href)));
+		setTopAppBarNavigation(resolveNavKeys(new URL(window.location.href)));
 	}
 
-	function setTopAppBarNavigation(pageKey: string) {
+	function setTopAppBarNavigation(keys: string[]) {
 		document.querySelectorAll<HTMLElement>("[data-nav-key]").forEach((link) => {
-			const active = (link.dataset.navKey || "") === pageKey;
+			const key = link.dataset.navKey || "";
+			const active = key !== "" && keys.includes(key);
 			link.classList.toggle("top-app-bar__nav-link--active", active);
 			if (active) link.setAttribute("aria-current", "page");
 			else link.removeAttribute("aria-current");
 		});
 		document.querySelectorAll<HTMLElement>("[data-nav-group]").forEach((group) => {
-			// 仅处理有下拉子菜单的组（组触发器是 button）；普通链接组已由上面设置
-			const trigger = group.querySelector(":scope > button.top-app-bar__nav-link");
+			// 有下拉子菜单的组：子项激活时点亮组触发器（button 或可点击的父链接）
+			const trigger = group.querySelector(":scope > .top-app-bar__nav-link");
 			if (!trigger) return;
-			const active = Boolean(group.querySelector(".top-app-bar__submenu-item.top-app-bar__nav-link--active"));
-			trigger.classList.toggle("top-app-bar__nav-link--active", active);
+			if (!group.querySelector(".top-app-bar__submenu")) return;
+			const childActive = Boolean(group.querySelector(".top-app-bar__submenu-item.top-app-bar__nav-link--active"));
+			const selfKey = trigger instanceof HTMLElement ? trigger.dataset.navKey || "" : "";
+			const selfActive = selfKey !== "" && keys.includes(selfKey);
+			trigger.classList.toggle("top-app-bar__nav-link--active", childActive || selfActive);
 		});
 	}
 
@@ -131,7 +135,7 @@ function isActive(link: (typeof links)[number]): boolean {
 		syncTopAppBarNavigation();
 		document.querySelectorAll<HTMLElement>("[data-nav-key]").forEach((link) => {
 			link.onclick = () => {
-				setTopAppBarNavigation(link.dataset.navKey || "");
+				setTopAppBarNavigation([link.dataset.navKey || ""]);
 				closeTopAppBarMenus();
 			};
 		});
@@ -164,53 +168,6 @@ function isActive(link: (typeof links)[number]): boolean {
 
 	loadTopAppBar();
 </script>
-
-{import.meta.env.PROD && <script is:inline define:vars={{scriptUrl: url('/pagefind/pagefind.js')}}>
-window.__loadPagefind = function() {
-	if (window.__pagefindLoadingPromise) return window.__pagefindLoadingPromise;
-	window.__pagefindLoadingPromise = (async () => {
-		try {
-			const pagefind = await import(scriptUrl);
-			await pagefind.options({
-				excerptLength: 20
-			});
-			window.pagefind = pagefind;
-			document.dispatchEvent(new CustomEvent('pagefindready'));
-			return pagefind;
-		} catch (error) {
-			console.error('Failed to load Pagefind:', error);
-			window.pagefind = {
-				search: () => Promise.resolve({ results: [] }),
-				options: () => Promise.resolve(),
-			};
-			document.dispatchEvent(new CustomEvent('pagefindloaderror'));
-			return window.pagefind;
-		}
-	})();
-	return window.__pagefindLoadingPromise;
-};
-
-function bindSearchTriggers() {
-	const triggers = [
-		document.getElementById('search-input-desktop'),
-		document.getElementById('search-switch')
-	];
-	for (const el of triggers) {
-		if (!el) continue;
-		if (el.dataset.pagefindBound === 'true') continue;
-		el.dataset.pagefindBound = 'true';
-		el.addEventListener('focus', window.__loadPagefind, { once: true, passive: true });
-		el.addEventListener('click', window.__loadPagefind, { once: true, passive: true });
-	}
-}
-
-if (document.readyState === 'loading') {
-	document.addEventListener('DOMContentLoaded', bindSearchTriggers, { once: true });
-} else {
-	bindSearchTriggers();
-}
-document.addEventListener('swup:content:replace', bindSearchTriggers);
-</script>}
 
 <style>
 	.top-app-bar {

@@ -1,0 +1,11 @@
+---
+import HomeFeed from "@components/organisms/HomeFeed.astro";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { loadHomeFeed } from "@/lib/content/home";
+
+const feed = await loadHomeFeed(Astro.locals, 1);
+---
+
+<MainGridLayout page="home">
+	{feed && <HomeFeed feed={feed} />}
+</MainGridLayout>

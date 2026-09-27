@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { test } from "node:test";
 
-import { scanLocalDirectory } from "../../../../src/plugins/markdown/code/remark-code-tree.mjs";
 import { siteMarkdownProcessor } from "../../../../src/utils/markdown-processor.mjs";
 
 const renderer = await siteMarkdownProcessor.createRenderer({});
@@ -121,35 +117,10 @@ export const value = 42;
 	assert.match(html, />main.ts<\/span>/);
 });
 
-test("auto-imports local directory with @[code-tree] syntax", async () => {
-	const html = await render(
-		`@[code-tree title="Config files" entry="siteConfig.ts"](/src/config)`,
-	);
-
-	assert.match(html, /class="m3-code-tree not-prose"/);
-	assert.match(html, />Config files<\/span>/);
-	assert.match(html, /data-file-target="siteConfig.ts"/);
-	assert.match(html, /data-file-path="siteConfig.ts"/);
-});
-
-test("reads local directory source as UTF-8 without corrupting non-ASCII text", () => {
-	const rootDir = mkdtempSync(path.join(tmpdir(), "shirone-code-tree-"));
-
-	try {
-		writeFileSync(
-			path.join(rootDir, "source.ts"),
-			"// 站点统一 Markdown 插件链\nexport const label = '中文演示';\n",
-			"utf8",
-		);
-
-		const files = scanLocalDirectory(".", rootDir);
-		assert.equal(files.length, 1);
-		assert.match(files[0].value, /站点统一 Markdown 插件链/);
-		assert.match(files[0].value, /中文演示/);
-		assert.doesNotMatch(files[0].value, /\?{3,}/);
-	} finally {
-		rmSync(rootDir, { recursive: true, force: true });
-	}
+test("does not import directories from the server filesystem", async () => {
+	const html = await render(`@[code-tree title="Config files"](/src/config)`);
+	assert.doesNotMatch(html, /m3-code-tree/);
+	assert.doesNotMatch(html, /data-file-path/);
 });
 
 test("removes empty code tree container without generating broken DOM", async () => {

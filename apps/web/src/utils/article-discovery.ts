@@ -1,15 +1,9 @@
-import { comparePublicationEntries } from "@utils/content-date";
-
+/** Minimal article shape for discovery; `PostView` satisfies it. */
 export interface DiscoverableArticle {
 	slug: string;
-	data: {
-		title: string;
-		published: Date;
-		publishedAt?: Date;
-		description?: string;
-		tags: string[];
-		category: string | null;
-	};
+	publishedAt: Date;
+	tags: { slug: string }[];
+	category: { slug: string } | null;
 }
 
 export interface ArticleDiscoveryResult<T extends DiscoverableArticle> {
@@ -35,16 +29,17 @@ function uniqueArticles<T extends DiscoverableArticle>(articles: T[]): T[] {
 }
 
 function normalizedTags(article: DiscoverableArticle): Set<string> {
-	return new Set(article.data.tags.map(normalizeText).filter(Boolean));
+	return new Set(article.tags.map((tag) => normalizeText(tag.slug)).filter(Boolean));
 }
 
+/** Newest first, slug as a deterministic tie-breaker. */
 function comparePublishedThenSlug(
 	a: DiscoverableArticle,
 	b: DiscoverableArticle,
 ): number {
-	return comparePublicationEntries(
-		{ id: a.slug, data: a.data },
-		{ id: b.slug, data: b.data },
+	return (
+		b.publishedAt.getTime() - a.publishedAt.getTime() ||
+		a.slug.localeCompare(b.slug)
 	);
 }
 
@@ -69,7 +64,7 @@ export function selectRelatedArticles<T extends DiscoverableArticle>(
 		(article) => article.slug !== current.slug,
 	);
 	const currentTags = normalizedTags(current);
-	const currentCategory = normalizeText(current.data.category);
+	const currentCategory = normalizeText(current.category?.slug);
 	const tagFrequency = new Map<string, number>();
 
 	for (const article of uniqueArticles([current, ...candidates])) {
@@ -88,7 +83,7 @@ export function selectRelatedArticles<T extends DiscoverableArticle>(
 				score += 2 + Math.log2((corpusSize + 1) / frequency);
 			}
 
-			const category = normalizeText(article.data.category);
+			const category = normalizeText(article.category?.slug);
 			if (currentCategory && category === currentCategory) score += 1;
 
 			return { article, score };

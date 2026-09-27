@@ -8,13 +8,14 @@ import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
 import { getCategoryUrl, getTagUrl } from "@utils/url-utils";
+import type { TaxonomyRefDto } from "@/lib/api/types";
 
 interface Props {
 	class?: string;
 	published: Date;
 	updated?: Date;
-	tags: string[];
-	category: string | null;
+	tags: TaxonomyRefDto[];
+	category: TaxonomyRefDto | null;
 	hideUpdateDate?: boolean;
 }
 const {
@@ -27,9 +28,9 @@ const {
 } = Astro.props;
 
 const categoryLink = category
-	? { name: category, href: getCategoryUrl(category) }
+	? { name: category.name, href: getCategoryUrl(category.slug) }
 	: null;
-const tagLinks = tags.map((t) => ({ name: t.trim(), href: getTagUrl(t) }));
+const tagLinks = tags.map((t) => ({ name: t.name, href: getTagUrl(t.slug) }));
 ---
 
 <PostMeta

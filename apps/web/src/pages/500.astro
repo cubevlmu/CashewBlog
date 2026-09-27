@@ -1,0 +1,18 @@
+---
+/** 服务错误页：后端不可用等运行时错误时渲染，不暴露堆栈。 */
+import Card from "@components/atoms/display/Card.svelte";
+import PageHeader from "@components/atoms/display/PageHeader.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+---
+
+<MainGridLayout title={i18n(I18nKey.serverErrorTitle)} page="notFound" noindex>
+	<Card color="var(--card-bg)" radius="l" class="px-6 py-8 md:px-10 md:py-12">
+		<PageHeader
+			icon="material-symbols:cloud-off-outline-rounded"
+			title={i18n(I18nKey.serverErrorTitle)}
+			subtitle={i18n(I18nKey.serverErrorDescription)}
+		/>
+	</Card>
+</MainGridLayout>

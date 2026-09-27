@@ -68,6 +68,7 @@ export const zh_CN: Translation = {
 
 	[Key.stats]: "统计",
 	[Key.statsPosts]: "文章",
+	[Key.statsViews]: "总阅读",
 	[Key.statsWords]: "总字数",
 	[Key.statsDays]: "运行天数",
 	[Key.statsUpdated]: "最近更新",
@@ -126,6 +127,8 @@ export const zh_CN: Translation = {
 	[Key.notFound]: "404",
 	[Key.notFoundTitle]: "这条路似乎偏离了",
 	[Key.notFoundDescription]: "它可能被移动了、归档了，或者本来就不存在。",
+	[Key.serverErrorTitle]: "服务暂时不可用",
+	[Key.serverErrorDescription]: "博客后端暂时无法响应，请稍后再试。",
 	[Key.backToHome]: "返回首页",
 	[Key.close]: "关闭",
 	[Key.scanToRead]: "扫码阅读全文",

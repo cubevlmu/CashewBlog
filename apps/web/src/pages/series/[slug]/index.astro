@@ -1,96 +1,67 @@
 ---
 /**
  * 系列详情页：单个系列的落地页。
- * 总览正文（可选，来自系列实体 body）+ 按 seriesOrder 排序的文章列表
- * （列表项标注「第 N 篇」）。系列实体缺失时重定向到 404 存根。
+ * 总览正文（可选，系列描述 Markdown）+ 按阅读顺序排列的文章列表
+ * （列表项标注「第 N 篇」）。系列不存在时返回 404。
  */
-import { render } from "astro:content";
 import Card from "@components/atoms/display/Card.svelte";
 import PageHeader from "@components/atoms/display/PageHeader.astro";
 import Markdown from "@components/content/Markdown.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { seriesConfig } from "@/config";
-
-if (!seriesConfig.enable) {
-	return Astro.redirect("/404/");
-}
-
-import { getSeriesCatalog, getSortedPostsList } from "@utils/content-utils";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
 import { getMarkdownStylesheetAssets } from "@utils/markdown-assets";
-import {
-	normaliseSeriesSlug,
-	orderSeriesMembers,
-	type SeriesMemberInput,
-} from "@utils/series-utils";
-import { url } from "@utils/url-utils";
+import { mergeMarkdownSyntaxSnapshots } from "@utils/markdown-syntaxes.mjs";
+import { toPostView } from "@/lib/content/posts";
+import { renderMarkdown } from "@/lib/markdown/render";
 
-export async function getStaticPaths() {
-	const catalog = await getSeriesCatalog();
-	return [...catalog.keys()].map((slug) => ({ params: { slug } }));
-}
+const { site, api } = Astro.locals;
+const series = await api.getSeriesBySlug(Astro.params.slug ?? "");
+if (!series) return Astro.rewrite("/404/");
 
-const { slug } = Astro.params;
-const catalog = await getSeriesCatalog();
-const series = slug ? catalog.get(slug) : undefined;
-if (!series) {
-	return Astro.redirect("/404/");
-}
-
-const { Content, remarkPluginFrontmatter } = await render(series);
-const markdownStylesheetAssets = await getMarkdownStylesheetAssets(
-	remarkPluginFrontmatter.markdownSyntaxes,
-);
-
-const posts = await getSortedPostsList();
-const members: SeriesMemberInput[] = posts
-	.filter((post) => normaliseSeriesSlug(post.data.series) === series.id)
-	.map((post) => ({
-		slug: post.slug,
-		title: post.data.title,
-		published: post.data.published,
-		series: normaliseSeriesSlug(post.data.series),
-		seriesOrder: post.data.seriesOrder,
-	}));
-const ordered = orderSeriesMembers(members);
+const overview = series.description?.trim()
+	? await renderMarkdown(series.description)
+	: null;
+const markdownStylesheetAssets = overview
+	? await getMarkdownStylesheetAssets(
+			mergeMarkdownSyntaxSnapshots(overview.frontmatter.markdownSyntaxes),
+		)
+	: [];
+const ordered = series.posts.map((dto) => toPostView(dto, site.siteConfig.timeZone));
 
 const statusLabel =
-	series.data.status === "completed"
+	series.status === "completed"
 		? i18n(I18nKey.seriesStatusCompleted)
 		: i18n(I18nKey.seriesStatusOngoing);
 const subtitle = `${statusLabel} · ${ordered.length} ${i18n(I18nKey.postsCount)}`;
 ---
 
-<MainGridLayout title={series.data.title} description={subtitle} page="series">
+<MainGridLayout title={series.title} description={subtitle} page="series">
 	{markdownStylesheetAssets.map(({ pack, css }) => (
 		<style is:inline slot="head" data-swup-optional={pack} set:html={css}></style>
 	))}
 	<Card color="var(--card-bg)" radius="l" class="series-detail px-8 py-6">
 		<PageHeader
 			icon="material-symbols:auto-stories-rounded"
-			title={series.data.title}
+			title={series.title}
 			subtitle={subtitle}
 		/>
-		{series.body && (
+		{overview && (
 			<section class="series-detail__overview">
 				<Markdown class="series-detail__overview-markdown">
-					<Content />
+					<Fragment set:html={overview.html} />
 				</Markdown>
 			</section>
 		)}
 		{ordered.length > 0 && (
 			<ol class="series-detail__list">
 				{ordered.map((member, index) => {
-					const postUrl =
-						posts.find((post) => post.slug === member.slug)?.url ??
-						url("/");
 					return (
 						<li>
 							<a
 								class="series-detail__row m3-state-layer"
-								href={postUrl}
+								href={member.url}
 							>
 								<span class="series-detail__index" aria-hidden="true">
 									{String(index + 1).padStart(2, "0")}

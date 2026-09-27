@@ -1,0 +1,60 @@
+---
+/**
+ * 自定义页面（Custom Page）：管理员编写的 HTML + 页面级 CSS，支持嵌套 slug
+ * （如 /links/friends/）。系统路由优先于本兜底路由；保留名由后端拒绝。
+ * HTML 已由后端净化（无脚本 / 事件属性 / javascript: URL）；CSS 用 @scope
+ * 限定在本页容器内，并标记 data-swup-optional，导航离开时随页移除。
+ */
+import Card from "@components/atoms/display/Card.svelte";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+
+const { api } = Astro.locals;
+const page = await api.getCustomPage(Astro.params.slug ?? "");
+if (!page) return Astro.rewrite("/404/");
+
+const scopeId = `cashew-page-${page.slug.replace(/[^\p{L}\p{N}_-]+/gu, "-")}`;
+const scopedCss = page.customCss?.trim()
+	? `@scope (.cashew-custom-page[data-page-scope="${scopeId}"]) {\n${page.customCss}\n}`
+	: "";
+const hasSidebar = page.layout === "default";
+---
+
+<MainGridLayout title={page.title} page="page" sidebar={hasSidebar}>
+	{scopedCss && (
+		<style is:inline slot="head" data-swup-optional="custom-page" set:html={scopedCss}></style>
+	)}
+	{page.layout === "fullWidth" ? (
+		<article
+			class="cashew-custom-page onload-animation"
+			data-layout={page.layout}
+			data-page-scope={scopeId}
+			set:html={page.contentHtml}
+		/>
+	) : (
+		<Card color="var(--card-bg)" radius="l" class="px-6 md:px-9 py-6 mb-4 onload-animation">
+			<article
+				class="cashew-custom-page"
+				data-layout={page.layout}
+				data-page-scope={scopeId}
+				set:html={page.contentHtml}
+			/>
+		</Card>
+	)}
+</MainGridLayout>
+
+<style is:global>
+	/* 稳定的作者可用类：让自定义 HTML 默认继承站点正文排版 */
+	.cashew-custom-page {
+		color: var(--on-surface);
+		font: var(--m3e-type-body-large);
+		overflow-wrap: anywhere;
+	}
+	.cashew-custom-page :where(img, video) {
+		max-width: 100%;
+		height: auto;
+		border-radius: var(--shape-corner-m);
+	}
+	.cashew-custom-page :where(a) {
+		color: var(--primary);
+	}
+</style>
