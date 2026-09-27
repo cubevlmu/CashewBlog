@@ -1,0 +1,5 @@
+interface:
+  display_name: "Shirone Data and Albums"
+  short_description: "Manage albums and data-backed site pages"
+  default_prompt: "Use $shirone-data to add or update a Shirone album or data-backed page."
+  brand_color: "#5B5BD6"

@@ -1,0 +1,103 @@
+---
+import AccentBar from "@components/atoms/display/AccentBar.svelte";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+	href: string;
+	title: string;
+	published: string;
+	category?: string | null;
+	lane: "related" | "random";
+}
+
+const { href, title, published, category, lane } = Astro.props;
+const accent = lane === "related" ? "var(--primary)" : "var(--tertiary)";
+---
+
+<li class={`article-discovery-item article-discovery-item--${lane}`}>
+	<a href={href} class="article-discovery-item__link m3-state-layer">
+		<AccentBar size="small" color={accent} />
+		<span class="article-discovery-item__content">
+			<span class="article-discovery-item__title">{title}</span>
+			<span class="article-discovery-item__meta">
+				<time datetime={published}>{published}</time>
+				{category && <span>{category}</span>}
+			</span>
+		</span>
+		<Icon
+			class="article-discovery-item__arrow"
+			name="material-symbols:chevron-right-rounded"
+		/>
+	</a>
+</li>
+
+<style lang="stylus">
+.article-discovery-item
+	min-width: 0
+	list-style: none
+
+	&__link
+		display: flex
+		align-items: center
+		gap: var(--m3e-space-3)
+		min-width: 0
+		min-height: calc(var(--m3e-space-10) + var(--m3e-space-4))
+		padding: var(--m3e-space-2) var(--m3e-space-3)
+		border-radius: var(--shape-corner-s)
+		text-decoration: none
+		--m3e-state-color: var(--primary)
+		--m3e-focus-outline: var(--primary)
+
+	&--random &__link
+		--m3e-state-color: var(--tertiary)
+		--m3e-focus-outline: var(--tertiary)
+
+	&__content
+		display: flex
+		flex: 1
+		min-width: 0
+		flex-direction: column
+		gap: var(--m3e-space-1)
+
+	&__title
+		overflow: hidden
+		font: var(--m3e-type-body-large)
+		font-weight: 700
+		color: var(--on-surface)
+		text-overflow: ellipsis
+		white-space: nowrap
+		transition: color var(--m3e-duration-short) var(--m3e-easing-standard)
+
+	&__meta
+		display: flex
+		min-width: 0
+		flex-wrap: wrap
+		gap: var(--m3e-space-2)
+		font: var(--m3e-type-label-medium)
+		color: var(--on-surface-variant)
+
+		> span
+			overflow: hidden
+			text-overflow: ellipsis
+			white-space: nowrap
+
+	&__arrow
+		flex: 0 0 var(--m3e-space-5)
+		width: var(--m3e-space-5)
+		height: var(--m3e-space-5)
+		color: var(--on-surface-variant)
+		transition:
+			color var(--m3e-duration-short) var(--m3e-easing-standard),
+			transform var(--m3e-duration-medium) var(--m3e-easing-emphasized-decelerate)
+
+	&__link:hover &__title,
+	&__link:hover &__arrow
+		color: var(--primary)
+
+	&--random &__link:hover &__title,
+	&--random &__link:hover &__arrow
+		color: var(--tertiary)
+
+	&__link:hover &__arrow
+		transform: translateX(var(--m3e-space-1))
+</style>

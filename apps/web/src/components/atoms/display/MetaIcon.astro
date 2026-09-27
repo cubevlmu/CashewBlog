@@ -1,0 +1,39 @@
+---
+/**
+ * M3E 展示原子 — MetaIcon 图标徽标。
+ * 32px tonal 圆角方块图标容器（单图标徽标语言）：
+ * btn-regular-bg 跟随明暗模式、corner-s 圆角、20px 图标。
+ * 纯装饰展示件：无交互、无文字，图标自带 aria-hidden；
+ * 与外部文字搭配使用（PostMeta 的日期/分类/标签等）。
+ */
+import { Icon } from "astro-icon/components";
+
+interface Props {
+	/** iconify 图标名（如 "material-symbols:calendar-today-outline-rounded"） */
+	icon: string;
+	class?: string;
+	style?: string;
+}
+
+const { icon, class: className, style } = Astro.props;
+---
+
+<span class:list={["m3-meta-icon", className]} style={style} aria-hidden="true">
+	<Icon name={icon} is:inline />
+</span>
+
+<style lang="stylus">
+.m3-meta-icon
+	display: flex
+	align-items: center
+	justify-content: center
+	width: 2rem
+	height: 2rem
+	border-radius: var(--shape-corner-s)
+	background: var(--btn-regular-bg)
+	color: var(--btn-content)
+	flex-shrink: 0
+	> :global(svg)
+		width: 1.25rem
+		height: 1.25rem
+</style>

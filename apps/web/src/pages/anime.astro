@@ -1,0 +1,25 @@
+---
+/**
+ * 番剧收藏页：数据经 utils/anime-data（AnimeSource 分发，本地/快照/Dev热加载）
+ * 构建期/Dev环境取得后交给客户端岛渲染（筛选/过渡/加载更多均为交互态）。
+ */
+import AnimeSection from "@components/organisms/AnimeSection.svelte";
+import I18nKey from "@i18n/i18nKey";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { animeConfig } from "@/config/animeConfig";
+import { resolveI18nText } from "@utils/i18n-utils";
+import { getAnimeList } from "../utils/anime-data";
+
+if (!animeConfig.enable) {
+	return Astro.redirect("/404/");
+}
+
+const pageTitle = resolveI18nText(animeConfig.title, I18nKey.anime);
+const pageDescription = resolveI18nText(animeConfig.description, I18nKey.animeBanner);
+
+const animes = await getAnimeList();
+---
+
+<MainGridLayout title={pageTitle} description={pageDescription} page="anime">
+    <AnimeSection animes={animes} title={pageTitle} subtitle={pageDescription} client:visible></AnimeSection>
+</MainGridLayout>

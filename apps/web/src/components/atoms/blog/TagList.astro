@@ -1,0 +1,24 @@
+---
+/**
+ * M3E 博客原子 — TagList 标签列表（tonal Chip 链接组）。
+ * 数据驱动：tags 为 { name, href }[]，复用 action/Chip 原子。
+ */
+import Chip from "@components/atoms/action/Chip.astro";
+
+interface Props {
+	tags: { name: string; href: string }[];
+	class?: string;
+}
+
+const { tags = [], class: className } = Astro.props;
+---
+
+<div class:list={["m3-blog-taglist flex flex-wrap gap-2", className]}>
+	{tags.map((t) => (
+		<Chip
+			href={t.href}
+			variant="tonal"
+			
+		>{t.name}</Chip>
+	))}
+</div>

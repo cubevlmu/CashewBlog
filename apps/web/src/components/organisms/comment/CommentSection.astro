@@ -1,0 +1,63 @@
+---
+import AccentBar from "@components/atoms/display/AccentBar.svelte";
+import Card from "@components/atoms/display/Card.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { commentConfig, resolveCommentOptions } from "@/config";
+import type { CommentContext } from "@/types/commentConfig";
+
+interface Props {
+	context: CommentContext;
+	postCommentEnabled?: boolean;
+	class?: string;
+}
+
+const { context, postCommentEnabled = true, class: className } = Astro.props;
+const options = resolveCommentOptions(commentConfig);
+
+if (!options || !postCommentEnabled) {
+	return null;
+}
+
+const Twikoo =
+	options.provider === "twikoo"
+		? (await import("@components/organisms/comment/Twikoo.astro")).default
+		: null;
+
+const Giscus =
+	options.provider === "giscus"
+		? (await import("@components/organisms/comment/Giscus.astro")).default
+		: null;
+---
+
+<section
+	id="comments"
+	aria-labelledby="comments-title"
+	class:list={["comment-section w-full mb-4", className]}
+	data-comment-section
+>
+	<Card color="var(--card-bg)" radius="l" class="p-6 md:p-8 w-full relative">
+		<div class="flex items-center gap-3 mb-6 relative">
+			<AccentBar size="small" class="!inline-block" />
+			<h2 id="comments-title" class="text-xl md:text-2xl font-bold text-[var(--on-surface)] m-0">
+				{i18n(I18nKey.comments)}
+			</h2>
+		</div>
+
+		{options.provider === "twikoo" && Twikoo && (
+			<Twikoo
+				context={context}
+				config={options.twikoo}
+				lazy={options.lazy}
+			/>
+		)}
+
+		{options.provider === "giscus" && Giscus && (
+			<Giscus
+				context={context}
+				config={options.giscus}
+				lazy={options.lazy}
+			/>
+		)}
+	</Card>
+</section>

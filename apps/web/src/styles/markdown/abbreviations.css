@@ -1,0 +1,81 @@
+/* Abbreviations use the native Popover API (rendered in the top layer) anchored
+   to each <abbr> with CSS Anchor Positioning. Because a shown popover is promoted
+   to the top layer, it is never clipped by the article column or sidebar overflow
+   contexts. Touch/click and focus alt-trigger the popover through a tiny client
+   module; the <abbr> itself keeps the readable inline term on pure SSR. */
+.custom-md .m3-abbreviation {
+	color: inherit;
+	text-decoration-color: var(--primary);
+	text-decoration-line: underline;
+	text-decoration-style: dotted;
+	cursor: help;
+}
+
+.custom-md .m3-abbreviation:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: var(--m3e-space-1);
+}
+
+/* Base: the popover centers on the anchor via its declared --m3-abbr-anchor.
+   When position-area is unavailable to the engine we still avoid viewport clipping
+   (top layer + fixed), matching the content-annotation fallback pattern. */
+.m3-abbreviation__popover {
+	position: fixed;
+	position-anchor: var(--m3-abbr-anchor);
+	inset: 50% auto auto 50%;
+	box-sizing: border-box;
+	width: max-content;
+	max-width: min(18rem, calc(100vw - var(--m3e-space-6)));
+	margin: 0;
+	padding: var(--m3e-space-1) var(--m3e-space-2);
+	overflow-wrap: anywhere;
+	border-radius: var(--shape-corner-xs);
+	background: var(--inverse-surface);
+	color: var(--inverse-on-surface);
+	font: var(--m3e-type-body-small);
+	line-height: inherit;
+	text-align: start;
+	white-space: normal;
+	pointer-events: none;
+	z-index: 120;
+	box-shadow: var(--m3e-elevation-1);
+	transform: translate(-50%, -50%);
+	transition:
+		opacity var(--m3e-duration-short) var(--m3e-easing-standard),
+		transform var(--m3e-duration-short) var(--m3e-easing-standard);
+}
+
+.m3-abbreviation__popover:popover-open {
+	opacity: 1;
+	transform: translate(-50%, calc(-50% - var(--m3e-space-2)));
+}
+
+@supports (position-area: block-start) {
+	.m3-abbreviation__popover {
+		position-area: block-start;
+		position-try-fallbacks: flip-block, flip-inline;
+		inset: auto;
+		margin: 0 0 var(--m3e-space-2);
+		transform: none;
+	}
+
+	.m3-abbreviation__popover:popover-open {
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.m3-abbreviation__popover {
+		transition: none;
+	}
+}
+
+@media print {
+	.custom-md .m3-abbreviation {
+		text-decoration-style: solid;
+	}
+
+	.m3-abbreviation__popover {
+		display: none;
+	}
+}

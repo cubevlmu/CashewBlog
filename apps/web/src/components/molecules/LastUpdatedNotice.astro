@@ -1,0 +1,113 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import {
+	formatDateToYYYYMMDD,
+	normalizeMinimumAgeDays,
+	resolveLastUpdatedNoticeState,
+} from "@utils/date-utils";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+	date: Date;
+	minimumAgeDays: number;
+	class?: string;
+}
+
+const { date, minimumAgeDays, class: className = "" } = Astro.props;
+const normalizedMinimumAgeDays = normalizeMinimumAgeDays(minimumAgeDays);
+const state = resolveLastUpdatedNoticeState(date, normalizedMinimumAgeDays);
+const formattedDate = formatDateToYYYYMMDD(date);
+const messageParts = i18n(I18nKey.lastUpdatedNotice).split(
+	/(\{date\}|\{days\})/g,
+);
+---
+
+<div
+	class={`last-updated-notice${className ? ` ${className}` : ""}`}
+	role="note"
+	data-last-updated-notice
+	data-last-updated-date={date.toISOString()}
+	data-minimum-age-days={normalizedMinimumAgeDays}
+	hidden={!state.visible}
+>
+	<span class="last-updated-notice__icon" aria-hidden="true">
+		<Icon name="material-symbols:history-rounded" />
+	</span>
+	<div class="last-updated-notice__content">
+		<p class="last-updated-notice__text">
+			{messageParts.map((part) => {
+				if (part === "{date}") {
+					return <time datetime={date.toISOString()}>{formattedDate}</time>;
+				}
+				if (part === "{days}") {
+					return <span data-last-updated-days>{state.days}</span>;
+				}
+				return part;
+			})}
+		</p>
+		<p class="last-updated-notice__warning">
+			{i18n(I18nKey.lastUpdatedWarning)}
+		</p>
+	</div>
+</div>
+
+<style lang="stylus">
+.last-updated-notice
+	display: flex
+	align-items: center
+	gap: 0.75rem
+	min-width: 0
+	padding: 1.25rem 1.5rem
+	border-radius: var(--shape-corner-l)
+	background: var(--card-bg)
+	color: var(--on-surface-variant)
+	overflow: hidden
+
+	&[hidden]
+		display: none
+
+	&__icon
+		display: flex
+		align-items: center
+		justify-content: center
+		flex: none
+		width: 2.25rem
+		height: 2.25rem
+		border-radius: var(--shape-corner-m)
+		background: var(--btn-regular-bg)
+		color: var(--primary)
+
+		:global(svg)
+			width: 1.25rem
+			height: 1.25rem
+
+	&__content
+		display: flex
+		flex-direction: column
+		gap: 0.125rem
+		min-width: 0
+
+	&__text
+		min-width: 0
+		margin: 0
+		font: var(--m3e-type-body-large)
+		overflow-wrap: anywhere
+
+		time,
+		[data-last-updated-days]
+			color: var(--on-surface)
+			font-variant-numeric: tabular-nums
+
+	&__warning
+		margin: 0
+		color: var(--on-surface-variant)
+		font: var(--m3e-type-body-small)
+		overflow-wrap: anywhere
+
+	@media (max-width: 30rem)
+		padding: 1rem
+
+		&__text
+			font: var(--m3e-type-body-medium)
+</style>

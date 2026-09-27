@@ -1,0 +1,18 @@
+/*
+ * Tailwind Typography emits prose heading metrics in the utilities layer.
+ * This scoped bridge keeps Markdown heading rhythm tokenized without changing
+ * the ownership or cascade layer of the broader Markdown component styles.
+ */
+.markdown-content
+  :is(h1, h2, h3):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: var(--m3e-space-4);
+  margin-bottom: var(--m3e-space-2);
+}
+
+.markdown-content
+  > :is(h1, h2, h3):first-child:not(:where([class~="not-prose"], [class~="not-prose"] *)),
+.markdown-content
+  > section:first-child
+  > :is(h1, h2, h3):first-child:not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 0;
+}

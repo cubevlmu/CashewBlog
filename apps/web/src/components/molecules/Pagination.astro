@@ -1,0 +1,40 @@
+---
+import PagePagination from "@components/atoms/blog/PagePagination.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+/**
+ * 分页器（消费 blog/PagePagination 原子）。
+ * 页码窗口算法在原子内，这里只做 Astro Page → 原子 props 的映射
+ * 与文案 i18n（原子不硬编码文案）。
+ */
+import type { Page } from "astro";
+import { url } from "../../utils/url-utils";
+
+interface Props {
+	page: Page;
+	class?: string;
+	style?: string;
+}
+
+const { page, style } = Astro.props;
+const className = Astro.props.class;
+
+const getPageUrl = (p: number) => (p === 1 ? "/" : `/${p}/`);
+const buildUrl = (p: number) => url(getPageUrl(p));
+
+const labels = {
+	prev: i18n(I18nKey.paginationPrev),
+	next: i18n(I18nKey.paginationNext),
+	page: i18n(I18nKey.paginationPage),
+	jump: i18n(I18nKey.paginationJump),
+};
+---
+
+<PagePagination
+	class={className}
+	style={style}
+	currentPage={page.currentPage}
+	totalPages={page.lastPage}
+	buildUrl={buildUrl}
+	{labels}
+/>

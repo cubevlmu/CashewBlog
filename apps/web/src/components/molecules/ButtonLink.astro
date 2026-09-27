@@ -1,0 +1,23 @@
+---
+import Button from "@components/atoms/action/Button.svelte";
+
+interface Props {
+	badge?: string;
+	url?: string;
+	label?: string;
+}
+const { badge, url, label } = Astro.props;
+---
+<Button href={url} ariaLabel={label} variant="text" size="small" full align="between" class="!px-2 !text-[var(--on-surface)]">
+    <span class="overflow-hidden text-left whitespace-nowrap overflow-ellipsis min-w-0">
+        <slot></slot>
+    </span>
+    { badge !== undefined && badge !== null && badge !== '' &&
+        <span class="transition px-2 h-7 ml-4 min-w-[2rem] rounded-lg text-sm font-bold
+            text-[var(--btn-content)] dark:text-[var(--deep-text)]
+            bg-[var(--btn-regular-bg)] dark:bg-[var(--primary)]
+            flex items-center justify-center">
+            { badge }
+        </span>
+    }
+</Button>

@@ -1,0 +1,34 @@
+.m3-artplayer {
+  margin: var(--m3e-space-6) 0;
+  color: var(--on-surface);
+}
+
+.m3-artplayer__video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--surface-container-high);
+  border-radius: var(--shape-corner-l);
+}
+
+.m3-artplayer__caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--m3e-space-3);
+  padding: var(--m3e-space-3) var(--m3e-space-1) 0;
+  font: var(--m3e-type-body-medium);
+}
+
+.m3-artplayer__title,
+.m3-artplayer__source {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.m3-artplayer__source {
+  flex: none;
+  border-radius: var(--shape-corner-s);
+  color: var(--primary);
+  font: var(--m3e-type-label-large);
+}

@@ -1,0 +1,275 @@
+/* utils */
+white(a)
+  rgba(255, 255, 255, a)
+
+black(a)
+  rgba(0, 0, 0, a)
+
+rainbow-light = linear-gradient(to right, oklch(0.80 0.10 0), oklch(0.80 0.10 30), oklch(0.80 0.10 60), oklch(0.80 0.10 90), oklch(0.80 0.10 120), oklch(0.80 0.10 150), oklch(0.80 0.10 180), oklch(0.80 0.10 210), oklch(0.80 0.10 240), oklch(0.80 0.10 270), oklch(0.80 0.10 300), oklch(0.80 0.10 330), oklch(0.80 0.10 360))
+rainbow-dark = linear-gradient(to right, oklch(0.70 0.10 0), oklch(0.70 0.10 30), oklch(0.70 0.10 60), oklch(0.70 0.10 90), oklch(0.70 0.10 120), oklch(0.70 0.10 150), oklch(0.70 0.10 180), oklch(0.70 0.10 210), oklch(0.70 0.10 240), oklch(0.70 0.10 270), oklch(0.70 0.10 300), oklch(0.70 0.10 330), oklch(0.70 0.10 360))
+
+:root
+  --radius-large 1rem
+  --content-delay 150ms
+
+/* An util to define variables that vary with light and dark mode */
+define(vars)
+  :root
+    for key, value in vars
+      {key}: value[0]
+  :root.dark
+    for key, value in vars
+      if length(value) > 1
+        {key}: value[1]
+
+define({
+  /* 按钮文本 = 次级对比文字（on-surface-variant），用于中性表面容器按钮如标签、meta 图标、面板按钮 */
+  --btn-content: var(--on-surface-variant) var(--on-surface-variant)
+
+  /* 按钮背景 = 表面容器层级（tonal elevation） */
+  --btn-regular-bg: var(--surface-container-low) var(--surface-container-low)
+  --btn-regular-bg-hover: var(--surface-container) var(--surface-container)
+  --btn-regular-bg-active: var(--surface-container-high) var(--surface-container-high)
+
+  --btn-plain-bg-hover: var(--surface-container-low) var(--surface-container)
+  --btn-plain-bg-active: var(--surface-container) var(--surface-container-high)
+
+  /* 浮层内的控件应高于浮层本身，而不是回落到页面表面层级 */
+  --float-control-bg: var(--surface-container-high) var(--surface-container-high)
+  --float-control-bg-hover: unquote("color-mix(in oklab, var(--on-surface) 8%, var(--surface-container-high))") unquote("color-mix(in oklab, var(--on-surface) 8%, var(--surface-container-high))")
+  --float-control-bg-active: unquote("color-mix(in oklab, var(--on-surface) 12%, var(--surface-container-high))") unquote("color-mix(in oklab, var(--on-surface) 12%, var(--surface-container-high))")
+
+  --enter-btn-bg: var(--btn-regular-bg)
+  --enter-btn-bg-hover: var(--btn-regular-bg-hover)
+  --enter-btn-bg-active: var(--btn-regular-bg-active)
+
+  /* 深色文字：用于主色背景上的深色前景（如 ButtonLink badge），与 on-primary 一致 */
+  --deep-text: var(--on-primary) var(--on-primary)
+
+  --title-active: var(--primary) var(--primary)
+
+  --line-divider: var(--outline-variant) var(--outline-variant)
+  --line-color: var(--outline) var(--outline)
+  --meta-divider: var(--on-surface-variant) var(--on-surface-variant)
+
+  --inline-code-bg: var(--surface-container-low) var(--surface-container-high)
+  --inline-code-color: var(--on-surface-variant) var(--on-surface-variant)
+  --selection-bg: var(--primary-container) var(--primary-container)
+  --codeblock-selection: var(--primary-container) var(--primary-container)
+  /* 代码块跟随明暗：白天浅色（配合 github-light），夜间深色（配合 github-dark） */
+  --codeblock-bg: var(--mc-surface-container-low, oklch(0.97 0.005 var(--hue))) var(--surface-dim)
+  --codeblock-topbar-bg: var(--mc-surface-container, oklch(0.94 0.01 var(--hue))) var(--surface-container-low)
+
+  --license-block-bg: black(0.03) var(--codeblock-bg)
+
+  --link-underline: var(--primary-container) var(--primary-container)
+  --link-hover: var(--primary) var(--primary)
+  --link-active: var(--primary) var(--primary)
+
+  --scrollbar-bg-light: black(0.4)
+  --scrollbar-bg-hover-light: black(0.5)
+  --scrollbar-bg-active-light: black(0.6)
+
+  --scrollbar-bg-dark: white(0.4)
+  --scrollbar-bg-hover-dark: white(0.5)
+  --scrollbar-bg-active-dark: white(0.6)
+
+  --scrollbar-bg: var(--scrollbar-bg-light) var(--scrollbar-bg-dark)
+  --scrollbar-bg-hover: var(--scrollbar-bg-hover-light) var(--scrollbar-bg-hover-dark)
+  --scrollbar-bg-active: var(--scrollbar-bg-active-light) var(--scrollbar-bg-active-dark)
+
+  --color-selection-bar: rainbow-light rainbow-dark
+
+  --display-light-icon: 1 0
+  --display-dark-icon: 0 1
+
+  /* 提示块是语义色（tip/note/warning…各有固定色相），不跟随种子色，与 M3 中 error/warning 独立于种子一致 */
+  --admonitions-color-tip: oklch(0.45 0.14 180) oklch(0.75 0.14 180)
+  --admonitions-color-note: oklch(0.45 0.14 250) oklch(0.75 0.14 250)
+  --admonitions-color-important: oklch(0.45 0.14 310) oklch(0.75 0.14 310)
+  --admonitions-color-warning: oklch(0.48 0.14 60) oklch(0.75 0.14 60)
+  --admonitions-color-caution: oklch(0.45 0.2 25) oklch(0.65 0.2 25)
+
+  --toc-width: calc((100vw - var(--page-width)) / 2 - 1rem)
+
+  /* 侧栏列宽（responsive-utils 布局类的唯一来源；改这里即全站生效） */
+  --sidebar-width: 17.5rem
+})
+
+/* ============================================================
+   Material 3 设计令牌层（Shirone）
+   优先使用动态配色（--mc-*，由客户端 HCT 引擎按 种子色/风格/规范 计算），
+   回退到基于 --hue 的 oklch 公式。secondary/tertiary 使用色相偏移。
+   ============================================================ */
+define({
+  /* 主角色 primary */
+  --primary: var(--mc-primary, oklch(0.42 0.16 var(--hue))) var(--mc-primary, oklch(0.80 0.14 var(--hue)))
+  --on-primary: var(--mc-on-primary, oklch(0.99 0.02 var(--hue))) var(--mc-on-primary, oklch(0.20 0.04 var(--hue)))
+  --primary-container: var(--mc-primary-container, oklch(0.90 0.06 var(--hue))) var(--mc-primary-container, oklch(0.36 0.10 var(--hue)))
+  --on-primary-container: var(--mc-on-primary-container, oklch(0.24 0.09 var(--hue))) var(--mc-on-primary-container, oklch(0.90 0.05 var(--hue)))
+  --inverse-primary: var(--mc-inverse-primary, oklch(0.90 0.13 var(--hue))) var(--mc-inverse-primary, oklch(0.42 0.16 var(--hue)))
+
+  /* 次角色 secondary：樱粉偏移 */
+  --secondary: var(--mc-secondary, oklch(0.52 0.13 calc(var(--hue) + 65))) var(--mc-secondary, oklch(0.82 0.11 calc(var(--hue) + 65)))
+  --on-secondary: var(--mc-on-secondary, oklch(0.99 0.02 var(--hue))) var(--mc-on-secondary, oklch(0.20 0.04 calc(var(--hue) + 65)))
+  --secondary-container: var(--mc-secondary-container, oklch(0.90 0.05 calc(var(--hue) + 65))) var(--mc-secondary-container, oklch(0.37 0.08 calc(var(--hue) + 65)))
+  --on-secondary-container: var(--mc-on-secondary-container, oklch(0.26 0.08 calc(var(--hue) + 65))) var(--mc-on-secondary-container, oklch(0.91 0.05 calc(var(--hue) + 65)))
+
+  /* 第三角色 tertiary：水青偏移 */
+  --tertiary: var(--mc-tertiary, oklch(0.50 0.12 calc(var(--hue) - 100))) var(--mc-tertiary, oklch(0.82 0.10 calc(var(--hue) - 100)))
+  --on-tertiary: var(--mc-on-tertiary, oklch(0.99 0.02 var(--hue))) var(--mc-on-tertiary, oklch(0.20 0.04 calc(var(--hue) - 100)))
+  --tertiary-container: var(--mc-tertiary-container, oklch(0.90 0.05 calc(var(--hue) - 100))) var(--mc-tertiary-container, oklch(0.37 0.08 calc(var(--hue) - 100)))
+  --on-tertiary-container: var(--mc-on-tertiary-container, oklch(0.26 0.08 calc(var(--hue) - 100))) var(--mc-on-tertiary-container, oklch(0.91 0.05 calc(var(--hue) - 100)))
+
+  /* Fixed 角色（库的 colorSpec 静态为 2025 委托，2021/2025 下都会解析出值） */
+  --primary-fixed: var(--mc-primary-fixed, oklch(0.90 0.06 var(--hue))) var(--mc-primary-fixed, oklch(0.90 0.06 var(--hue)))
+  --on-primary-fixed: var(--mc-on-primary-fixed, oklch(0.24 0.09 var(--hue))) var(--mc-on-primary-fixed, oklch(0.24 0.09 var(--hue)))
+
+  /* 表面与高度（tonal elevation） */
+  --surface: var(--mc-surface, oklch(0.96 0.012 var(--hue))) var(--mc-surface, oklch(0.15 0.013 var(--hue)))
+  --surface-dim: var(--mc-surface-dim, oklch(0.93 0.014 var(--hue))) var(--mc-surface-dim, oklch(0.12 0.011 var(--hue)))
+  --surface-bright: var(--mc-surface-bright, oklch(0.98 0.008 var(--hue))) var(--mc-surface-bright, oklch(0.20 0.015 var(--hue)))
+  --surface-container-lowest: var(--mc-surface-container-lowest, oklch(0.985 0.006 var(--hue))) var(--mc-surface-container-lowest, oklch(0.12 0.011 var(--hue)))
+  --surface-container-low: var(--mc-surface-container-low, oklch(0.965 0.01 var(--hue))) var(--mc-surface-container-low, oklch(0.19 0.014 var(--hue)))
+  --surface-container: var(--mc-surface-container, oklch(0.94 0.015 var(--hue))) var(--mc-surface-container, oklch(0.23 0.016 var(--hue)))
+  --surface-container-high: var(--mc-surface-container-high, oklch(0.92 0.02 var(--hue))) var(--mc-surface-container-high, oklch(0.28 0.018 var(--hue)))
+  --surface-container-highest: var(--mc-surface-container-highest, oklch(0.90 0.025 var(--hue))) var(--mc-surface-container-highest, oklch(0.33 0.02 var(--hue)))
+  --surface-tint: var(--mc-surface-tint, var(--primary)) var(--mc-surface-tint, var(--primary))
+  --on-surface: var(--mc-on-surface, oklch(0.16 0.02 var(--hue))) var(--mc-on-surface, oklch(0.92 0.015 var(--hue)))
+  --on-surface-variant: var(--mc-on-surface-variant, oklch(0.34 0.03 var(--hue))) var(--mc-on-surface-variant, oklch(0.76 0.03 var(--hue)))
+
+  /* 轮廓线 */
+  --outline: var(--mc-outline, oklch(0.45 0.03 var(--hue))) var(--mc-outline, oklch(0.62 0.03 var(--hue)))
+  --outline-variant: var(--mc-outline-variant, oklch(0.76 0.02 var(--hue))) var(--mc-outline-variant, oklch(0.42 0.02 var(--hue)))
+
+  /* 表面变体 / 反色表面（snackbar、错误容器） */
+  --surface-variant: var(--mc-surface-variant, oklch(0.90 0.02 var(--hue))) var(--mc-surface-variant, oklch(0.32 0.02 var(--hue)))
+  --inverse-surface: var(--mc-inverse-surface, oklch(0.16 0.02 var(--hue))) var(--mc-inverse-surface, oklch(0.92 0.015 var(--hue)))
+  --inverse-on-surface: var(--mc-inverse-on-surface, oklch(0.96 0.012 var(--hue))) var(--mc-inverse-on-surface, oklch(0.16 0.02 var(--hue)))
+
+  /* 错误角色：与警示色一致，固定色相（~27°），不跟随种子色 */
+  --error: var(--mc-error, oklch(0.57 0.21 27)) var(--mc-error, oklch(0.82 0.15 27))
+  --on-error: var(--mc-on-error, oklch(0.99 0.01 27)) var(--mc-on-error, oklch(0.28 0.11 27))
+  --error-container: var(--mc-error-container, oklch(0.93 0.06 27)) var(--mc-error-container, oklch(0.45 0.15 27))
+  --on-error-container: var(--mc-on-error-container, oklch(0.36 0.12 27)) var(--mc-on-error-container, oklch(0.95 0.05 27))
+})
+
+/* M3 形状尺度与表面映射 */
+:root
+  --shape-corner-xs: 4px
+  --shape-corner-s: 8px
+  --shape-corner-m: 12px
+  --shape-corner-l: 16px
+  --shape-corner-xl: 28px
+  --shape-corner-full: 999px
+  --radius-large: var(--shape-corner-l)
+  --page-bg: var(--surface-container-low)
+  --card-bg: var(--surface-container-lowest)
+  --float-panel-bg: var(--surface-container)
+:root.dark
+  --page-bg: var(--surface)
+  --card-bg: var(--surface-container-high)
+  --float-panel-bg: var(--surface-container)
+
+/* ============================================================
+   M3E 响应式 / 间距 / 密度令牌
+   断点对齐 Tailwind 默认（sm 640 / md 768 / lg 1024 / xl 1280 / 2xl 1536）。
+   注意：--m3e-bp-* 是普通 CSS 变量，仅供 var() 取值；组件 @media 请用
+   breakpoints.styl 的编译期常量（@media (min-width: bp-md)）——CSS 变量
+   不能作为 media 查询条件。
+   ============================================================ */
+:root
+  --m3e-bp-sm: 640px
+  --m3e-bp-md: 768px
+  --m3e-bp-lg: 1024px
+  --m3e-bp-xl: 1280px
+  --m3e-bp-2xl: 1536px
+
+  /* 间距（M3 4dp 网格） */
+  --m3e-space-1: 4px
+  --m3e-space-2: 8px
+  --m3e-space-3: 12px
+  --m3e-space-4: 16px
+  --m3e-space-5: 20px
+  --m3e-space-6: 24px
+  --m3e-space-8: 32px
+  --m3e-space-10: 40px
+
+  /* 间距别名（语义化尺寸） */
+  --m3e-space-compact: var(--m3e-space-2)
+  --m3e-space-control: var(--m3e-space-3)
+  --m3e-space-section: var(--m3e-space-6)
+  --m3e-space-content: var(--m3e-space-8)
+  --m3e-space-page: var(--m3e-space-10)
+
+  /* 密度：0 = comfortable（默认）/ -1 = compact。桌面精确指针自动 compact，
+     组件高度用 calc(基础 + var(--m3e-density) * 4px) 参与密度变化；不引用者无感 */
+  --m3e-density: 0
+
+@media (hover: hover) and (pointer: fine)
+  :root
+    --m3e-density: -1
+
+/* ============================================================
+   M3E 动效 / 高度 / 字体阶梯令牌
+   动效曲线与时长遵循 M3 (2025) motion spec；
+   高度层级叠加在动态 --mc-shadow 上（无 JS 时回退到黑色）。
+   ============================================================ */
+:root
+  /* 动效时长 */
+  --m3e-duration-short: 150ms
+  --m3e-duration-medium: 250ms
+  --m3e-duration-long: 400ms
+  --m3e-duration-ambient-short: 7s
+  --m3e-duration-ambient-medium: 10s
+  --m3e-duration-ambient-long: 13s
+  --m3e-duration-ambient-extra-long: 18s
+
+  /* 动效曲线（M3 motion spec） */
+  --m3e-easing-standard: cubic-bezier(0.2, 0, 0, 1)
+  --m3e-easing-emphasized: cubic-bezier(0.2, 0, 0, 1)
+  --m3e-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1)
+  --m3e-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15)
+
+  /* 高度（tonal elevation）：level 0-5。color-mix 需 unquote 防 Stylus 误解析 */
+  --m3e-elevation-0: none
+  --m3e-elevation-1: unquote("0 1px 2px color-mix(in srgb, var(--mc-shadow, #000) 6%, transparent)")
+  --m3e-elevation-2: unquote("0 1px 2px color-mix(in srgb, var(--mc-shadow, #000) 8%, transparent), 0 2px 6px 1px color-mix(in srgb, var(--mc-shadow, #000) 6%, transparent)")
+  --m3e-elevation-3: unquote("0 2px 4px color-mix(in srgb, var(--mc-shadow, #000) 10%, transparent), 0 4px 12px 2px color-mix(in srgb, var(--mc-shadow, #000) 8%, transparent)")
+  --m3e-elevation-4: unquote("0 4px 8px color-mix(in srgb, var(--mc-shadow, #000) 12%, transparent), 0 8px 20px 4px color-mix(in srgb, var(--mc-shadow, #000) 10%, transparent)")
+  --m3e-elevation-5: unquote("0 6px 12px color-mix(in srgb, var(--mc-shadow, #000) 14%, transparent), 0 12px 28px 6px color-mix(in srgb, var(--mc-shadow, #000) 12%, transparent)")
+
+  /* 字体阶梯（font 简写：weight size/line-height family）。"/" 需 unquote 防 Stylus 当除法 */
+  --m3e-type-display-large: unquote("400 3.5rem/1.12 var(--font-sans)")
+  --m3e-type-display-medium: unquote("400 2.8125rem/1.16 var(--font-sans)")
+  --m3e-type-display-small: unquote("400 2.25rem/1.22 var(--font-sans)")
+  --m3e-type-headline-large: unquote("400 2rem/1.25 var(--font-sans)")
+  --m3e-type-headline-medium: unquote("400 1.75rem/2.25rem var(--font-sans)")
+  --m3e-type-headline-small: unquote("400 1.5rem/2rem var(--font-sans)")
+  --m3e-type-title-large: unquote("400 1.375rem/1.75rem var(--font-sans)")
+  --m3e-type-title-medium: unquote("500 1rem/1.5rem var(--font-sans)")
+  --m3e-type-title-small: unquote("500 0.875rem/1.25rem var(--font-sans)")
+  --m3e-type-body-large: unquote("400 1rem/1.5rem var(--font-sans)")
+  --m3e-type-body-medium: unquote("400 0.875rem/1.25rem var(--font-sans)")
+  --m3e-type-body-small: unquote("400 0.75rem/1rem var(--font-sans)")
+  --m3e-type-label-large: unquote("500 0.875rem/1.25rem var(--font-sans)")
+  --m3e-type-label-small: unquote("500 0.6875rem/1rem var(--font-sans)")
+  --m3e-type-label-medium: unquote("500 0.75rem/1rem var(--font-sans)")
+  --m3e-type-code: unquote("400 0.875rem/1.25rem var(--m3e-font-mono-family)")
+
+  /* 字体阶梯简写别名（与 DESIGN.md 对齐） */
+  --m3e-type-display-lg: var(--m3e-type-display-large)
+  --m3e-type-display-md: var(--m3e-type-display-medium)
+  --m3e-type-display-sm: var(--m3e-type-display-small)
+  --m3e-type-headline-lg: var(--m3e-type-headline-large)
+  --m3e-type-headline-md: var(--m3e-type-headline-medium)
+  --m3e-type-headline-sm: var(--m3e-type-headline-small)
+  --m3e-type-title-lg: var(--m3e-type-title-large)
+  --m3e-type-title-md: var(--m3e-type-title-medium)
+  --m3e-type-title-sm: var(--m3e-type-title-small)
+  --m3e-type-body-lg: var(--m3e-type-body-large)
+  --m3e-type-body-md: var(--m3e-type-body-medium)
+  --m3e-type-body-sm: var(--m3e-type-body-small)
+  --m3e-type-label-lg: var(--m3e-type-label-large)
+  --m3e-type-label-md: var(--m3e-type-label-medium)
+  --m3e-type-label-sm: var(--m3e-type-label-small)

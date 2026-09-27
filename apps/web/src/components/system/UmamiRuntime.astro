@@ -1,0 +1,204 @@
+---
+// Optional Umami assets are mounted once in the persistent layout shell.
+---
+
+<style is:inline data-shirone-umami-runtime>
+	.shirone-umami-stats {
+		color: var(--on-surface-variant);
+	}
+
+	.shirone-umami-stats--meta {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--m3e-space-2);
+		min-height: 2rem;
+	}
+
+	.shirone-umami-stats [data-shirone-umami-display] {
+		display: inline-flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--m3e-space-1) var(--m3e-space-3);
+		min-inline-size: 0;
+	}
+
+	.shirone-umami-stats [data-shirone-umami-metric] {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--m3e-space-1);
+		white-space: nowrap;
+	}
+
+	.shirone-umami-stats--meta [data-shirone-umami-display] {
+		font: var(--m3e-type-body-medium);
+		font-weight: 500;
+	}
+
+	.shirone-umami-stats [data-shirone-umami-value] {
+		display: inline-block;
+		inline-size: 7ch;
+		flex: 0 0 7ch;
+		font-variant-numeric: tabular-nums;
+		text-align: end;
+	}
+
+	.shirone-umami-stats--profile {
+		margin-top: var(--m3e-space-3);
+	}
+
+	.shirone-umami-stats--profile hr {
+		margin: var(--m3e-space-2) 0;
+		border: 0;
+		border-top: 1px dashed var(--outline-variant);
+	}
+
+	.shirone-umami-stats--profile > div {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--m3e-space-2);
+		font: var(--m3e-type-body-small);
+		font-weight: 500;
+		text-align: center;
+	}
+
+	.shirone-umami-stats--profile [data-shirone-umami-display] {
+		display: grid;
+		grid-template-columns: auto auto auto;
+		column-gap: var(--m3e-space-2);
+		width: auto;
+		justify-content: center;
+		flex-wrap: nowrap;
+		white-space: nowrap;
+	}
+
+	.shirone-umami-stats--profile [data-shirone-umami-metric]:first-child {
+		justify-content: flex-end;
+	}
+
+	.shirone-umami-stats--profile [data-shirone-umami-metric]:last-child {
+		justify-content: flex-start;
+	}
+
+	.shirone-umami-stats__separator {
+		color: var(--outline);
+	}
+
+	.shirone-umami-stats--profile [data-shirone-umami-value] {
+		inline-size: auto;
+		flex: 0 0 auto;
+	}
+
+	.shirone-umami-stats--profile svg {
+		width: 1rem;
+		height: 1rem;
+	}
+</style>
+
+<script is:inline>
+	(() => {
+		const rootSelector = "[data-shirone-umami]";
+		let scheduled = false;
+
+		function formatCount(value) {
+			try {
+				return new Intl.NumberFormat(document.documentElement.lang || undefined, {
+					notation: "compact",
+					compactDisplay: "short",
+					maximumFractionDigits: 1,
+				}).format(value);
+			} catch {
+				return String(value);
+			}
+		}
+
+		function schedule() {
+			if (scheduled) return;
+			scheduled = true;
+			const run = () => {
+				scheduled = false;
+				void loadStats();
+			};
+			if (typeof window.requestAnimationFrame === "function") {
+				window.requestAnimationFrame(run);
+			} else {
+				window.setTimeout(run, 0);
+			}
+		}
+
+		async function loadStats() {
+			const roots = Array.from(document.querySelectorAll(rootSelector)).filter(
+				(root) => !root.dataset.umamiLoaded,
+			);
+			const client = window.oddmisc;
+			if (roots.length === 0 || !client) return;
+
+			const promises = (window.__shironeUmamiStatsPromises ??= {});
+			await Promise.all(
+				roots.map(async (root) => {
+					root.dataset.umamiLoaded = "loading";
+					const path = root.dataset.umamiPath;
+					const key = path ? `page:${path}` : "site";
+					const request =
+						promises[key] ??=
+							path ? client.getPageStats(path) : client.getSiteStats();
+
+					try {
+						let stats = await request;
+						if (
+							(stats.pageviews || 0) === 0 &&
+							(stats.visits || 0) === 0 &&
+							stats._fromCache
+						) {
+							client.clearCache();
+							const refreshed = path
+								? client.getPageStats(path)
+								: client.getSiteStats();
+							promises[key] = refreshed;
+							stats = await refreshed;
+						}
+						if (!root.isConnected) return;
+
+						const pageViews = Number.isFinite(stats.pageviews)
+							? stats.pageviews
+							: 0;
+						const visits = Number.isFinite(stats.visits) ? stats.visits : 0;
+						const pageViewsDisplay = root.querySelector(
+							"[data-shirone-umami-pageviews]",
+						);
+						const visitsDisplay = root.querySelector(
+							"[data-shirone-umami-visits]",
+						);
+						const display = root.querySelector(
+							"[data-shirone-umami-display]",
+						);
+						if (!pageViewsDisplay || !visitsDisplay || !display) return;
+
+						pageViewsDisplay.textContent = formatCount(pageViews);
+						pageViewsDisplay.setAttribute("title", String(pageViews));
+						visitsDisplay.textContent = formatCount(visits);
+						visitsDisplay.setAttribute("title", String(visits));
+						display.setAttribute("aria-busy", "false");
+						root.dataset.umamiLoaded = "true";
+					} catch {
+						delete promises[key];
+						if (!root.isConnected) return;
+						root
+							.querySelector("[data-shirone-umami-display]")
+							?.setAttribute("aria-busy", "false");
+						root.dataset.umamiLoaded = "true";
+					}
+				}),
+			);
+		}
+
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", schedule, { once: true });
+		} else {
+			schedule();
+		}
+		window.addEventListener("oddmisc-ready", schedule);
+		document.addEventListener("swup:content:replace", schedule);
+		document.addEventListener("swup:page:view", schedule);
+	})();
+</script>

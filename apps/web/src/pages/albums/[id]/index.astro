@@ -1,0 +1,219 @@
+---
+import PageHeader from "@components/atoms/display/PageHeader.astro";
+import AlbumGallery from "@components/organisms/AlbumGallery.svelte";
+import ProtectedAlbum from "@components/organisms/ProtectedAlbum.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { findAlbum, scanAllAlbums } from "@utils/album-scanner";
+import { encryptProtectedContent } from "@utils/password-protection";
+import { url } from "@utils/url-utils";
+import { Icon } from "astro-icon/components";
+import type { AlbumGroup } from "@/types/album";
+import type { ProtectedPayload } from "@/types/protectedContent";
+
+export function getStaticPaths() {
+	return scanAllAlbums().map((album) => ({
+		params: { id: album.id },
+		props: { album },
+	}));
+}
+
+interface Props {
+	album: AlbumGroup;
+}
+
+const { album } = Astro.props as Props;
+const resolvedAlbum = album ?? findAlbum(Astro.params.id ?? "");
+if (!resolvedAlbum) return Astro.redirect(url("/404/"));
+
+const scope = `album:${resolvedAlbum.id}`;
+let payload: ProtectedPayload | null = null;
+if (resolvedAlbum.password) {
+	payload = await encryptProtectedContent(
+		JSON.stringify(resolvedAlbum.photos),
+		resolvedAlbum.password,
+		scope,
+		"application/json",
+	);
+}
+---
+
+<MainGridLayout
+	title={resolvedAlbum.title}
+	description={resolvedAlbum.description || resolvedAlbum.title}
+	bannerDate={resolvedAlbum.date}
+	page="albums"
+>
+		<section class="album-detail">
+		<div class="album-detail__hero">
+			<img
+				src={resolvedAlbum.cover ? url(resolvedAlbum.cover) : ""}
+				alt={resolvedAlbum.title}
+				loading="eager"
+				decoding="async"
+				referrerpolicy="no-referrer"
+			/>
+			<a class="album-detail__back" href={url("/albums/")}>
+				<Icon name="material-symbols:arrow-back-rounded" aria-hidden="true" />
+				<span>{i18n(I18nKey.albumsBack)}</span>
+			</a>
+			<div class="album-detail__hero-content">
+				<PageHeader
+					title={resolvedAlbum.title}
+					subtitle={resolvedAlbum.description}
+					icon="material-symbols:photo-library-outline-rounded"
+					class="album-detail__header"
+				/>
+					<div class="album-detail__meta">
+						<span>
+							<Icon name="material-symbols:calendar-today-rounded" aria-hidden="true" />
+							<span>{resolvedAlbum.date}</span>
+						</span>
+						{resolvedAlbum.location && (
+							<span>
+								<Icon name="material-symbols:location-on-rounded" aria-hidden="true" />
+								<span>{resolvedAlbum.location}</span>
+							</span>
+						)}
+						<span>
+							<Icon name="material-symbols:photo-library-outline-rounded" aria-hidden="true" />
+							<span>{resolvedAlbum.photos.length} {i18n(I18nKey.albumsPhotos)}</span>
+						</span>
+					</div>
+				{resolvedAlbum.tags.length > 0 && (
+					<div class="album-detail__tags" aria-label={i18n(I18nKey.tags)}>
+						{resolvedAlbum.tags.map((tag) => <span>#{tag}</span>)}
+					</div>
+				)}
+			</div>
+		</div>
+
+		<div class:list={["album-detail__gallery", payload && "album-detail__gallery--protected"]}>
+			{payload ? (
+				<ProtectedAlbum
+					payload={payload}
+					scope={scope}
+					hint={resolvedAlbum.passwordHint}
+					layout={resolvedAlbum.layout}
+					columns={resolvedAlbum.columns}
+					client:only="svelte"
+				/>
+			) : (
+				<AlbumGallery
+					photos={resolvedAlbum.photos}
+					layout={resolvedAlbum.layout}
+					columns={resolvedAlbum.columns}
+					client:load
+				/>
+			)}
+		</div>
+	</section>
+</MainGridLayout>
+
+<style lang="stylus">
+	.album-detail
+		&__back
+			position: absolute
+			top: 1rem
+			left: 1rem
+			z-index: 2
+			display: inline-flex
+			align-items: center
+			gap: 0.375rem
+			padding: 0.375rem 0.75rem
+			border-radius: var(--shape-corner-s)
+			background: unquote("rgb(0 0 0 / 0.3)")
+			backdrop-filter: blur(0.25rem)
+			color: unquote("rgb(255 255 255 / 0.9)")
+			font: var(--m3e-type-label-medium)
+			line-height: 1.25rem
+			text-decoration: none
+			transition: background-color var(--m3e-duration-short) var(--m3e-easing-standard), color var(--m3e-duration-short) var(--m3e-easing-standard)
+			> :global(svg)
+				width: 1rem
+				height: 1rem
+			&:hover
+				background: unquote("rgb(0 0 0 / 0.5)")
+				color: #fff
+			&:focus-visible
+				outline: 2px solid #fff
+				outline-offset: 2px
+		&__hero
+			position: relative
+			min-height: 22rem
+			overflow: hidden
+			border-radius: var(--shape-corner-l)
+			background: var(--surface-container-high)
+			> img
+				position: absolute
+				inset: 0
+				width: 100%
+				height: 100%
+				object-fit: cover
+				filter: saturate(0.9)
+		&__hero::after
+			position: absolute
+			inset: 0
+			background: unquote("linear-gradient(to top, rgb(0 0 0 / 0.78) 0%, rgb(0 0 0 / 0.38) 42%, rgb(0 0 0 / 0.12) 68%, transparent 92%)")
+			content: ""
+		&__hero-content
+			position: relative
+			z-index: 1
+			display: flex
+			flex-direction: column
+			justify-content: flex-end
+			min-height: 22rem
+			padding: 1.5rem
+			color: #fff
+			--page-header-title-color: #fff
+			--page-header-subtitle-color: unquote("rgb(255 255 255 / 0.86)")
+			--page-header-icon-color: #fff
+			text-shadow: 0 1px 2px rgb(0 0 0 / 0.7)
+		&__header
+			margin-bottom: 0.75rem
+			text-shadow: 0 1px 2px rgb(0 0 0 / 0.7)
+		&__meta,
+		&__tags
+			display: flex
+			flex-wrap: wrap
+			align-items: center
+			gap: 0.75rem 1rem
+			font: var(--m3e-type-body-small)
+		&__meta > span
+			display: inline-flex
+			align-items: center
+			gap: 0.375rem
+			color: #fff
+			text-shadow: 0 1px 2px rgb(0 0 0 / 0.7)
+			> :global(svg)
+				width: 1.125rem
+				height: 1.125rem
+		&__tags
+			margin-top: 0.75rem
+			color: #fff
+			text-shadow: 0 1px 2px rgb(0 0 0 / 0.7)
+		&__tags span
+			padding: 0.25rem 0.5rem
+			border-radius: var(--shape-corner-s)
+			background: unquote("rgb(255 255 255 / 0.16)")
+		&__gallery
+			margin-top: 1rem
+			padding: 1.25rem
+			border-radius: var(--shape-corner-l)
+			background: var(--card-bg)
+			&--protected:has(.password-gate)
+				padding: 0
+				background: transparent
+
+@media (max-width: 39.99rem)
+	.album-detail__hero,
+	.album-detail__hero-content
+		min-height: 19rem
+	.album-detail__hero-content
+		padding: 1rem
+	.album-detail__gallery
+		padding: 0.75rem
+	.album-detail__gallery--protected:has(.password-gate)
+		padding: 0
+</style>

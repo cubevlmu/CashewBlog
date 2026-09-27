@@ -1,0 +1,29 @@
+---
+import ProtectedPost from "@components/organisms/ProtectedPost.svelte";
+import { encryptProtectedContent } from "@utils/password-protection";
+import type { ProtectedPayload } from "@/types/protectedContent";
+
+interface Props {
+	password: string;
+	scope: string;
+	hint?: string;
+}
+
+const { password, scope, hint = "" } = Astro.props;
+
+const rawHtml = await Astro.slots.render("default");
+
+const payload: ProtectedPayload = await encryptProtectedContent(
+	rawHtml,
+	password,
+	scope,
+	"text/html",
+);
+---
+
+<ProtectedPost
+	payload={payload}
+	scope={scope}
+	hint={hint}
+	client:only="svelte"
+/>

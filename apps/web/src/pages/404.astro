@@ -1,0 +1,87 @@
+---
+import Button from "@components/atoms/action/Button.svelte";
+import Card from "@components/atoms/display/Card.svelte";
+import PageHeader from "@components/atoms/display/PageHeader.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { url } from "@utils/url-utils";
+import { Icon } from "astro-icon/components";
+---
+
+<MainGridLayout
+	title={i18n(I18nKey.notFound)}
+	description={i18n(I18nKey.notFoundDescription)}
+	page="notFound"
+>
+	<Card color="var(--card-bg)" radius="l" class="not-found-card px-6 py-8 md:px-10 md:py-12 relative overflow-hidden">
+		<!-- 水印背景装饰：大号轻量 404 -->
+		<div class="not-found-watermark" aria-hidden="true">
+			<span>404</span>
+		</div>
+
+		<div class="relative z-10 flex flex-col items-center text-center">
+			<div class="not-found-badge mb-6" aria-hidden="true">
+				<Icon name="material-symbols:sentiment-very-dissatisfied-rounded" class="text-4xl text-[var(--primary)]" />
+			</div>
+
+			<PageHeader
+				title={i18n(I18nKey.notFoundTitle)}
+				subtitle={i18n(I18nKey.notFoundDescription)}
+				class="text-center mb-8 max-w-xl mx-auto"
+			/>
+
+			<div class="flex flex-wrap justify-center items-center gap-3">
+				<Button href={url("/")} variant="filled" size="small" ariaLabel={i18n(I18nKey.backToHome)}>
+					<span class="inline-flex items-center gap-2">
+						<Icon name="material-symbols:home-rounded" class="text-lg" aria-hidden="true" />
+						<span>{i18n(I18nKey.backToHome)}</span>
+					</span>
+				</Button>
+
+				<Button href={url("/archive/")} variant="tonal" size="small" ariaLabel={i18n(I18nKey.archive)}>
+					<span class="inline-flex items-center gap-2">
+						<Icon name="material-symbols:archive-outline-rounded" class="text-lg" aria-hidden="true" />
+						<span>{i18n(I18nKey.archive)}</span>
+					</span>
+				</Button>
+			</div>
+		</div>
+	</Card>
+</MainGridLayout>
+
+<style lang="stylus">
+.not-found-card
+	position: relative
+	min-height: clamp(22rem, 50vh, 36rem)
+	display: flex
+	align-items: center
+	justify-content: center
+
+.not-found-watermark
+	position: absolute
+	inset: 0
+	display: flex
+	align-items: center
+	justify-content: center
+	pointer-events: none
+	user-select: none
+	font-family: var(--font-sans)
+	font-size: clamp(8rem, 22vw, 18rem)
+	font-weight: 900
+	line-height: 1
+	letter-spacing: -0.05em
+	color: var(--primary)
+	opacity: 0.04
+
+.not-found-badge
+	display: inline-flex
+	align-items: center
+	justify-content: center
+	width: 4.5rem
+	height: 4.5rem
+	border-radius: var(--shape-corner-full)
+	background: var(--surface-container-high)
+	border: 1px solid var(--outline-variant)
+	box-shadow: var(--m3e-elevation-1)
+</style>

@@ -1,0 +1,171 @@
+---
+import { getImage } from "astro:assets";
+import Button from "@components/atoms/action/Button.svelte";
+import IconButton from "@components/atoms/action/IconButton.svelte";
+import Avatar from "@components/atoms/display/Avatar.svelte";
+import Card from "@components/atoms/display/Card.svelte";
+import Tooltip from "@components/atoms/overlay/Tooltip.svelte";
+import UmamiStats from "@components/organisms/UmamiStats.astro";
+import { resolveImageAsset } from "@utils/asset-utils";
+import { url } from "@utils/url-utils";
+import { Icon } from "astro-icon/components";
+import { profileConfig } from "@/config";
+import type { ProfileWidget } from "@/types/sidebarConfig";
+
+interface Props {
+	class?: string;
+	style?: string;
+	widget?: ProfileWidget;
+	priority?: boolean;
+}
+
+const className = Astro.props.class;
+const style = Astro.props.style;
+const priority = Astro.props.priority ?? false;
+
+const config = profileConfig;
+const avatarAsset = await resolveImageAsset(config.avatar ?? "");
+let avatarUrl = typeof avatarAsset === "string" ? avatarAsset : avatarAsset.src;
+let avatarSrcset: string | undefined;
+let avatarWidth: number | undefined;
+let avatarHeight: number | undefined;
+if (typeof avatarAsset !== "string") {
+	const widths = [128, 256, 384, 512].filter(
+		(width) => width <= avatarAsset.width,
+	);
+	const candidates = await Promise.all(
+		widths.map(async (width) => ({
+			width,
+			image: await getImage({
+				src: avatarAsset,
+				width,
+				format: "webp",
+				quality: 72,
+			}),
+		})),
+	);
+	avatarUrl =
+		candidates.find(({ width }) => width === 256)?.image.src ??
+		candidates.at(-1)?.image.src ??
+		avatarAsset.src;
+	avatarSrcset = candidates
+		.map(({ image, width }) => `${image.src} ${width}w`)
+		.join(", ");
+	avatarWidth = avatarAsset.width;
+	avatarHeight = avatarAsset.height;
+}
+---
+<div class={className} style={style}>
+	<Card color="var(--card-bg)" radius="l" class="m3-profile p-3">
+    <a aria-label="Go to About Page" href={url('/about/')}
+       class="m3-profile__avatar-link group">
+        <div class="m3-profile__avatar-overlay">
+            <Icon name="fa6-regular:address-card"
+                  class="m3-profile__avatar-icon" />
+        </div>
+        <Avatar
+            src={avatarUrl}
+			srcset={avatarSrcset}
+			sizes="(min-width: 1024px) 256px, 176px"
+			width={avatarWidth}
+			height={avatarHeight}
+			loading={priority ? "eager" : "lazy"}
+			fetchPriority={priority ? "high" : undefined}
+            alt="Profile Image of the Author"
+            size={176}
+            shape="rounded"
+            class="mx-auto lg:!w-full"
+        />
+    </a>
+    <div class="m3-profile__info px-2">
+        <div class="m3-profile__name">{config.name}</div>
+        <div class="m3-profile__accent"></div>
+        <div class="m3-profile__bio">{config.bio}</div>
+        <div class="m3-profile__links flex flex-wrap gap-2 justify-center mb-1">
+            {config.links.length > 1 && config.links.map(item =>
+                <Tooltip label={item.name} placement="top" client:load>
+                    <IconButton href={item.url} target="_blank" rel="me" label={item.name}>
+                        <Icon name={item.icon} class="text-[1.5rem]"></Icon>
+                    </IconButton>
+                </Tooltip>
+            )}
+            {config.links.length == 1 && <Button href={config.links[0].url} target="_blank" ariaLabel={config.links[0].name}
+                                                 variant="text" size="small" class="!px-3 !font-bold !text-[var(--on-surface)]">
+                <Icon name={config.links[0].icon} class="text-[1.5rem]"></Icon>
+                {config.links[0].name}
+            </Button>}
+        </div>
+        <UmamiStats variant="profile" />
+    </div>
+	</Card>
+</div>
+
+<style lang="stylus">
+.m3-profile
+	&__avatar-link
+		display: block
+		position: relative
+		margin: var(--m3e-space-1) auto var(--m3e-space-3)
+		max-width: 12rem
+		border-radius: var(--shape-corner-m)
+		overflow: hidden
+		transition:
+			transform var(--m3e-duration-short) var(--m3e-easing-standard),
+			box-shadow var(--m3e-duration-short) var(--m3e-easing-standard)
+		&:focus-visible
+			outline: 2px solid var(--primary)
+			outline-offset: 2px
+		@media (min-width: 1024px)
+			max-width: none
+			margin-top: 0
+
+	&__avatar-overlay
+		position: absolute
+		inset: 0
+		z-index: 10
+		display: flex
+		align-items: center
+		justify-content: center
+		pointer-events: none
+		transition: background-color var(--m3e-duration-medium) var(--m3e-easing-standard)
+		.group:hover &
+			background-color: rgba(0, 0, 0, 0.3)
+		.group:active &
+			background-color: rgba(0, 0, 0, 0.5)
+
+	&__avatar-icon
+		color: #fff
+		font-size: 3rem
+		opacity: 0
+		transform: scale(0.9)
+		transition:
+			opacity var(--m3e-duration-medium) var(--m3e-easing-emphasized-decelerate),
+			transform var(--m3e-duration-medium) var(--m3e-easing-emphasized-decelerate)
+		.group:hover &
+			opacity: 1
+			transform: scale(1)
+
+	&__name
+		font: var(--m3e-type-title-large)
+		font-weight: 700
+		text-align: center
+		margin: 0 0 var(--m3e-space-1)
+		color: var(--on-surface)
+		transition: color var(--m3e-duration-short) var(--m3e-easing-standard)
+
+	&__accent
+		width: 1.25rem
+		height: 0.25rem
+		background: var(--primary)
+		border-radius: var(--shape-corner-full)
+		margin: 0 auto var(--m3e-space-2)
+		transition: background-color var(--m3e-duration-short) var(--m3e-easing-standard)
+
+	&__bio
+		font: var(--m3e-type-body-medium)
+		color: var(--on-surface-variant)
+		text-align: center
+		margin: 0 0 var(--m3e-space-3)
+		line-height: 1.5
+		transition: color var(--m3e-duration-short) var(--m3e-easing-standard)
+</style>

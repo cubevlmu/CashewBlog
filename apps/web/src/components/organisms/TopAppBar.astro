@@ -1,0 +1,355 @@
+---
+/**
+ * M3 Top App Bar — 全站顶栏（替代 Fuwari 卡片式 Navbar）。
+ * fixed 全宽、surface 底色 + 底部细分隔线；左侧菜单按钮（开全端导航抽屉）、
+ * 站点标题（回首页）、右侧搜索/显示设置/主题切换。
+ * 菜单按钮点击派发 site-drawer:toggle 事件，由 SiteNavigationDrawer 监听开合。
+ */
+import IconButton from "@components/atoms/action/IconButton.svelte";
+import { resolveNavBarLinks, resolvePageKey } from "@utils/nav-utils";
+import { url } from "@utils/url-utils";
+import { Icon } from "astro-icon/components";
+import { siteConfig } from "@/config";
+import { navBarConfig } from "@/config/navBarConfig";
+import DisplaySettings from "./DisplaySettings.svelte";
+import LightDarkSwitch from "./LightDarkSwitch.svelte";
+import Search from "./Search.svelte";
+
+const className = Astro.props.class;
+const links = resolveNavBarLinks(navBarConfig.links);
+const currentPageKey = resolvePageKey(Astro.url);
+
+function hrefFor(path?: string) {
+	return path ? url(path) : undefined;
+}
+
+function isActive(link: (typeof links)[number]): boolean {
+	return Boolean(
+		(link.pageKey && link.pageKey === currentPageKey) ||
+			link.children?.some(isActive),
+	);
+}
+---
+
+<div
+	id="navbar"
+	class:list={[
+		"top-app-bar fixed top-0 left-0 right-0 z-50 onload-animation backdrop-blur-md transition",
+		className,
+	]}
+>
+	<div class="relative max-w-[var(--page-width)] mx-auto h-16 px-3 md:px-5 flex items-center gap-1">
+		<IconButton id="nav-drawer-switch" label="Menu" class="shrink-0 lg:!hidden">
+			<Icon name="material-symbols:menu-rounded" class="text-[1.25rem]"></Icon>
+		</IconButton>
+		<a
+			href={url("/")}
+			class="group flex h-10 items-center gap-2 px-2 text-[var(--on-surface)] transition whitespace-nowrap"
+		>
+			<span class="h-5 w-1 rounded-full bg-[var(--primary)] transition-all group-hover:h-7"></span>
+			<span class="text-lg font-bold group-hover:text-[var(--primary)]">{siteConfig.title}</span>
+		</a>
+		<nav class:list={["top-app-bar__nav hidden h-full items-center gap-1 lg:flex", siteConfig.topAppBar.contentAlign === "center" ? "lg:absolute lg:left-1/2 lg:-translate-x-1/2" : "ml-4"]} aria-label="Main navigation">
+			{links.map((link) => {
+				const href = link.external ? link.url : hrefFor(link.url);
+				const active = isActive(link);
+				return (
+					<div class="top-app-bar__nav-group" data-nav-group>
+						{link.children ? (
+							<button class:list={[
+								"top-app-bar__nav-link m3-state-layer relative flex h-10 items-center gap-1 px-3 text-sm font-bold text-[var(--on-surface-variant)] transition-colors hover:text-[var(--on-surface)]",
+								active && "top-app-bar__nav-link--active",
+							]} aria-expanded="false">
+								{link.icon && <Icon name={link.icon} class="text-[1.1rem]"></Icon>}
+								{link.name}
+								<Icon name="material-symbols:keyboard-arrow-down-rounded" class="text-[1rem]"></Icon>
+							</button>
+						) : (
+							<a href={href} target={link.external ? "_blank" : undefined} rel={link.external ? "noopener noreferrer" : undefined}
+								aria-current={active ? "page" : undefined} data-nav-key={link.pageKey ?? ""}
+								class:list={["top-app-bar__nav-link m3-state-layer relative flex h-10 items-center gap-1 px-3 text-sm font-bold text-[var(--on-surface-variant)] transition-colors hover:text-[var(--on-surface)]", active && "top-app-bar__nav-link--active"]}>
+								{link.icon && <Icon name={link.icon} class="text-[1.1rem]"></Icon>}{link.name}
+								{link.external && <Icon name="material-symbols:arrow-outward-rounded" class="ml-1 text-[0.875rem]"></Icon>}
+							</a>
+						)}
+						{link.children && <div class="top-app-bar__submenu" role="menu">
+							{link.children.map((child) => {
+								const childHref = child.external ? child.url : hrefFor(child.url);
+							return <a href={childHref} target={child.external ? "_blank" : undefined} rel={child.external ? "noopener noreferrer" : undefined} role="menuitem" data-nav-key={child.pageKey ?? ""} class="top-app-bar__submenu-item">
+									{child.icon && <Icon name={child.icon} class="text-[1.2rem]"></Icon>}{child.name}{child.external && <Icon name="material-symbols:arrow-outward-rounded" class="ml-auto text-[0.875rem]"></Icon>}
+								</a>;
+							})}
+						</div>}
+					</div>
+				);
+			})}
+		</nav>
+		<div class="flex-1"></div>
+		<Search client:only="svelte"></Search>
+		{!siteConfig.themeColor.fixed && (
+			<IconButton id="display-settings-switch" label="Display Settings" class="shrink-0">
+				<Icon name="material-symbols:palette-outline" class="text-[1.25rem]"></Icon>
+			</IconButton>
+		)}
+		<LightDarkSwitch client:only="svelte"></LightDarkSwitch>
+		<DisplaySettings client:only="svelte" class="top-full right-4 max-w-[calc(100vw-2rem)] md:right-0"></DisplaySettings>
+	</div>
+</div>
+
+<script>
+	import { resolvePageKey } from "@utils/nav-utils";
+
+	function syncTopAppBarNavigation() {
+		setTopAppBarNavigation(resolvePageKey(new URL(window.location.href)));
+	}
+
+	function setTopAppBarNavigation(pageKey: string) {
+		document.querySelectorAll<HTMLElement>("[data-nav-key]").forEach((link) => {
+			const active = (link.dataset.navKey || "") === pageKey;
+			link.classList.toggle("top-app-bar__nav-link--active", active);
+			if (active) link.setAttribute("aria-current", "page");
+			else link.removeAttribute("aria-current");
+		});
+		document.querySelectorAll<HTMLElement>("[data-nav-group]").forEach((group) => {
+			// 仅处理有下拉子菜单的组（组触发器是 button）；普通链接组已由上面设置
+			const trigger = group.querySelector(":scope > button.top-app-bar__nav-link");
+			if (!trigger) return;
+			const active = Boolean(group.querySelector(".top-app-bar__submenu-item.top-app-bar__nav-link--active"));
+			trigger.classList.toggle("top-app-bar__nav-link--active", active);
+		});
+	}
+
+	function closeTopAppBarMenus() {
+		document.querySelectorAll<HTMLElement>("[data-nav-group].top-app-bar__nav-group--open").forEach((group) => {
+			group.classList.remove("top-app-bar__nav-group--open");
+			group.querySelector(":scope > button")?.setAttribute("aria-expanded", "false");
+		});
+	}
+
+	function loadTopAppBar() {
+		const drawerBtn = document.getElementById("nav-drawer-switch");
+		if (drawerBtn) {
+			drawerBtn.onclick = () => {
+				document.dispatchEvent(new CustomEvent("site-drawer:toggle"));
+			};
+		}
+
+		const settingBtn = document.getElementById("display-settings-switch");
+		if (settingBtn) {
+			settingBtn.onclick = () => {
+				const settingPanel = document.getElementById("display-setting");
+				if (settingPanel) {
+					settingPanel.classList.toggle("float-panel-closed");
+				}
+			};
+		}
+
+		syncTopAppBarNavigation();
+		document.querySelectorAll<HTMLElement>("[data-nav-key]").forEach((link) => {
+			link.onclick = () => {
+				setTopAppBarNavigation(link.dataset.navKey || "");
+				closeTopAppBarMenus();
+			};
+		});
+		document.querySelectorAll<HTMLElement>("[data-nav-group]").forEach((group) => {
+			const trigger = group.querySelector<HTMLButtonElement>(":scope > button");
+			if (!trigger) return;
+			trigger.onclick = () => {
+				const open = group.classList.toggle("top-app-bar__nav-group--open");
+				trigger.setAttribute("aria-expanded", String(open));
+			};
+		});
+		if (!document.documentElement.dataset.topAppBarNavBound) {
+			document.documentElement.dataset.topAppBarNavBound = "true";
+			document.addEventListener("swup:content:replace", syncTopAppBarNavigation);
+			document.addEventListener("swup:page:view", syncTopAppBarNavigation);
+			document.addEventListener("click", (event) => {
+				const insideNavigationGroup = event.composedPath().some(
+					(node) => node instanceof HTMLElement && node.hasAttribute("data-nav-group"),
+				);
+				if (!insideNavigationGroup) {
+					closeTopAppBarMenus();
+				}
+			});
+			document.addEventListener("keydown", (event) => {
+				if (event.key === "Escape") closeTopAppBarMenus();
+			});
+			window.addEventListener("popstate", syncTopAppBarNavigation);
+		}
+	}
+
+	loadTopAppBar();
+</script>
+
+{import.meta.env.PROD && <script is:inline define:vars={{scriptUrl: url('/pagefind/pagefind.js')}}>
+window.__loadPagefind = function() {
+	if (window.__pagefindLoadingPromise) return window.__pagefindLoadingPromise;
+	window.__pagefindLoadingPromise = (async () => {
+		try {
+			const pagefind = await import(scriptUrl);
+			await pagefind.options({
+				excerptLength: 20
+			});
+			window.pagefind = pagefind;
+			document.dispatchEvent(new CustomEvent('pagefindready'));
+			return pagefind;
+		} catch (error) {
+			console.error('Failed to load Pagefind:', error);
+			window.pagefind = {
+				search: () => Promise.resolve({ results: [] }),
+				options: () => Promise.resolve(),
+			};
+			document.dispatchEvent(new CustomEvent('pagefindloaderror'));
+			return window.pagefind;
+		}
+	})();
+	return window.__pagefindLoadingPromise;
+};
+
+function bindSearchTriggers() {
+	const triggers = [
+		document.getElementById('search-input-desktop'),
+		document.getElementById('search-switch')
+	];
+	for (const el of triggers) {
+		if (!el) continue;
+		if (el.dataset.pagefindBound === 'true') continue;
+		el.dataset.pagefindBound = 'true';
+		el.addEventListener('focus', window.__loadPagefind, { once: true, passive: true });
+		el.addEventListener('click', window.__loadPagefind, { once: true, passive: true });
+	}
+}
+
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', bindSearchTriggers, { once: true });
+} else {
+	bindSearchTriggers();
+}
+document.addEventListener('swup:content:replace', bindSearchTriggers);
+</script>}
+
+<style>
+	.top-app-bar {
+		background: color-mix(in oklab, var(--surface) 92%, transparent);
+		box-shadow: var(--m3e-elevation-1);
+		transition:
+			background-color var(--m3e-duration-medium) var(--m3e-easing-standard),
+			box-shadow var(--m3e-duration-medium) var(--m3e-easing-standard),
+			color var(--m3e-duration-short) var(--m3e-easing-standard);
+	}
+
+	.top-app-bar--scrolled:not(.top-app-bar--transparent) {
+		background: color-mix(in oklab, var(--surface-container) 95%, transparent);
+		box-shadow: var(--m3e-elevation-2);
+	}
+
+		.top-app-bar--transparent {
+			background: transparent;
+			box-shadow: none;
+			backdrop-filter: none;
+			color: white;
+			--on-surface: white;
+			--on-surface-variant: rgba(255, 255, 255, 0.9);
+			--primary: white;
+		}
+
+			:global(.top-app-bar--transparent .top-app-bar__search-shell--expanded) {
+				--on-surface: var(--mc-on-surface);
+				--on-surface-variant: var(--mc-on-surface-variant);
+				--primary: var(--mc-primary);
+				color: var(--mc-on-surface);
+			}
+
+			:global(.top-app-bar--transparent .top-app-bar__search-shell--expanded input) {
+				color: var(--mc-on-surface) !important;
+				caret-color: var(--mc-primary) !important;
+			}
+
+			:global(.top-app-bar--transparent .top-app-bar__search-shell--expanded svg) {
+				color: var(--mc-on-surface-variant) !important;
+			}
+
+			/* Floating surfaces keep their theme foreground instead of inheriting
+		 * the white chrome used by the transparent app bar. */
+		:global(.top-app-bar--transparent .float-panel),
+		:global(.top-app-bar--transparent .m3-menu),
+		:global(.top-app-bar--transparent .top-app-bar__submenu) {
+			--on-surface: var(--mc-on-surface);
+			--on-surface-variant: var(--mc-on-surface-variant);
+			--primary: var(--mc-primary);
+			color: var(--mc-on-surface);
+		}
+
+		.top-app-bar--transparent .top-app-bar__nav-link--active::after {
+		background: white;
+	}
+
+	.top-app-bar__nav-link--active {
+		color: var(--primary);
+	}
+
+	.top-app-bar__nav-link--active::after {
+		content: "";
+		position: absolute;
+		inset-inline: 0.75rem;
+		bottom: 0;
+		height: 3px;
+		border-radius: var(--shape-corner-full);
+		background: var(--primary);
+	}
+
+	.top-app-bar__nav-group {
+		position: relative;
+	}
+
+	.top-app-bar__submenu {
+		position: absolute;
+		top: calc(100% - 0.25rem);
+		left: 0;
+		min-width: 12rem;
+		padding: 0.375rem;
+		border-radius: var(--shape-corner-l);
+		background: var(--surface-container);
+		box-shadow: var(--m3e-elevation-2);
+		opacity: 0;
+		visibility: hidden;
+		transform: translateY(-0.25rem) scale(0.98);
+		transform-origin: top left;
+		transition: opacity var(--m3e-duration-short), transform var(--m3e-duration-short), visibility var(--m3e-duration-short);
+	}
+
+	.top-app-bar__nav-group:hover > .top-app-bar__submenu,
+	.top-app-bar__nav-group:focus-within > .top-app-bar__submenu,
+	.top-app-bar__nav-group--open > .top-app-bar__submenu {
+		opacity: 1;
+		visibility: visible;
+		transform: translateY(0) scale(1);
+	}
+
+	.top-app-bar__submenu-item {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		min-height: 2.75rem;
+		padding: 0 0.875rem;
+		border-radius: var(--shape-corner-m);
+		color: var(--on-surface);
+		font: var(--m3e-type-label-large);
+		text-decoration: none;
+	}
+
+	.top-app-bar__submenu-item:hover,
+	.top-app-bar__submenu-item:focus-visible {
+		background: color-mix(in oklab, var(--on-surface) 8%, transparent);
+		outline: none;
+	}
+
+	.top-app-bar__submenu-item.top-app-bar__nav-link--active {
+		background: var(--secondary-container);
+		color: var(--on-secondary-container);
+	}
+
+	.top-app-bar__submenu-item.top-app-bar__nav-link--active::after {
+		display: none;
+	}
+</style>

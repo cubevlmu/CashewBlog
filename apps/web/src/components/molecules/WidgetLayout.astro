@@ -1,0 +1,108 @@
+---
+import Button from "@components/atoms/action/Button.svelte";
+import AccentBar from "@components/atoms/display/AccentBar.svelte";
+import Card from "@components/atoms/display/Card.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+	id: string;
+	name?: string;
+	isCollapsed?: boolean;
+	collapsedHeight?: string;
+	class?: string;
+	style?: string;
+	/** 固定 max-height 滚动（向后兼容，使用 calc(100dvh - 11rem)） */
+	scrollContent?: boolean;
+	/** flexbox 自适应滚动：子元素 flex-1 min-h-0，由父容器决定可用高度 */
+	flexScroll?: boolean;
+}
+const {
+	id,
+	name,
+	isCollapsed,
+	collapsedHeight,
+	style,
+	scrollContent = false,
+	flexScroll = false,
+} = Astro.props;
+const className = Astro.props.class;
+---
+<widget-layout data-id={id} data-is-collapsed={String(isCollapsed)} class={className} style={style}>
+    <Card color="var(--card-bg)" radius="l" class="pb-4">
+    <div class="widget-layout__header">
+        <AccentBar size="small" />
+        <span>{name}</span>
+    </div>
+    <div id={id} class:list={["collapse-wrapper px-4 overflow-hidden", {"collapsed": isCollapsed, "widget-layout__scroll-content": scrollContent, "widget-layout__flex-scroll": flexScroll}]}>
+        <slot></slot>
+    </div>
+    {isCollapsed && <div class="expand-btn px-4 mt-2">
+        <Button variant="text" full radius="m" class="!h-9">
+            <div class="flex items-center justify-center gap-2">
+                <Icon name="material-symbols:more-horiz" class="text-[1.75rem]" />
+                <span>{i18n(I18nKey.more)}</span>
+            </div>
+        </Button>
+    </div>}
+    {/* 底部扩展区：消费方在折叠态传入索引页入口等补充链接（slot 未填则无输出） */}
+    <slot name="footer" />
+    </Card>
+</widget-layout>
+
+<style define:vars={{ collapsedHeight }}>
+    .collapsed {
+        height: var(--collapsedHeight);
+    }
+</style>
+
+<style lang="stylus">
+.widget-layout__header
+	display: flex
+	align-items: center
+	gap: var(--m3e-space-2)
+	margin: var(--m3e-space-4) var(--m3e-space-4) var(--m3e-space-2)
+	font: var(--m3e-type-title-medium)
+	font-weight: 600
+	color: var(--on-surface)
+	transition: color var(--m3e-duration-short) var(--m3e-easing-standard)
+
+.widget-layout__scroll-content
+	max-height: calc(100dvh - 11rem)
+	overflow-y: auto
+	overflow-x: hidden
+	overscroll-behavior: contain
+	scrollbar-width: thin
+
+.widget-layout__flex-scroll
+	flex: 1
+	min-height: 0
+	overflow-y: auto
+	overflow-x: hidden
+	overscroll-behavior: contain
+	scrollbar-width: thin
+</style>
+
+<script>
+    class WidgetLayout extends HTMLElement {
+        constructor() {
+            super();
+
+            if (this.dataset.isCollapsed !== "true")
+                return;
+
+            const id = this.dataset.id;
+            const btn = this.querySelector('.expand-btn');
+            const wrapper = this.querySelector(`#${id}`)
+            btn!.addEventListener('click', () => {
+                wrapper!.classList.remove('collapsed');
+                btn!.classList.add('hidden');
+            })
+        }
+    }
+
+    if (!customElements.get("widget-layout")) {
+        customElements.define("widget-layout", WidgetLayout);
+    }
+</script>

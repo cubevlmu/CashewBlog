@@ -1,0 +1,31 @@
+{
+	"extends": "astro/tsconfigs/strict",
+	"include": ["src/**/*"],
+	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
+		"strictNullChecks": true,
+		"allowJs": false,
+		"baseUrl": ".",
+		"declaration": true,
+		"plugins": [
+			{
+				"name": "@astrojs/ts-plugin"
+			}
+		],
+		"paths": {
+			"@/*": ["src/*"],
+			"@components/*": ["src/components/*"],
+			"@utils/*": ["src/utils/*"],
+			"@layouts/*": ["src/layouts/*"],
+			"@i18n/*": ["src/i18n/*"],
+			"@constants/*": ["src/constants/*"],
+			"@assets/*": ["src/assets/*"],
+			"@shirone/iconify-offline": [
+				"node_modules/@iconify/svelte/dist/OfflineIcon.svelte"
+			],
+			"@shirone/iconify-offline-functions": [
+				"node_modules/@iconify/svelte/dist/offline-functions.js"
+			]
+		}
+	}
+}

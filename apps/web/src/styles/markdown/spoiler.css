@@ -1,0 +1,48 @@
+.custom-md .m3-spoiler {
+	display: inline;
+	max-width: 100%;
+	margin: 0;
+	padding: 0 var(--m3e-space-1);
+	border: 0;
+	border-radius: var(--shape-corner-xs);
+	background: var(--surface-container-high);
+	color: var(--on-surface);
+	font: inherit;
+	line-height: inherit;
+	text-align: start;
+	vertical-align: baseline;
+	cursor: pointer;
+	transition:
+		background-color var(--m3e-duration-short) var(--m3e-easing-standard),
+		color var(--m3e-duration-short) var(--m3e-easing-standard);
+}
+
+.custom-md .m3-spoiler:not(:hover):not(:focus):not([aria-expanded="true"]) {
+	color: transparent;
+}
+
+.custom-md .m3-spoiler:not(:hover):not(:focus):not([aria-expanded="true"]) * {
+	color: transparent;
+}
+
+.custom-md .m3-spoiler:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: var(--m3e-space-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.custom-md .m3-spoiler {
+		transition: none;
+	}
+}
+
+@media print {
+	.custom-md .m3-spoiler {
+		background: transparent;
+		color: inherit;
+	}
+
+	.custom-md .m3-spoiler * {
+		color: inherit;
+	}
+}

@@ -1,0 +1,576 @@
+{
+	"schema": 1,
+	"note": "Shirone M3E 原子组件单一真源。tier: A=生产级(被页面引用) B=库存级(有明确落地去向) C=退役候选 watch=观望。source: 移植|原创。landed: 是否被 molecules/organisms/layouts/pages 引用。",
+	"atoms": [
+		{
+			"name": "Button",
+			"file": "action/Button.svelte",
+			"category": "action",
+			"tier": "A",
+			"source": "移植",
+			"landed": true,
+			"note": "官方移植版，已替换 Button.astro 生产落地"
+		},
+		{
+			"name": "ButtonGroup",
+			"file": "action/ButtonGroup.svelte",
+			"category": "action",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+		{
+			"name": "Chip",
+			"file": "action/Chip.astro",
+			"category": "action",
+			"tier": "A",
+			"source": "移植",
+			"landed": true,
+			"note": "单 chip 静态链接，与 Chips.svelte 职责不同"
+		},
+		{
+			"name": "Chips",
+			"file": "action/Chips.svelte",
+			"category": "action",
+			"tier": "A",
+			"source": "移植",
+			"landed": true,
+			"note": "官方移植版，友链页标签筛选已生产落地"
+		},
+		{
+			"name": "FAB",
+			"file": "action/FAB.svelte",
+			"category": "action",
+			"tier": "A",
+			"source": "移植",
+			"landed": true,
+			"note": "官方移植版，已替换 FAB.astro 生产落地"
+		},
+		{
+			"name": "FABMenu",
+			"file": "action/FABMenu.svelte",
+			"category": "action",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+		{
+			"name": "FloatingToolbar",
+			"file": "action/FloatingToolbar.svelte",
+			"category": "action",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+		{
+			"name": "IconButton",
+			"file": "action/IconButton.svelte",
+			"category": "action",
+			"tier": "A",
+			"source": "移植",
+			"landed": true,
+			"note": "官方移植版，已替换 IconButton.astro 生产落地"
+		},
+		{
+			"name": "SplitButton",
+			"file": "action/SplitButton.svelte",
+			"category": "action",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+		{
+			"name": "ToggleButton",
+			"file": "action/ToggleButton.svelte",
+			"category": "action",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+
+		{
+			"name": "ArchiveList",
+			"file": "blog/ArchiveList.svelte",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "CategoryList",
+			"file": "blog/CategoryList.astro",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "FooterBar",
+			"file": "blog/FooterBar.astro",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "PagePagination",
+			"file": "blog/PagePagination.astro",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "PostCard",
+			"file": "blog/PostCard.astro",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "PostMeta",
+			"file": "blog/PostMeta.astro",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "SearchPanel",
+			"file": "blog/SearchPanel.svelte",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "TagList",
+			"file": "blog/TagList.astro",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "TocList",
+			"file": "blog/TocList.astro",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "TagBadge",
+			"file": "blog/TagBadge.astro",
+			"category": "blog",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+
+		{
+			"name": "AccentBar",
+			"file": "display/AccentBar.svelte",
+			"category": "display",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "MetaIcon",
+			"file": "display/MetaIcon.astro",
+			"category": "display",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "Avatar",
+			"file": "display/Avatar.svelte",
+			"category": "display",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "Icon",
+			"file": "display/Icon.svelte",
+			"category": "display",
+			"tier": "A",
+			"source": "原创",
+			"landed": true,
+			"note": "Iconify 本地最小数据离线渲染器，禁止运行时 API 回源"
+		},
+		{
+			"name": "Badge",
+			"file": "display/Badge.svelte",
+			"category": "display",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "评论/通知徽标，P2"
+		},
+		{
+			"name": "BadgedBox",
+			"file": "display/BadgedBox.svelte",
+			"category": "display",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "徽标锚定容器，P2"
+		},
+		{
+			"name": "Card",
+			"file": "display/Card.svelte",
+			"category": "display",
+			"tier": "A",
+			"source": "移植",
+			"landed": true
+		},
+		{
+			"name": "Carousel",
+			"file": "display/Carousel.svelte",
+			"category": "display",
+			"tier": "watch",
+			"source": "移植",
+			"landed": false,
+			"note": "相册/壁纸轮播，P2 观望"
+		},
+		{
+			"name": "DataTable",
+			"file": "display/DataTable.svelte",
+			"category": "display",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "企业感，无博客场景"
+		},
+		{
+			"name": "Divider",
+			"file": "display/Divider.svelte",
+			"category": "display",
+			"tier": "B",
+			"source": "移植",
+			"landed": false
+		},
+		{
+			"name": "ListItem",
+			"file": "display/ListItem.svelte",
+			"category": "display",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "友链/动态，P1"
+		},
+		{
+			"name": "PageHeader",
+			"file": "display/PageHeader.astro",
+			"category": "display",
+			"tier": "A",
+			"source": "原创",
+			"landed": true,
+			"note": "SSR 静态页页内大标题（astro-icon 内联，区别于 molecules 版）"
+		},
+		{
+			"name": "PanelStack",
+			"file": "display/PanelStack.svelte",
+			"category": "display",
+			"tier": "A",
+			"source": "原创",
+			"landed": true,
+			"note": "安卓设置风格分段堆叠面板（段间透明间隙），Theme Color 弹窗已落地"
+		},
+		{
+			"name": "Skeleton",
+			"file": "display/Skeleton.svelte",
+			"category": "display",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+
+		{
+			"name": "LoadingIndicator",
+			"file": "feedback/LoadingIndicator.svelte",
+			"category": "feedback",
+			"tier": "A",
+			"source": "移植",
+			"landed": true,
+			"note": "动态筛选过渡 + 画廊瓦片加载 overlay；文章封面使用零 JS 静态占位"
+		},
+		{
+			"name": "ProgressIndicator",
+			"file": "feedback/ProgressIndicator.svelte",
+			"category": "feedback",
+			"tier": "A",
+			"source": "移植",
+			"landed": true
+		},
+		{
+			"name": "PullToRefresh",
+			"file": "feedback/PullToRefresh.svelte",
+			"category": "feedback",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+
+		{
+			"name": "Autocomplete",
+			"file": "input/Autocomplete.svelte",
+			"category": "input",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+		{
+			"name": "DateInput",
+			"file": "input/DateInput.svelte",
+			"category": "input",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "博客无日期输入"
+		},
+		{
+			"name": "DatePicker",
+			"file": "input/DatePicker.svelte",
+			"category": "input",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "博客无日期输入"
+		},
+		{
+			"name": "DateRangePicker",
+			"file": "input/DateRangePicker.svelte",
+			"category": "input",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "博客无日期范围选择"
+		},
+		{
+			"name": "ExposedDropdownMenu",
+			"file": "input/ExposedDropdownMenu.svelte",
+			"category": "input",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "Select 已覆盖"
+		},
+		{
+			"name": "SearchBar",
+			"file": "input/SearchBar.svelte",
+			"category": "input",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "替换 molecules/SearchBar"
+		},
+		{
+			"name": "SearchView",
+			"file": "input/SearchView.svelte",
+			"category": "input",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "移动全屏搜索候选，SearchPanel 已够用"
+		},
+		{
+			"name": "Select",
+			"file": "input/Select.svelte",
+			"category": "input",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "留言板/设置，P1"
+		},
+		{
+			"name": "TextField",
+			"file": "input/TextField.svelte",
+			"category": "input",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "留言板/表单，P1"
+		},
+		{
+			"name": "TimePicker",
+			"file": "input/TimePicker.svelte",
+			"category": "input",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "博客无时间输入"
+		},
+
+		{
+			"name": "AppBar",
+			"file": "navigation/AppBar.svelte",
+			"category": "navigation",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "TopAppBar 自研已够用"
+		},
+		{
+			"name": "Menu",
+			"file": "navigation/Menu.svelte",
+			"category": "navigation",
+			"tier": "A",
+			"source": "移植",
+			"landed": true
+		},
+		{
+			"name": "NavigationBar",
+			"file": "navigation/NavigationBar.svelte",
+			"category": "navigation",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+		{
+			"name": "NavigationDrawer",
+			"file": "navigation/NavigationDrawer.svelte",
+			"category": "navigation",
+			"tier": "watch",
+			"source": "移植",
+			"landed": false,
+			"note": "移动端替换 SiteNavigationDrawer 评估"
+		},
+		{
+			"name": "NavigationRail",
+			"file": "navigation/NavigationRail.svelte",
+			"category": "navigation",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "无博客落地场景"
+		},
+		{
+			"name": "Tabs",
+			"file": "navigation/Tabs.svelte",
+			"category": "navigation",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "归档分组改用 SegmentedButton（站内 pill 风格）"
+		},
+
+		{
+			"name": "AlertDialog",
+			"file": "overlay/AlertDialog.svelte",
+			"category": "overlay",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "破坏性操作确认"
+		},
+		{
+			"name": "Banner",
+			"file": "overlay/Banner.svelte",
+			"category": "overlay",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "公告 widget，P2"
+		},
+		{
+			"name": "BottomSheet",
+			"file": "overlay/BottomSheet.svelte",
+			"category": "overlay",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "Dialog/SheetSide 已覆盖"
+		},
+		{
+			"name": "Dialog",
+			"file": "overlay/Dialog.svelte",
+			"category": "overlay",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "留言板/设置/lightbox"
+		},
+		{
+			"name": "SheetSide",
+			"file": "overlay/SheetSide.svelte",
+			"category": "overlay",
+			"tier": "C",
+			"source": "移植",
+			"landed": false,
+			"note": "移动端抽屉已由 SiteNavigationDrawer 覆盖"
+		},
+		{
+			"name": "Snackbar",
+			"file": "overlay/Snackbar.svelte",
+			"category": "overlay",
+			"tier": "A",
+			"source": "移植",
+			"landed": true
+		},
+		{
+			"name": "Tooltip",
+			"file": "overlay/Tooltip.svelte",
+			"category": "overlay",
+			"tier": "A",
+			"source": "移植",
+			"landed": true,
+			"note": "用于 Profile 社交链接、音乐播放器控制栏与 Mermaid 图表工具栏"
+		},
+
+		{
+			"name": "Checkbox",
+			"file": "selection/Checkbox.svelte",
+			"category": "selection",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "设置面板扩展"
+		},
+		{
+			"name": "RadioButton",
+			"file": "selection/RadioButton.svelte",
+			"category": "selection",
+			"tier": "B",
+			"source": "移植",
+			"landed": false,
+			"note": "设置面板扩展"
+		},
+		{
+			"name": "SegmentedButton",
+			"file": "selection/SegmentedButton.svelte",
+			"category": "selection",
+			"tier": "A",
+			"source": "移植",
+			"landed": true
+		},
+		{
+			"name": "Slider",
+			"file": "selection/Slider.svelte",
+			"category": "selection",
+			"tier": "A",
+			"source": "原创",
+			"landed": true
+		},
+		{
+			"name": "Switch",
+			"file": "selection/Switch.svelte",
+			"category": "selection",
+			"tier": "A",
+			"source": "移植",
+			"landed": true
+		}
+	]
+}

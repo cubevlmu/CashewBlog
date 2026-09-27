@@ -1,0 +1,172 @@
+/* Inline content notes use the native Popover API and CSS anchor positioning. */
+.custom-md .m3-content-note__trigger {
+	--m3e-state-color: var(--on-secondary-container);
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--m3e-space-5);
+	height: var(--m3e-space-5);
+	margin-inline: calc(var(--m3e-space-1) / 2);
+	padding: 0;
+	vertical-align: 0.15em;
+	border: 1px solid color-mix(in oklab, var(--secondary) 32%, transparent);
+	border-radius: var(--shape-corner-full);
+	background: var(--secondary-container);
+	color: var(--on-secondary-container);
+	font: var(--m3e-type-label-medium);
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.custom-md .m3-content-note__trigger:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.m3-content-note__popover {
+	position: fixed;
+	position-anchor: var(--content-note-anchor);
+	inset: 50% auto auto 50%;
+	box-sizing: border-box;
+	width: max-content;
+	max-width: min(22rem, calc(100vw - var(--m3e-space-8)));
+	max-height: min(24rem, calc(100dvh - var(--m3e-space-10) * 2));
+	margin: 0;
+	padding: var(--m3e-space-4);
+	overflow: auto;
+	overscroll-behavior: contain;
+	border: 1px solid var(--outline-variant);
+	border-radius: var(--shape-corner-l);
+	background: var(--surface-container-high);
+	box-shadow: var(--m3e-elevation-3);
+	color: var(--on-surface);
+	font: var(--m3e-type-body-medium);
+	transform: translate(-50%, -50%);
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-bg) transparent;
+}
+
+.m3-content-note__popover:popover-open {
+	animation: m3-content-note-in var(--m3e-duration-short)
+		var(--m3e-easing-emphasized-decelerate);
+}
+
+.m3-content-note__popover::backdrop {
+	background: transparent;
+}
+
+.m3-content-note__label {
+	margin: 0 0 var(--m3e-space-3);
+	color: var(--on-surface);
+	font: var(--m3e-type-label-large);
+	font-weight: 700;
+	overflow-wrap: anywhere;
+}
+
+.m3-content-note__body,
+.m3-content-note__list {
+	margin: 0;
+	padding: 0;
+}
+
+.m3-content-note__list {
+	list-style: none;
+	counter-reset: content-note;
+}
+
+.m3-content-note__item {
+	position: relative;
+	margin: 0;
+	padding: 0 0 var(--m3e-space-3) var(--m3e-space-6);
+	border-bottom: 1px solid var(--outline-variant);
+	counter-increment: content-note;
+}
+
+.m3-content-note__item::before {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--m3e-space-5);
+	height: var(--m3e-space-5);
+	border-radius: var(--shape-corner-full);
+	background: var(--secondary-container);
+	color: var(--on-secondary-container);
+	font: var(--m3e-type-label-small);
+	content: counter(content-note);
+}
+
+.m3-content-note__item + .m3-content-note__item {
+	padding-top: var(--m3e-space-3);
+}
+
+.m3-content-note__item + .m3-content-note__item::before {
+	top: var(--m3e-space-3);
+}
+
+.m3-content-note__item:last-child {
+	padding-bottom: 0;
+	border-bottom: 0;
+}
+
+.m3-content-note__popover :is(p, ul, ol, pre, blockquote) {
+	margin: 0 0 var(--m3e-space-3);
+}
+
+.m3-content-note__popover :is(ul, ol) {
+	padding-inline-start: var(--m3e-space-5);
+}
+
+.m3-content-note__popover :last-child {
+	margin-bottom: 0;
+}
+
+.m3-content-note__popover a {
+	color: var(--primary);
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
+.m3-content-note__popover code {
+	padding: 0 calc(var(--m3e-space-1) / 2);
+	border-radius: var(--shape-corner-xs);
+	background: var(--inline-code-bg);
+	color: var(--inline-code-color);
+	font: var(--m3e-type-code);
+}
+
+@supports (position-area: block-end) {
+	.m3-content-note__popover {
+		position-area: block-end span-inline-end;
+		position-try-fallbacks: flip-block, flip-inline;
+		inset: auto;
+		margin: var(--m3e-space-2) var(--m3e-space-4);
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.m3-content-note__popover:popover-open {
+		animation: none;
+	}
+}
+
+@media print {
+	.custom-md .m3-content-note__trigger,
+	.m3-content-note__popover {
+		display: none;
+	}
+}
+
+@keyframes m3-content-note-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}

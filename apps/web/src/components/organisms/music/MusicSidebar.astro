@@ -1,0 +1,115 @@
+---
+import { getImage } from "astro:assets";
+import WidgetLayout from "@components/molecules/WidgetLayout.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { resolveImageAsset } from "@utils/asset-utils";
+import stylus from "stylus";
+import { musicConfig, resolveMusicOptions } from "@/config/musicConfig";
+import { musicTracks } from "@/data/music";
+import type { MusicWidget } from "@/types/sidebarConfig";
+import MusicSidebarClient from "./MusicSidebarClient.svelte";
+import { musicSidebarStylus } from "./musicSidebarStyles";
+
+interface Props {
+	class?: string;
+	style?: string;
+	widget?: MusicWidget;
+}
+
+const className = Astro.props.class;
+const style = Astro.props.style;
+const options = resolveMusicOptions(musicConfig);
+const configuredTracks =
+	musicConfig.tracks ??
+	(musicConfig.provider === "local" || musicConfig.provider === "mixed"
+		? musicTracks
+		: []);
+const configuredCovers = new Map(
+	configuredTracks.map((track) => [track.id.trim(), track.cover] as const),
+);
+const optimizedOptions = options
+	? {
+			...options,
+			playlist: await Promise.all(
+				options.playlist.map(async (track) => {
+					const configuredCover = configuredCovers.get(track.id) ?? track.cover;
+					if (!configuredCover) return track;
+					const asset = await resolveImageAsset(configuredCover);
+					if (typeof asset === "string") return track;
+					const widths = [64, 128].filter((width) => width <= asset.width);
+					if (!widths.length) widths.push(asset.width);
+					const candidates = await Promise.all(
+						widths.map(async (width) => ({
+							width,
+							image: await getImage({
+								src: asset,
+								width,
+								format: "webp",
+								quality: 68,
+							}),
+						})),
+					);
+					return {
+						...track,
+						cover: candidates.at(-1)?.image.src ?? asset.src,
+						coverSrcset: candidates
+							.map(({ image, width }) => `${image.src} ${width}w`)
+							.join(", "),
+						coverSizes: "52px",
+						coverWidth: asset.width,
+						coverHeight: asset.height,
+					};
+				}),
+			),
+		}
+	: null;
+const musicSidebarStyles = options
+	? await new Promise<string>((resolve, reject) => {
+			stylus.render(musicSidebarStylus, (error, css) => {
+				if (error) reject(error);
+				else resolve(css);
+			});
+		})
+	: null;
+const labels = {
+	previous: i18n(I18nKey.musicPrevious),
+	play: i18n(I18nKey.musicPlay),
+	pause: i18n(I18nKey.musicPause),
+	next: i18n(I18nKey.musicNext),
+	mute: i18n(I18nKey.musicMute),
+	unmute: i18n(I18nKey.musicUnmute),
+	playbackMode: i18n(I18nKey.musicPlaybackMode),
+	modeSequence: i18n(I18nKey.musicModeSequence),
+	modeRepeatOne: i18n(I18nKey.musicModeRepeatOne),
+	modeShuffle: i18n(I18nKey.musicModeShuffle),
+	progress: i18n(I18nKey.musicProgress),
+	volume: i18n(I18nKey.musicVolume),
+	showPlaylist: i18n(I18nKey.musicShowPlaylist),
+	hidePlaylist: i18n(I18nKey.musicHidePlaylist),
+	empty: i18n(I18nKey.musicEmpty),
+	loading: i18n(I18nKey.musicLoading),
+	notRequested: i18n(I18nKey.musicNotRequested),
+	nowPlaying: i18n(I18nKey.musicNowPlaying),
+	errors: {
+		"empty-playlist": i18n(I18nKey.musicErrorEmptyPlaylist),
+		"source-unavailable": i18n(I18nKey.musicErrorSourceUnavailable),
+		"autoplay-blocked": i18n(I18nKey.musicErrorAutoplayBlocked),
+		"invalid-track": i18n(I18nKey.musicErrorInvalidTrack),
+	},
+};
+---
+
+{optimizedOptions && (
+	<>
+		<style is:inline set:html={musicSidebarStyles}></style>
+		<WidgetLayout
+			name={i18n(I18nKey.musicPlayerTitle)}
+			id="sidebar-music-player"
+			class={className}
+			style={style}
+		>
+			<MusicSidebarClient client:load options={optimizedOptions} {labels} />
+		</WidgetLayout>
+	</>
+)}

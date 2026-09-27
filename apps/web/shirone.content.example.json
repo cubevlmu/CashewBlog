@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+
+	"source": {
+		"type": "git",
+		"url": "https://github.com/OWNER/shirone-content.git",
+		"ref": "main"
+	},
+
+	"mounts": {
+		"content": "src/content",
+		"data": "src/data",
+		"assets": "src/assets",
+		"public": "public"
+	},
+
+	"keep": [],
+
+	"prune": true
+}

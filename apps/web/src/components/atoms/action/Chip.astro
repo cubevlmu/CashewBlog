@@ -1,0 +1,151 @@
+---
+/**
+ * M3E Chip — M3 芯片原子。
+ * variant:
+ *  - assist: 描边辅助芯片（M3 标准，带 outline）
+ *  - filter: 筛选芯片，selected 态用次级容器（M3 标准）
+ *  - suggestion: 建议芯片，leading 图标 + label，selected 态次级容器（M3 标准）
+ *  - input: 输入芯片，leading 图标 + label + trailing 删除（slot 提供），
+ *           selected 态次级容器（M3 标准）
+ *  - tonal:  站内风格药丸（无边框、surface-container 层叠、12px 圆角），
+ *            与原 .btn-regular 视觉一致
+ */
+interface Props {
+	variant?: "assist" | "filter" | "suggestion" | "input" | "tonal";
+	selected?: boolean;
+	/** 弱选中态（导航栏里“文章所属分类”的次级高亮，M3 primary-container 底色） */
+	soft?: boolean;
+	disabled?: boolean;
+	/** 提供 href 时渲染为链接（标签跳转用），否则渲染为按钮 */
+	href?: string;
+	target?: string;
+	label?: string;
+	class?: string;
+}
+
+const {
+	variant = "assist",
+	selected = false,
+	soft = false,
+	disabled = false,
+	href,
+	target,
+	label,
+	class: className,
+} = Astro.props;
+---
+
+{
+	href ? (
+		<a
+			href={href}
+			target={target}
+			aria-label={label}
+			class:list={[
+				"m3-chip",
+				"m3-state-layer",
+				`m3-chip--${variant}`,
+				{ "m3-chip--selected": selected },
+				{ "m3-chip--soft": soft },
+				className,
+			]}
+		>
+			<span class="m3-chip__content"><slot /></span>
+		</a>
+	) : (
+		<button
+			type="button"
+			disabled={disabled}
+			aria-label={label}
+			aria-pressed={variant === "filter" ? selected : undefined}
+			class:list={[
+				"m3-chip",
+				"m3-state-layer",
+				`m3-chip--${variant}`,
+				{ "m3-chip--selected": selected },
+				{ "m3-chip--soft": soft },
+				className,
+			]}
+		>
+			<span class="m3-chip__content"><slot /></span>
+		</button>
+	)
+}
+
+<style lang="stylus">
+.m3-chip
+  border-radius: var(--shape-corner-full)
+  height: 2rem
+  padding: 0 1rem
+  display: inline-flex
+  align-items: center
+  cursor: pointer
+  user-select: none
+  text-decoration: none
+  font: var(--m3e-type-label-large)
+
+  &__content
+    display: flex
+    align-items: center
+    gap: 0.5rem
+    min-width: 0
+
+  &--assist
+    background: var(--surface-container-low)
+    color: var(--on-surface-variant)
+    border: 1px solid var(--outline-variant)
+    --m3e-state-color: var(--on-surface-variant)
+
+  &--filter
+    background: transparent
+    color: var(--on-surface-variant)
+    border: 1px solid var(--outline-variant)
+    --m3e-state-color: var(--on-surface-variant)
+    &.m3-chip--selected
+      background: var(--secondary-container)
+      color: var(--on-secondary-container)
+      --m3e-state-color: var(--on-secondary-container)
+      border-color: transparent
+
+  /* suggestion / input：leading 图标 + label，selected 态次级容器（M3 标准） */
+  &--suggestion, &--input
+    background: transparent
+    color: var(--on-surface-variant)
+    border: 1px solid var(--outline-variant)
+    --m3e-state-color: var(--on-surface-variant)
+    &.m3-chip--selected
+      background: var(--secondary-container)
+      color: var(--on-secondary-container)
+      --m3e-state-color: var(--on-secondary-container)
+      border-color: transparent
+
+  /* 站内风格：无边框 + surface-container 层叠，等价旧 .btn-regular 药丸；
+     选中态 primary 实底 + on-primary（导航栏高亮语义） */
+  &--tonal
+    border: none
+    border-radius: var(--shape-corner-full)
+    padding: 0 0.75rem
+    font: var(--m3e-type-label-large)
+    background: var(--btn-regular-bg)
+    color: var(--btn-content)
+    --m3e-state-color: var(--on-surface-variant)
+    &:hover
+      background: var(--btn-regular-bg-hover)
+    &:active
+      background: var(--btn-regular-bg-active)
+
+    &.m3-chip--soft
+      background: var(--primary-container)
+      color: var(--on-primary-container)
+      --m3e-state-color: var(--on-primary-container)
+      font-weight: 600
+      &:hover
+        background: var(--primary-container)
+
+    &.m3-chip--selected
+      background: var(--primary)
+      color: var(--on-primary)
+      --m3e-state-color: var(--on-primary)
+      &:hover
+        background: var(--primary)
+</style>

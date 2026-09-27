@@ -1,0 +1,161 @@
+---
+interface WavePathOptions {
+	amplitude: number;
+	baseline: number;
+	bottom: number;
+	end: number;
+	inverted?: boolean;
+	period: number;
+	start: number;
+}
+
+function buildWavePath({
+	amplitude,
+	baseline,
+	bottom,
+	end,
+	inverted = false,
+	period,
+	start,
+}: WavePathOptions): string {
+	const direction = inverted ? -1 : 1;
+	let path = `M ${start} ${baseline}`;
+
+	for (let x = start; x < end; x += period) {
+		path += ` C ${x + period / 8} ${baseline - amplitude * direction}`;
+		path += ` ${x + (period * 3) / 8} ${baseline - amplitude * direction}`;
+		path += ` ${x + period / 2} ${baseline}`;
+		path += ` C ${x + (period * 5) / 8} ${baseline + amplitude * direction}`;
+		path += ` ${x + (period * 7) / 8} ${baseline + amplitude * direction}`;
+		path += ` ${x + period} ${baseline}`;
+	}
+
+	return `${path} V ${bottom} H ${start} Z`;
+}
+
+const sharedWave = {
+	bottom: 60,
+	end: 1024,
+	period: 128,
+	start: -768,
+};
+const waveA = buildWavePath({ ...sharedWave, amplitude: 14, baseline: 18 });
+const waveB = buildWavePath({
+	...sharedWave,
+	amplitude: 12,
+	baseline: 20,
+	inverted: true,
+});
+---
+
+<div class="banner-waves" aria-hidden="true">
+	<svg viewBox="0 0 240 42" preserveAspectRatio="none" focusable="false">
+		<defs>
+			<path id="shirone-banner-wave-a" d={waveA} />
+			<path id="shirone-banner-wave-b" d={waveB} />
+		</defs>
+		<g class="banner-waves__layers">
+			<use href="#shirone-banner-wave-a" class="banner-waves__layer banner-waves__layer--haze" />
+			<use href="#shirone-banner-wave-b" class="banner-waves__layer banner-waves__layer--far" />
+			<use href="#shirone-banner-wave-a" class="banner-waves__layer banner-waves__layer--middle" />
+			<use href="#shirone-banner-wave-b" class="banner-waves__layer banner-waves__layer--near" />
+		</g>
+	</svg>
+</div>
+
+<style lang="stylus">
+.banner-waves
+	position: absolute
+	z-index: 3
+	inset: auto 0 0
+	height: clamp(var(--m3e-space-10), 8vh, calc(var(--m3e-space-10) + var(--m3e-space-8)))
+	overflow: hidden
+	color: var(--page-bg)
+	pointer-events: none
+
+	svg
+		display: block
+		width: 112%
+		height: 100%
+		margin-inline: -6%
+		overflow: visible
+
+	&__layer
+		--banner-wave-period: -53.333333%
+		--banner-wave-scale-y: 1
+		fill: currentColor
+		transform-box: view-box
+		transform-origin: 50% 100%
+		transform: translate3d(var(--banner-wave-start), var(--banner-wave-y), 0) scaleY(var(--banner-wave-scale-y))
+		animation-name: banner-wave-flow
+		animation-timing-function: linear
+		animation-iteration-count: infinite
+
+		&--haze
+			--banner-wave-start: var(--banner-wave-period)
+			--banner-wave-end: 0px
+			--banner-wave-y: 0px
+			opacity: 0.25
+			animation-duration: var(--m3e-duration-ambient-short)
+
+		&--far
+			--banner-wave-start: 0px
+			--banner-wave-end: var(--banner-wave-period)
+			--banner-wave-y: var(--m3e-space-1)
+			opacity: 0.48
+			animation-duration: var(--m3e-duration-ambient-medium)
+
+		&--middle
+			--banner-wave-start: var(--banner-wave-period)
+			--banner-wave-end: 0px
+			--banner-wave-y: var(--m3e-space-2)
+			opacity: 0.72
+			animation-duration: var(--m3e-duration-ambient-long)
+
+		&--near
+			--banner-wave-start: 0px
+			--banner-wave-end: var(--banner-wave-period)
+			--banner-wave-y: var(--m3e-space-3)
+			animation-duration: var(--m3e-duration-ambient-extra-long)
+
+@keyframes banner-wave-flow
+	to
+		transform: translate3d(var(--banner-wave-end), var(--banner-wave-y), 0) scaleY(var(--banner-wave-scale-y))
+
+@media (max-width: 479.98px)
+	.banner-waves
+		height: clamp(var(--m3e-space-10), 8vh, calc(var(--m3e-space-10) + var(--m3e-space-8)))
+
+		&__layer
+			--banner-wave-scale-y: 0.72
+
+			&--haze
+				opacity: 0.18
+
+			&--far
+				opacity: 0.36
+
+@media (min-width: 480px) and (max-width: 767.98px)
+	.banner-waves
+		height: clamp(calc(var(--m3e-space-10) + var(--m3e-space-2)), 8vh, calc(var(--m3e-space-10) + var(--m3e-space-8)))
+
+		&__layer
+			--banner-wave-scale-y: 0.72
+
+			&--haze
+				opacity: 0.18
+
+			&--far
+				opacity: 0.36
+
+@media (min-width: 768px)
+	.banner-waves
+		height: clamp(calc(var(--m3e-space-10) + var(--m3e-space-8)), 15vh, calc(var(--m3e-space-10) + var(--m3e-space-10) + var(--m3e-space-10) + var(--m3e-space-8)))
+
+:global(html.motion-reduced) .banner-waves__layer
+	animation: none
+
+@media (prefers-reduced-motion: reduce)
+	.banner-waves__layer
+		animation: none
+</style>

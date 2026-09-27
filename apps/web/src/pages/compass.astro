@@ -1,0 +1,23 @@
+---
+/**
+ * 站点罗盘页：常用站点按分组陈列（本地数据源，构建期取得后交给客户端岛渲染；
+ * 搜索过滤 / 分组锚点滚动 / stagger 入场均为交互态）。
+ */
+import CompassSection from "@components/organisms/CompassSection.svelte";
+import I18nKey from "@i18n/i18nKey";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { compassConfig } from "@/config/compassConfig";
+import { resolveI18nText } from "@utils/i18n-utils";
+import { compassData } from "../data/compass";
+
+if (!compassConfig.enable) {
+	return Astro.redirect("/404/");
+}
+
+const pageTitle = resolveI18nText(compassConfig.title, I18nKey.compass);
+const pageDescription = resolveI18nText(compassConfig.description, I18nKey.compassBanner);
+---
+
+<MainGridLayout title={pageTitle} description={pageDescription} page="compass">
+    <CompassSection shelves={compassData} title={pageTitle} subtitle={pageDescription} client:visible></CompassSection>
+</MainGridLayout>

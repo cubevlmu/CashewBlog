@@ -1,0 +1,15 @@
+---
+import Chip from "@components/atoms/action/Chip.astro";
+
+interface Props {
+	size?: string;
+	dot?: boolean;
+	href?: string;
+	label?: string;
+}
+const { dot, href, label }: Props = Astro.props;
+---
+<Chip href={href} label={label} variant="tonal">
+    {dot && <div class="h-1.5 w-1.5 rounded-full bg-[var(--btn-content)]"></div>}
+    <slot />
+</Chip>

@@ -1,0 +1,174 @@
+---
+import ArticleDiscoveryItem from "@components/molecules/ArticleDiscoveryItem.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import type { PostForList } from "@utils/content-utils";
+import { formatDateToYYYYMMDD } from "@utils/date-utils";
+import { getPostUrlBySlug } from "@utils/url-utils";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+	related: PostForList[];
+	random: PostForList[];
+	class?: string;
+}
+
+const { related, random, class: className } = Astro.props;
+const hasRelated = related.length > 0;
+const hasRandom = random.length > 0;
+---
+
+{(hasRelated || hasRandom) && (
+	<section
+		class:list={["article-discovery", className]}
+		data-article-discovery
+		aria-labelledby="article-discovery-title"
+	>
+		<header class="article-discovery__header">
+			<h2 id="article-discovery-title">{i18n(I18nKey.continueReading)}</h2>
+		</header>
+
+		<div class={`article-discovery__lanes${hasRelated && hasRandom ? "" : " article-discovery__lanes--single"}`}>
+			{hasRelated && (
+				<section class="article-discovery__lane article-discovery__lane--related" data-discovery-related>
+					<div class="article-discovery__lane-heading">
+						<div class="article-discovery__lane-title">
+							<Icon name="material-symbols:hub-outline-rounded" />
+							<h3>{i18n(I18nKey.relatedReading)}</h3>
+						</div>
+						<p>{i18n(I18nKey.relatedReadingSubtitle)}</p>
+					</div>
+					<ul class="article-discovery__list">
+						{related.map((article) => (
+							<ArticleDiscoveryItem
+								href={article.url ?? getPostUrlBySlug(article.slug)}
+								title={article.data.title}
+								published={formatDateToYYYYMMDD(article.data.published)}
+								category={article.data.category}
+								lane="related"
+							/>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{hasRandom && (
+				<section class="article-discovery__lane article-discovery__lane--random" data-discovery-random>
+					<div class="article-discovery__lane-heading">
+						<div class="article-discovery__lane-title">
+							<Icon name="material-symbols:explore-outline-rounded" />
+							<h3>{i18n(I18nKey.randomReading)}</h3>
+						</div>
+						<p>{i18n(I18nKey.randomReadingSubtitle)}</p>
+					</div>
+					<ul class="article-discovery__list">
+						{random.map((article) => (
+							<ArticleDiscoveryItem
+								href={article.url ?? getPostUrlBySlug(article.slug)}
+								title={article.data.title}
+								published={formatDateToYYYYMMDD(article.data.published)}
+								category={article.data.category}
+								lane="random"
+							/>
+						))}
+					</ul>
+				</section>
+			)}
+		</div>
+	</section>
+)}
+
+<style lang="stylus">
+@import "../../styles/breakpoints.styl"
+.article-discovery
+	display: flex
+	width: 100%
+	min-width: 0
+	flex-direction: column
+	gap: var(--m3e-space-4)
+	margin-top: var(--m3e-space-6)
+	padding-top: var(--m3e-space-2)
+
+	&__header
+		display: flex
+		align-items: center
+		gap: var(--m3e-space-4)
+		color: var(--on-surface)
+
+		&::after
+			content: ""
+			flex: 1
+			height: 1px
+			background: var(--outline-variant)
+
+		h2
+			margin: 0
+			font: var(--m3e-type-headline-medium)
+			font-weight: 700
+			color: inherit
+
+	&__lanes
+		display: grid
+		grid-template-columns: minmax(0, 1fr)
+		gap: var(--m3e-space-5)
+		min-width: 0
+
+	&__lane
+		display: flex
+		min-width: 0
+		flex-direction: column
+		gap: var(--m3e-space-2)
+
+	&__lane-heading
+		display: flex
+		min-width: 0
+		flex-direction: column
+		gap: var(--m3e-space-2)
+		padding-inline: var(--m3e-space-3)
+
+		p
+			margin: 0
+			font: var(--m3e-type-body-small)
+			color: var(--on-surface-variant)
+
+	&__lane-title
+		display: flex
+		align-items: center
+		gap: var(--m3e-space-2)
+		min-width: 0
+		color: var(--primary)
+
+		> :global(svg)
+			flex: 0 0 var(--m3e-space-5)
+			width: var(--m3e-space-5)
+			height: var(--m3e-space-5)
+
+		h3
+			margin: 0
+			font: var(--m3e-type-title-medium)
+			font-weight: 700
+			color: inherit
+
+	&__lane--random &__lane-title
+		color: var(--tertiary)
+
+	&__list
+		display: flex
+		min-width: 0
+		flex-direction: column
+		gap: var(--m3e-space-1)
+		margin: 0
+		padding: 0
+		list-style: none
+
+	@media (min-width: bp-md)
+		&__lanes
+			grid-template-columns: repeat(2, minmax(0, 1fr))
+
+		&__lanes--single
+			grid-template-columns: minmax(0, 1fr)
+
+		&__lane + &__lane
+			border-left: 1px solid var(--outline-variant)
+			padding-left: var(--m3e-space-4)
+</style>

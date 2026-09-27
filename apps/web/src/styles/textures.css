@@ -1,0 +1,133 @@
+/* ============================================================
+   Shirone M3E 页面背景纹理系统（Ambient Texture & Pattern System）
+   纯 CSS 与内联矢量 SVG Data URI 渲染，零外部请求，M3E 动态取色
+   ============================================================ */
+
+:root {
+	--texture-opacity: 0.12;
+}
+
+#m3e-texture-canvas {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: -20;
+	opacity: var(--texture-opacity, 0.12);
+	will-change: opacity, transform;
+	transform: translateZ(0);
+	transition: opacity var(--m3e-duration-long, 400ms) var(--m3e-easing-standard, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* 00. None (纯色无纹理：完全脱离渲染树，0 绘制与渲染开销) */
+html[data-texture-preset="none"] #m3e-texture-canvas {
+	display: none !important;
+	opacity: 0 !important;
+	background: none !important;
+	-webkit-mask-image: none !important;
+	mask-image: none !important;
+	animation: none !important;
+	pointer-events: none !important;
+}
+
+/* 01. Starlight (二次元星芒与呼吸微光) */
+html[data-texture-preset="starlight"] #m3e-texture-canvas {
+	background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--tertiary) 100%);
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cpath d='M35 20 Q35 32 23 32 Q35 32 35 44 Q35 32 47 32 Q35 32 35 20 Z' fill='black' opacity='0.9'/%3E%3Cpath d='M105 85 Q105 93 97 93 Q105 93 105 101 Q105 93 113 93 Q105 93 105 85 Z' fill='black' opacity='0.75'/%3E%3Cpath d='M95 30 L95 42 M89 36 L101 36' stroke='black' stroke-width='1.5' stroke-linecap='round' opacity='0.8'/%3E%3Cpath d='M30 100 L30 110 M25 105 L35 105' stroke='black' stroke-width='1.2' stroke-linecap='round' opacity='0.7'/%3E%3Ccircle cx='70' cy='65' r='3.5' fill='black' opacity='0.6'/%3E%3Ccircle cx='120' cy='25' r='2' fill='black' opacity='0.5'/%3E%3Ccircle cx='15' cy='70' r='2' fill='black' opacity='0.5'/%3E%3Ccircle cx='60' cy='125' r='2.5' fill='black' opacity='0.5'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cpath d='M35 20 Q35 32 23 32 Q35 32 35 44 Q35 32 47 32 Q35 32 35 20 Z' fill='black' opacity='0.9'/%3E%3Cpath d='M105 85 Q105 93 97 93 Q105 93 105 101 Q105 93 113 93 Q105 93 105 85 Z' fill='black' opacity='0.75'/%3E%3Cpath d='M95 30 L95 42 M89 36 L101 36' stroke='black' stroke-width='1.5' stroke-linecap='round' opacity='0.8'/%3E%3Cpath d='M30 100 L30 110 M25 105 L35 105' stroke='black' stroke-width='1.2' stroke-linecap='round' opacity='0.7'/%3E%3Ccircle cx='70' cy='65' r='3.5' fill='black' opacity='0.6'/%3E%3Ccircle cx='120' cy='25' r='2' fill='black' opacity='0.5'/%3E%3Ccircle cx='15' cy='70' r='2' fill='black' opacity='0.5'/%3E%3Ccircle cx='60' cy='125' r='2.5' fill='black' opacity='0.5'/%3E%3C/svg%3E");
+	-webkit-mask-size: 140px 140px;
+	mask-size: 140px 140px;
+	-webkit-mask-repeat: repeat;
+	mask-repeat: repeat;
+	animation: m3e-texture-starlight-float 16s ease-in-out infinite;
+}
+
+/* 02. Cyber Dots (极客点阵与准星) */
+html[data-texture-preset="cyber-dots"] #m3e-texture-canvas {
+	background: linear-gradient(135deg, var(--primary), var(--secondary));
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='12' cy='12' r='1.2' fill='black'/%3E%3Ccircle cx='36' cy='12' r='1.2' fill='black'/%3E%3Ccircle cx='12' cy='36' r='1.2' fill='black'/%3E%3Ccircle cx='36' cy='36' r='1.2' fill='black'/%3E%3Cpath d='M24 20v8M20 24h8' stroke='black' stroke-width='0.8'/%3E%3Cpath d='M44 4h-4v4M4 44h4v-4' stroke='black' stroke-width='0.8' fill='none' opacity='0.6'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='12' cy='12' r='1.2' fill='black'/%3E%3Ccircle cx='36' cy='12' r='1.2' fill='black'/%3E%3Ccircle cx='12' cy='36' r='1.2' fill='black'/%3E%3Ccircle cx='36' cy='36' r='1.2' fill='black'/%3E%3Cpath d='M24 20v8M20 24h8' stroke='black' stroke-width='0.8'/%3E%3Cpath d='M44 4h-4v4M4 44h4v-4' stroke='black' stroke-width='0.8' fill='none' opacity='0.6'/%3E%3C/svg%3E");
+	-webkit-mask-size: 48px 48px;
+	mask-size: 48px 48px;
+	-webkit-mask-repeat: repeat;
+	mask-repeat: repeat;
+}
+
+/* 03. Topography (流光等高线波纹) */
+html[data-texture-preset="topography"] #m3e-texture-canvas {
+	background: linear-gradient(180deg, var(--secondary), var(--tertiary));
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cpath d='M0 40 Q60 10 120 40 T240 40 M0 80 Q60 50 120 80 T240 80 M0 120 Q60 90 120 120 T240 120 M0 160 Q60 130 120 160 T240 160 M0 200 Q60 170 120 200 T240 200' fill='none' stroke='black' stroke-width='1.2' opacity='0.7' stroke-dasharray='4 4'/%3E%3Cpath d='M0 60 Q60 90 120 60 T240 60 M0 100 Q60 130 120 100 T240 100 M0 140 Q60 170 120 140 T240 140 M0 180 Q60 210 120 180 T240 180 M0 220 Q60 250 120 220 T240 220' fill='none' stroke='black' stroke-width='1.2' opacity='0.85'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cpath d='M0 40 Q60 10 120 40 T240 40 M0 80 Q60 50 120 80 T240 80 M0 120 Q60 90 120 120 T240 120 M0 160 Q60 130 120 160 T240 160 M0 200 Q60 170 120 200 T240 200' fill='none' stroke='black' stroke-width='1.2' opacity='0.7' stroke-dasharray='4 4'/%3E%3Cpath d='M0 60 Q60 90 120 60 T240 60 M0 100 Q60 130 120 100 T240 100 M0 140 Q60 170 120 140 T240 140 M0 180 Q60 210 120 180 T240 180 M0 220 Q60 250 120 220 T240 220' fill='none' stroke='black' stroke-width='1.2' opacity='0.85'/%3E%3C/svg%3E");
+	-webkit-mask-size: 240px 240px;
+	mask-size: 240px 240px;
+	-webkit-mask-repeat: repeat;
+	mask-repeat: repeat;
+	animation: m3e-texture-topography-flow 32s linear infinite;
+}
+
+/* 04. Geometric (M3E 几何晶体与折纸) */
+html[data-texture-preset="geometric"] #m3e-texture-canvas {
+	background: linear-gradient(135deg, var(--primary), var(--tertiary));
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cpolygon points='80,10 150,80 80,150 10,80' fill='none' stroke='black' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='80' cy='80' r='26' fill='black' opacity='0.4'/%3E%3Cpolygon points='0,0 80,0 0,80' fill='black' opacity='0.25'/%3E%3Cpolygon points='160,0 80,0 160,80' fill='black' opacity='0.25'/%3E%3Cpolygon points='0,160 80,160 0,80' fill='black' opacity='0.25'/%3E%3Cpolygon points='160,160 80,160 160,80' fill='black' opacity='0.25'/%3E%3Ccircle cx='0' cy='80' r='12' fill='none' stroke='black' stroke-width='1.2' opacity='0.6'/%3E%3Ccircle cx='160' cy='80' r='12' fill='none' stroke='black' stroke-width='1.2' opacity='0.6'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cpolygon points='80,10 150,80 80,150 10,80' fill='none' stroke='black' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='80' cy='80' r='26' fill='black' opacity='0.4'/%3E%3Cpolygon points='0,0 80,0 0,80' fill='black' opacity='0.25'/%3E%3Cpolygon points='160,0 80,0 160,80' fill='black' opacity='0.25'/%3E%3Cpolygon points='0,160 80,160 0,80' fill='black' opacity='0.25'/%3E%3Cpolygon points='160,160 80,160 160,80' fill='black' opacity='0.25'/%3E%3Ccircle cx='0' cy='80' r='12' fill='none' stroke='black' stroke-width='1.2' opacity='0.6'/%3E%3Ccircle cx='160' cy='80' r='12' fill='none' stroke='black' stroke-width='1.2' opacity='0.6'/%3E%3C/svg%3E");
+	-webkit-mask-size: 160px 160px;
+	mask-size: 160px 160px;
+	-webkit-mask-repeat: repeat;
+	mask-repeat: repeat;
+}
+
+/* 05. Sakura Petals (落樱微瓣) */
+html[data-texture-preset="sakura"] #m3e-texture-canvas {
+	background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg transform='translate(35, 30) rotate(25) scale(0.85)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.85'/%3E%3C/g%3E%3Cg transform='translate(130, 45) rotate(-40) scale(0.7)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.7'/%3E%3C/g%3E%3Cg transform='translate(85, 115) rotate(70) scale(0.95)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.9'/%3E%3C/g%3E%3Cg transform='translate(155, 140) rotate(-15) scale(0.6)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.65'/%3E%3C/g%3E%3Cg transform='translate(25, 145) rotate(-75) scale(0.75)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.75'/%3E%3C/g%3E%3Ccircle cx='95' cy='35' r='1.5' fill='black' opacity='0.4'/%3E%3Ccircle cx='140' cy='95' r='1.2' fill='black' opacity='0.4'/%3E%3Ccircle cx='55' cy='90' r='1.5' fill='black' opacity='0.4'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg transform='translate(35, 30) rotate(25) scale(0.85)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.85'/%3E%3C/g%3E%3Cg transform='translate(130, 45) rotate(-40) scale(0.7)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.7'/%3E%3C/g%3E%3Cg transform='translate(85, 115) rotate(70) scale(0.95)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.9'/%3E%3C/g%3E%3Cg transform='translate(155, 140) rotate(-15) scale(0.6)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.65'/%3E%3C/g%3E%3Cg transform='translate(25, 145) rotate(-75) scale(0.75)'%3E%3Cpath d='M 0 0 C -5 -8 -8 -16 -3 -22 C -1 -24 0 -22.5 0 -21 C 0 -22.5 1 -24 3 -22 C 8 -16 5 -8 0 0 Z' fill='black' opacity='0.75'/%3E%3C/g%3E%3Ccircle cx='95' cy='35' r='1.5' fill='black' opacity='0.4'/%3E%3Ccircle cx='140' cy='95' r='1.2' fill='black' opacity='0.4'/%3E%3Ccircle cx='55' cy='90' r='1.5' fill='black' opacity='0.4'/%3E%3C/svg%3E");
+	-webkit-mask-size: 180px 180px;
+	mask-size: 180px 180px;
+	-webkit-mask-repeat: repeat;
+	mask-repeat: repeat;
+	animation: m3e-texture-sakura-fall 28s linear infinite;
+}
+
+/* 动效关键帧 */
+@keyframes m3e-texture-starlight-float {
+	0%, 100% {
+		-webkit-mask-position: 0px 0px;
+		mask-position: 0px 0px;
+	}
+	50% {
+		-webkit-mask-position: 14px -18px;
+		mask-position: 14px -18px;
+	}
+}
+
+@keyframes m3e-texture-topography-flow {
+	0% {
+		-webkit-mask-position: 0px 0px;
+		mask-position: 0px 0px;
+	}
+	100% {
+		-webkit-mask-position: 240px 0px;
+		mask-position: 240px 0px;
+	}
+}
+
+@keyframes m3e-texture-sakura-fall {
+	0% {
+		-webkit-mask-position: 0px 0px;
+		mask-position: 0px 0px;
+	}
+	100% {
+		-webkit-mask-position: 180px 180px;
+		mask-position: 180px 180px;
+	}
+}
+
+/* Reduced Motion 动效降级 */
+@media (prefers-reduced-motion: reduce) {
+	#m3e-texture-canvas {
+		animation: none !important;
+	}
+}
+
+html.motion-reduced #m3e-texture-canvas {
+	animation: none !important;
+}

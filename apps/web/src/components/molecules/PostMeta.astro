@@ -1,0 +1,44 @@
+---
+import PostMeta from "@components/atoms/blog/PostMeta.astro";
+/**
+ * 文章元信息行（消费 blog/PostMeta 原子）。
+ * 只负责取数转 props：日期格式化、分类/标签 URL、i18n 占位文案。
+ */
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { formatDateToYYYYMMDD } from "@utils/date-utils";
+import { getCategoryUrl, getTagUrl } from "@utils/url-utils";
+
+interface Props {
+	class?: string;
+	published: Date;
+	updated?: Date;
+	tags: string[];
+	category: string | null;
+	hideUpdateDate?: boolean;
+}
+const {
+	class: className,
+	published,
+	updated,
+	tags,
+	category,
+	hideUpdateDate = false,
+} = Astro.props;
+
+const categoryLink = category
+	? { name: category, href: getCategoryUrl(category) }
+	: null;
+const tagLinks = tags.map((t) => ({ name: t.trim(), href: getTagUrl(t) }));
+---
+
+<PostMeta
+	class={className}
+	published={formatDateToYYYYMMDD(published)}
+	updated={updated ? formatDateToYYYYMMDD(updated) : undefined}
+	category={categoryLink}
+	tags={tagLinks}
+	hideUpdate={hideUpdateDate}
+	uncategorizedLabel={i18n(I18nKey.uncategorized)}
+	noTagsLabel={i18n(I18nKey.noTags)}
+/>

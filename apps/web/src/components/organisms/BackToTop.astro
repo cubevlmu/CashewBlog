@@ -1,0 +1,25 @@
+---
+import FAB from "@components/atoms/action/FAB.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { Icon } from "astro-icon/components";
+---
+
+<div
+	id="back-to-top-btn"
+	class="back-to-top-compatibility"
+	onclick="window.__shironeFab?.scrollToTop() ?? window.scrollTo({ top: 0, behavior: 'smooth' })"
+>
+	<FAB client:load variant="primary" ariaLabel={i18n(I18nKey.backToTop)}>
+		<Icon name="material-symbols:keyboard-arrow-up-rounded" class="text-2xl" />
+	</FAB>
+</div>
+
+<style lang="stylus">
+.back-to-top-compatibility
+	display: inline-flex
+	position: fixed
+	right: var(--m3e-space-6)
+	bottom: var(--m3e-space-10)
+	z-index: 45
+</style>

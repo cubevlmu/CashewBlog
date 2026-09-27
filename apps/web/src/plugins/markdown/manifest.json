@@ -1,0 +1,1344 @@
+{
+	"schema": 1,
+	"note": "Shirone 已支持的自定义 Markdown 作者语法单一索引。只登记生产可用语法；研究计划与未落地能力不得提前加入。",
+	"stylesheetPacks": [
+		{
+			"id": "abbreviations",
+			"syntaxes": ["abbreviation"],
+			"styles": ["src/styles/markdown/abbreviations.css"]
+		},
+		{
+			"id": "acfun",
+			"syntaxes": ["acfun"],
+			"styles": ["src/styles/markdown/acfun.css"]
+		},
+		{
+			"id": "admonitions",
+			"syntaxes": ["admonition"],
+			"styles": ["src/styles/markdown/admonitions.css"]
+		},
+		{
+			"id": "artplayer",
+			"syntaxes": ["artplayer"],
+			"styles": ["src/styles/markdown/artplayer.css"]
+		},
+		{
+			"id": "audio-reader",
+			"syntaxes": ["audio-reader"],
+			"styles": ["src/styles/markdown/audio-reader.css"]
+		},
+		{
+			"id": "bilibili",
+			"syntaxes": ["bilibili"],
+			"styles": ["src/styles/markdown/bilibili.css"]
+		},
+		{
+			"id": "collapse-panels",
+			"syntaxes": ["collapse-panels"],
+			"styles": ["src/styles/markdown/collapse-panels.css"]
+		},
+		{
+			"id": "content-annotations",
+			"syntaxes": ["content-annotation"],
+			"styles": ["src/styles/markdown/content-annotations.css"]
+		},
+		{
+			"id": "expressive-code",
+			"syntaxes": ["expressive-code"],
+			"styles": ["src/styles/markdown/expressive-code.css"]
+		},
+		{
+			"id": "fields",
+			"syntaxes": ["fields"],
+			"styles": ["src/styles/markdown/fields.css"]
+		},
+		{
+			"id": "github-card",
+			"syntaxes": ["github-card"],
+			"styles": ["src/styles/markdown/github-card.css"]
+		},
+		{
+			"id": "image-grids",
+			"syntaxes": ["image-grid"],
+			"styles": ["src/styles/markdown/image-grids.css"]
+		},
+		{
+			"id": "image-presentations",
+			"syntaxes": ["image-presentation"],
+			"styles": ["src/styles/markdown/image-presentations.css"]
+		},
+		{
+			"id": "marker",
+			"syntaxes": ["marker"],
+			"styles": ["src/styles/markdown/marker.css"]
+		},
+		{
+			"id": "math",
+			"syntaxes": ["math"],
+			"styles": ["src/styles/markdown/math.css"]
+		},
+		{
+			"id": "mermaid",
+			"syntaxes": ["mermaid"],
+			"styles": ["src/styles/mermaid.css"]
+		},
+		{
+			"id": "option-groups",
+			"syntaxes": ["option-groups"],
+			"styles": ["src/styles/markdown/option-groups.css"]
+		},
+		{
+			"id": "spoiler",
+			"syntaxes": ["spoiler"],
+			"styles": ["src/styles/markdown/spoiler.css"]
+		},
+		{
+			"id": "steps",
+			"syntaxes": ["steps"],
+			"styles": ["src/styles/markdown/steps.css"]
+		},
+		{
+			"id": "trees",
+			"syntaxes": ["code-tree", "file-tree"],
+			"styles": ["src/styles/markdown/trees.css"]
+		},
+		{
+			"id": "youtube",
+			"syntaxes": ["youtube"],
+			"styles": ["src/styles/markdown/youtube.css"]
+		}
+	],
+	"syntaxes": [
+		{
+			"id": "abbreviation",
+			"name": "Abbreviation",
+			"status": "stable",
+			"category": "inline-extension",
+			"source": "shirone",
+			"summary": "使用标准缩写定义行，为当前文章中匹配的术语输出带完整释义的原生 abbr 元素。",
+			"forms": [
+				{
+					"kind": "block-definition",
+					"pattern": "*[TERM]: Full expansion",
+					"example": "*[SSR]: Server-Side Rendering\n\nSSR 输出可直接阅读。"
+				}
+			],
+			"attributes": [
+				{
+					"name": "term",
+					"required": true,
+					"values": "1-48 characters: letters, digits, period, underscore, plus, or hyphen",
+					"default": null
+				},
+				{
+					"name": "expansion",
+					"required": true,
+					"values": "non-empty single-line text",
+					"default": null
+				}
+			],
+			"implementation": ["src/plugins/markdown/remark-abbreviations.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/abbreviations.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/abbreviations.ts"],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/markdown-abbreviations.md",
+				"docs/markdown-extensions.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/inline/abbreviations.test.mjs",
+				"tests/site/abbreviations.spec.ts"
+			],
+			"notes": [
+				"定义仅在当前文章内生效，定义行不会输出为正文；非法、空或重复定义保留为普通 Markdown。",
+				"普通文本与标准行内 Markdown 可匹配；代码、链接、图片和原始 HTML 保持作者原文。",
+				"输出原生 abbr 语义（不使用浏览器 title 气泡），释义用原生 Popover 顶层 + CSS Anchor 定位到缩写词，任何布局容器都不会裁剪。",
+				"只在使用者需要时动态加载客户端模块以绑定悬停/聚焦/触屏交互；纯 SSR 与禁用时零网络请求零 DOM 足迹。页面实际包含该功能时才加载。"
+			]
+		},
+		{
+			"id": "acfun",
+			"name": "AcFun Video",
+			"status": "stable",
+			"category": "leaf-directive",
+			"source": "shirone",
+			"summary": "将受限 AcFun 视频 ID 渲染为可访问的 SSR 视频 facade，并在接近视口时预加载或由点击加载 AcFun 播放器。",
+			"forms": [
+				{
+					"kind": "leaf-directive",
+					"pattern": "::acfun{acid=\"ac...\" title=\"...\" preload=\"auto\"}",
+					"example": "::acfun{acid=\"ac48649632\" title=\"AcFun video\"}"
+				}
+			],
+			"attributes": [
+				{
+					"name": "acid",
+					"required": true,
+					"values": "strict AcFun ac-prefixed positive integer ID",
+					"default": null
+				},
+				{
+					"name": "title",
+					"required": true,
+					"values": "non-empty video title",
+					"default": null
+				},
+				{
+					"name": "preload",
+					"required": false,
+					"values": "none or auto; auto prepares the player near the viewport",
+					"default": "none"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/core/acfun.d.mts",
+				"src/plugins/markdown/core/acfun.mjs",
+				"src/plugins/markdown/core/video-preload.mjs",
+				"src/plugins/markdown/remark-acfun.mjs",
+				"src/plugins/rehype-component-acfun.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/acfun.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/acfun.ts", "src/utils/video-facade.ts"],
+				"network": [
+					"viewport preloading or explicit activation: https://www.acfun.cn/player/{acid}"
+				]
+			},
+			"docs": ["src/content/posts/video.md"],
+			"tests": [
+				"tests/plugins/markdown/leaf/acfun.test.mjs",
+				"tests/site/markdown-runtime.spec.ts"
+			],
+			"notes": [
+				"初始 SSR DOM 不含 iframe、AcFun 脚本或 provider 请求；标题和 AcFun 页面链接始终保留。",
+				"非法视频 ID 或空标题不触发可选资源；运行时只从验证后的字段生成白名单播放器 URL。"
+			]
+		},
+		{
+			"id": "admonition",
+			"name": "Admonition",
+			"status": "stable",
+			"category": "container",
+			"source": "integration",
+			"summary": "使用容器指令或 GitHub alert blockquote 表达提示信息，并使用原生 details 提供可折叠补充内容。",
+			"forms": [
+				{
+					"kind": "container-directive",
+					"pattern": ":::<type>[可选标题] ... :::",
+					"example": ":::tip[提示]\n正文\n:::"
+				},
+				{
+					"kind": "container-directive",
+					"pattern": "::: <type> 可选标题 ... :::",
+					"example": "::: warning 部署前检查\n正文\n:::"
+				},
+				{
+					"kind": "blockquote",
+					"pattern": "> [!<TYPE>]",
+					"example": "> [!NOTE]\n> 正文"
+				}
+			],
+			"attributes": [
+				{
+					"name": "type",
+					"required": true,
+					"values": "note | info | tip | important | warning | caution | details",
+					"default": null
+				},
+				{
+					"name": "title",
+					"required": false,
+					"values": "directive label text",
+					"default": "type label"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/remark-admonitions.mjs",
+				"src/plugins/rehype-component-admonition.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": [
+				"src/styles/markdown/admonitions.css",
+				"src/styles/variables.styl"
+			],
+			"runtime": {
+				"mode": "native",
+				"modules": [],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/admonitions.md",
+				"docs/markdown-extensions.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/containers/admonitions.test.mjs",
+				"tests/site/admonitions.spec.ts"
+			],
+			"notes": [
+				"方括号标题、空格标题与 GitHub Alert 统一进入同一 Admonition renderer。",
+				"details 使用原生 disclosure，无 hydration、客户端模块或网络请求。"
+			]
+		},
+		{
+			"id": "artplayer",
+			"name": "ArtPlayer Video",
+			"status": "stable",
+			"category": "leaf-directive",
+			"source": "shirone",
+			"summary": "Renders a validated video source as an accessible SSR native video player without a client-side player dependency.",
+			"forms": [
+				{
+					"kind": "leaf-directive",
+					"pattern": "::artplayer{src=\"...\" title=\"...\" preload=\"auto\"}",
+					"example": "::artplayer{src=\"/videos/example.mp4\" title=\"Example video\"}"
+				}
+			],
+			"attributes": [
+				{
+					"name": "src",
+					"required": true,
+					"values": "site-root path or explicit HTTPS video URL",
+					"default": null
+				},
+				{
+					"name": "title",
+					"required": true,
+					"values": "non-empty video title",
+					"default": null
+				},
+				{
+					"name": "preload",
+					"required": false,
+					"values": "none or auto; auto prepares the player near the viewport",
+					"default": "none"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/core/artplayer.d.mts",
+				"src/plugins/markdown/core/artplayer.mjs",
+				"src/plugins/markdown/core/video-preload.mjs",
+				"src/plugins/markdown/remark-artplayer.mjs",
+				"src/plugins/rehype-component-artplayer.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/artplayer.css"],
+			"runtime": {
+				"mode": "none",
+				"modules": [],
+				"network": [
+					"author-declared video source; preload accepts none or auto"
+				]
+			},
+			"docs": ["src/content/posts/video.md"],
+			"tests": [
+				"tests/plugins/markdown/leaf/artplayer.test.mjs",
+				"tests/site/markdown-runtime.spec.ts"
+			],
+			"notes": [
+				"The initial output uses native SSR video controls; preload defaults to none and auto prepares the source near the viewport without an ArtPlayer package or client module.",
+				"Invalid source or title values remain ordinary Markdown and do not declare optional page resources."
+			]
+		},
+		{
+			"id": "audio-reader",
+			"name": "Audio Reader",
+			"status": "stable",
+			"category": "inline-extension",
+			"source": "shirone",
+			"summary": "Renders a validated audio source as a plain inline label with a compact speaker playback control.",
+			"forms": [
+				{
+					"kind": "text-directive",
+					"pattern": ":audio-reader[title]{src=\"...\"}",
+					"example": ":audio-reader[Pronunciation sample]{src=\"/assets/music/url/cl.mp3\"}"
+				}
+			],
+			"attributes": [
+				{
+					"name": "title",
+					"required": true,
+					"values": "non-empty directive label",
+					"default": null
+				},
+				{
+					"name": "src",
+					"required": true,
+					"values": "site-root path or explicit HTTPS audio URL",
+					"default": null
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/core/audio-reader.d.mts",
+				"src/plugins/markdown/core/audio-reader.mjs",
+				"src/plugins/markdown/remark-audio-reader.mjs",
+				"src/plugins/rehype-component-audio-reader.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/audio-reader.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/audio-reader.ts"],
+				"network": [
+					"author-declared audio source only after activation; preload=none"
+				]
+			},
+			"docs": [
+				"src/content/posts/audio-reader.md",
+				".agents/skills/shirone-markdown-syntax/SKILL.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/inline/audio-reader.test.mjs",
+				"tests/site/markdown-runtime.spec.ts"
+			],
+			"notes": [
+				"The initial SSR output keeps the label as plain text and never renders a navigable source link; the client runtime activates inline playback.",
+				"Invalid source or empty label values remain ordinary Markdown and do not declare optional page resources."
+			]
+		},
+		{
+			"id": "bilibili",
+			"name": "Bilibili Video",
+			"status": "stable",
+			"category": "leaf-directive",
+			"source": "shirone",
+			"summary": "将受限 BV 号渲染为可访问的 SSR 视频 facade，并在接近视口时预加载或由点击加载 Bilibili 播放器。",
+			"forms": [
+				{
+					"kind": "leaf-directive",
+					"pattern": "::bilibili{bvid=\"BV...\" title=\"...\" p=1 preload=\"auto\"}",
+					"example": "::bilibili{bvid=\"BV1fK4y1s7Qf\" title=\"Bilibili video\" p=1}"
+				}
+			],
+			"attributes": [
+				{
+					"name": "bvid",
+					"required": true,
+					"values": "strict Bilibili BV identifier",
+					"default": null
+				},
+				{
+					"name": "title",
+					"required": true,
+					"values": "non-empty video title",
+					"default": null
+				},
+				{
+					"name": "p",
+					"required": false,
+					"values": "positive integer part number",
+					"default": 1
+				},
+				{
+					"name": "preload",
+					"required": false,
+					"values": "none or auto; auto prepares the player near the viewport",
+					"default": "none"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/core/bilibili.d.mts",
+				"src/plugins/markdown/core/bilibili.mjs",
+				"src/plugins/markdown/core/video-preload.mjs",
+				"src/plugins/markdown/remark-bilibili.mjs",
+				"src/plugins/rehype-component-bilibili.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/bilibili.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/bilibili.ts", "src/utils/video-facade.ts"],
+				"network": [
+					"viewport preloading or explicit activation: https://player.bilibili.com/player.html?bvid={bvid}&p={p}&high_quality=1&danmaku=0"
+				]
+			},
+			"docs": ["src/content/posts/video.md"],
+			"tests": [
+				"tests/plugins/markdown/leaf/bilibili.test.mjs",
+				"tests/site/markdown-runtime.spec.ts"
+			],
+			"notes": [
+				"初始 SSR DOM 不含 iframe、Bilibili 脚本或 provider 请求；标题和 Bilibili 页面链接始终保留。",
+				"非法 BV 号、空标题或非法分 P 不触发可选资源；运行时只从验证后的字段生成白名单播放器 URL。"
+			]
+		},
+		{
+			"id": "code-tree",
+			"name": "Code Tree",
+			"status": "stable",
+			"category": "container",
+			"source": "shirone",
+			"summary": "将多文件代码示例或本地目录渲染为可折叠目录导航与可切换代码面板。",
+			"forms": [
+				{
+					"kind": "container-directive",
+					"pattern": ":::code-tree{title=\"...\" height=\"...\" entry=\"...\" icon=\"colored|simple\"} ... :::",
+					"example": ":::code-tree{title=\"组件示例\" height=\"420px\" entry=\"Button.svelte\"}\n```svelte title=\"Button.svelte\"\n<button>Click</button>\n```\n:::"
+				},
+				{
+					"kind": "custom-pattern",
+					"pattern": "@[code-tree title=\"...\" height=\"...\" entry=\"...\"](dir_path)",
+					"example": "@[code-tree title=\"站点配置\" entry=\"siteConfig.ts\"](/src/config)"
+				}
+			],
+			"attributes": [
+				{
+					"name": "title",
+					"required": false,
+					"values": "string, at most 200 characters",
+					"default": ""
+				},
+				{
+					"name": "height",
+					"required": false,
+					"values": "valid CSS length (e.g. 420px, 26rem)",
+					"default": "420px"
+				},
+				{
+					"name": "entry",
+					"required": false,
+					"values": "filepath string",
+					"default": null
+				},
+				{
+					"name": "icon",
+					"required": false,
+					"values": "colored | simple",
+					"default": "colored"
+				},
+				{
+					"name": "dir",
+					"required": false,
+					"values": "local directory path",
+					"default": null
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/code/remark-code-tree.mjs",
+				"src/plugins/markdown/containers/rehype-code-tree.mjs",
+				"src/plugins/markdown/core/file-tree-icons.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/trees.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/code-tree.ts"],
+				"network": []
+			},
+			"docs": ["src/content/posts/markdown-enhancements.md"],
+			"tests": [
+				"tests/plugins/markdown/containers/code-tree.test.mjs",
+				"tests/site/code-tree.spec.ts"
+			],
+			"notes": [
+				"本地目录导入限制在工作区根目录内，以 UTF-8 读取文件，并忽略隐藏目录、依赖目录、构建目录及大于 256KB 的文件。"
+			]
+		},
+		{
+			"id": "collapse-panels",
+			"name": "Collapse Panels",
+			"status": "stable",
+			"category": "container",
+			"source": "shirone",
+			"summary": "将一个顶层无序列表渲染为原生折叠面板组，并支持独立多开或手风琴单开模式。",
+			"forms": [
+				{
+					"kind": "container-directive",
+					"pattern": "::: collapse [accordion] [expand] ... :::",
+					"example": "::: collapse accordion\n- :+ 标题\n\n  面板正文\n:::"
+				},
+				{
+					"kind": "container-directive",
+					"pattern": ":::collapse{accordion=true expand=true} ... :::",
+					"example": ":::collapse{expand=true}\n- 标题\n\n  面板正文\n:::"
+				}
+			],
+			"attributes": [
+				{
+					"name": "accordion",
+					"required": false,
+					"values": "boolean",
+					"default": false
+				},
+				{
+					"name": "expand",
+					"required": false,
+					"values": "boolean",
+					"default": false
+				},
+				{
+					"name": "item state marker",
+					"required": false,
+					"values": ":+ | :- before the item title",
+					"default": "inherit container state"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/remark-collapse-panels.mjs",
+				"src/plugins/markdown/containers/rehype-collapse-panels.mjs",
+				"src/plugins/markdown/core/disclosure.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": [
+				"src/styles/markdown/collapse-panels.css",
+				"src/styles/markdown/disclosures.css"
+			],
+			"runtime": {
+				"mode": "native",
+				"modules": [],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/collapse-panels.md",
+				"docs/markdown-extensions.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/containers/collapse-panels.test.mjs",
+				"tests/plugins/markdown/core/disclosure.test.mjs",
+				"tests/site/collapse-panels.spec.ts"
+			],
+			"notes": [
+				"容器只接受一个顶层无序列表，且每项必须包含独立标题段落和正文；非法或混合输入保留为普通 Markdown。",
+				"accordion 使用文档内唯一的原生 details name 分组；普通模式允许多个面板同时展开。",
+				"输出为纯 SSR 原生 disclosure，不增加 hydration、客户端模块、全局监听或网络请求。"
+			]
+		},
+		{
+			"id": "content-annotation",
+			"name": "Content Annotation",
+			"status": "stable",
+			"category": "inline-extension",
+			"source": "shirone",
+			"summary": "通过行内标签引用文章内集中定义的补充说明，并使用原生 Popover 在需要时显示内容。",
+			"forms": [
+				{
+					"kind": "inline-reference",
+					"pattern": "[+label]",
+					"example": "Astro 使用孤岛架构 [+islands]。"
+				},
+				{
+					"kind": "block-definition",
+					"pattern": "[+label]: annotation content",
+					"example": "[+islands]:\n  孤岛是由静态 HTML 包围的交互组件。"
+				}
+			],
+			"attributes": [
+				{
+					"name": "label",
+					"required": true,
+					"values": "non-empty string without whitespace, quotes, braces, or equals signs",
+					"default": null
+				}
+			],
+			"implementation": ["src/plugins/markdown/remark-content-annotations.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/content-annotations.css"],
+			"runtime": {
+				"mode": "native",
+				"modules": [],
+				"network": []
+			},
+			"docs": ["src/content/posts/content-annotations.md"],
+			"tests": [
+				"tests/plugins/markdown/inline/content-annotations.test.mjs",
+				"tests/site/content-annotations.spec.ts"
+			],
+			"notes": [
+				"未定义、非法、链接内或代码内的引用保持原文；同一标签可累积多条定义；引用可与正文粗体等标准 Markdown 行内语法相邻组合。",
+				"定义仅在当前 Markdown 文档内生效；功能不读取全局配置，不增加客户端模块或外部请求。",
+				"桌面与手机端均优先锚定到对应引用，空间不足时翻转；不使用手机端固定底部面板。"
+			]
+		},
+		{
+			"id": "expressive-code",
+			"name": "Expressive Code fence metadata",
+			"status": "stable",
+			"category": "fence-meta",
+			"source": "integration",
+			"summary": "为 fenced code block 提供标题、frame、行/文本标记、换行、折叠和行号元数据。",
+			"forms": [
+				{
+					"kind": "fenced-code",
+					"pattern": "```<language> <metadata>",
+					"example": "```js title=\"app.js\" ins={2} collapse={4-8} showLineNumbers\nconst app = true\n```"
+				}
+			],
+			"attributes": [
+				{
+					"name": "title",
+					"required": false,
+					"values": "string",
+					"default": null
+				},
+				{
+					"name": "frame",
+					"required": false,
+					"values": "auto | code | terminal | none",
+					"default": "auto"
+				},
+				{
+					"name": "line markers",
+					"required": false,
+					"values": "{lines} | mark={lines} | ins={lines} | del={lines}",
+					"default": null
+				},
+				{
+					"name": "text markers",
+					"required": false,
+					"values": "quoted text or regular expression with optional mark/ins/del label",
+					"default": null
+				},
+				{
+					"name": "wrap",
+					"required": false,
+					"values": "true | false",
+					"default": "theme configuration"
+				},
+				{
+					"name": "preserveIndent",
+					"required": false,
+					"values": "true | false",
+					"default": true
+				},
+				{
+					"name": "collapse",
+					"required": false,
+					"values": "line ranges",
+					"default": null
+				},
+				{
+					"name": "showLineNumbers",
+					"required": false,
+					"values": "true | false",
+					"default": false
+				},
+				{
+					"name": "startLineNumber",
+					"required": false,
+					"values": "integer",
+					"default": 1
+				}
+			],
+			"implementation": [
+				"src/plugins/expressive-code/custom-copy-button.ts",
+				"src/plugins/expressive-code/language-badge.ts"
+			],
+			"registeredIn": "astro.config.mjs",
+			"styles": ["src/styles/markdown/expressive-code.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/code-copy.ts", "src/utils/code-collapse.ts"],
+				"network": []
+			},
+			"docs": ["src/content/posts/expressive-code.md"],
+			"tests": ["tests/site/post-encryption.spec.ts"],
+			"notes": ["元数据具体解析规则由 Expressive Code 及已注册插件定义。"]
+		},
+		{
+			"id": "fields",
+			"name": "Field Cards",
+			"status": "stable",
+			"category": "container",
+			"source": "shirone",
+			"summary": "将 API、组件 Props 或配置字段渲染为结构化参数卡片。",
+			"forms": [{"kind": "container-directive", "pattern": ":::: field-group ... ::: field name ... ::::", "example": ":::: field-group\\n\\n::: field title\\n@type string\\n@optional\\n\\nDescription.\\n:::\\n\\n::::"}],
+			"attributes": [
+				{"name": "name", "required": true, "values": "non-empty text", "default": null},
+				{"name": "@type", "required": false, "values": "text", "default": null},
+				{"name": "@default", "required": false, "values": "text", "default": null},
+				{"name": "@required | @optional | @deprecated", "required": false, "values": "flag", "default": null}
+			],
+			"implementation": ["src/plugins/markdown/remark-fields.mjs", "src/plugins/markdown/containers/rehype-fields.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/fields.css"],
+			"runtime": {"mode": "none", "modules": [], "network": []},
+			"docs": ["src/content/posts/markdown-fields.md", "docs/markdown-extensions.md"],
+			"tests": ["tests/plugins/markdown/containers/fields.test.mjs"],
+			"notes": ["无效或不完整的字段标签保留为可读 Markdown；组件为纯 SSR 输出，不增加客户端运行时。"]
+		},
+		{
+			"id": "file-tree",
+			"name": "File Tree",
+			"status": "stable",
+			"category": "container",
+			"source": "shirone",
+			"summary": "将嵌套 Markdown 列表或终端 tree 输出转换为可折叠文件树。",
+			"forms": [
+				{
+					"kind": "container-directive",
+					"pattern": ":::file-tree{title=\"...\" icon=\"colored|simple\"} ... :::",
+					"example": ":::file-tree{title=\"src\"}\n- src/\n  - index.ts\n:::"
+				},
+				{
+					"kind": "fenced-code",
+					"pattern": "```file-tree title=\"...\" icon=\"colored|simple\"",
+					"example": "```file-tree title=\"dist\" icon=\"simple\"\ndist\n└── index.html\n```"
+				}
+			],
+			"attributes": [
+				{
+					"name": "title",
+					"required": false,
+					"values": "string, at most 200 characters",
+					"default": ""
+				},
+				{
+					"name": "icon",
+					"required": false,
+					"values": "colored | simple",
+					"default": "colored"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/code/remark-file-tree.mjs",
+				"src/plugins/markdown/containers/rehype-file-tree.mjs",
+				"src/plugins/markdown/core/disclosure.mjs",
+				"src/plugins/markdown/core/file-tree-icons.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": [
+				"src/styles/markdown/trees.css",
+				"src/styles/markdown/disclosures.css"
+			],
+			"runtime": {
+				"mode": "native",
+				"modules": [],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/markdown-enhancements.md",
+				"docs/markdown-extensions.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/containers/file-tree.test.mjs",
+				"tests/plugins/markdown/core/disclosure.test.mjs",
+				"tests/site/file-tree.spec.ts"
+			],
+			"notes": [
+				"目录名尾随 / 表示该目录初始折叠。",
+				"条目前缀 ++ 或 -- 表示新增或删除，# 后文本表示行尾注解。"
+			]
+		},
+		{
+			"id": "github-card",
+			"name": "GitHub Repository Card",
+			"status": "stable",
+			"category": "leaf-directive",
+			"source": "shirone",
+			"summary": "根据 owner/repo 渲染可访问的仓库卡片，并按需读取 GitHub API 的仓库元数据。",
+			"forms": [
+				{
+					"kind": "leaf-directive",
+					"pattern": "::github{repo=\"owner/repo\"}",
+					"example": "::github{repo=\"LyraVoid/Shirone\"}"
+				}
+			],
+			"attributes": [
+				{
+					"name": "repo",
+					"required": true,
+					"values": "owner/repository",
+					"default": null
+				}
+			],
+			"implementation": ["src/plugins/rehype-component-github-card.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/github-card.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/github-cards.ts"],
+				"network": [
+					"https://api.github.com/repos/{owner}/{repo}",
+					"avatar_url returned by the GitHub API"
+				]
+			},
+			"docs": [
+				"src/content/posts/markdown-extended.md",
+				"src/content/posts/guide/index.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/leaf/github-card.test.mjs",
+				"tests/site/markdown-runtime.spec.ts"
+			],
+			"notes": [
+				"SSR 始终输出可点击的 owner/repo 链接；命中语法后才动态加载元数据增强模块。",
+				"客户端读取 GitHub API 的描述、星标、分叉、许可证、语言和头像；请求失败时保留 SSR 链接。"
+			]
+		},
+		{
+			"id": "image-grid",
+			"name": "Image Grid",
+			"status": "stable",
+			"category": "container",
+			"source": "shirone",
+			"summary": "将容器内 Markdown 图片渲染为响应式画廊，并按容器隔离灯箱分组。",
+			"forms": [
+				{
+					"kind": "container-directive",
+					"pattern": ":::grid{columns=\"1..6\" aspect=\"W/H\" fit=\"cover|contain\"} ... :::",
+					"example": ":::grid{columns=\"3\" aspect=\"16/9\" fit=\"cover\"}\n![说明](./one.webp)\n![说明](./two.webp)\n:::"
+		}
+	],
+			"attributes": [
+				{
+					"name": "columns",
+					"required": false,
+					"values": "integer 1..6",
+					"default": 3
+				},
+				{
+					"name": "aspect",
+					"required": false,
+					"values": "positive W/H ratio",
+					"default": "16/10"
+				},
+				{
+					"name": "fit",
+					"required": false,
+					"values": "cover | contain",
+					"default": "cover"
+				}
+			],
+			"implementation": ["src/plugins/rehype-component-image-grid.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/image-grids.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/fancybox-handler.ts"],
+				"network": ["author-declared image URLs only"]
+			},
+			"docs": ["src/content/posts/image-grid-demo/index.md"],
+			"tests": [
+				"tests/plugins/image-grid.test.mjs",
+				"tests/site/image-grid.spec.ts"
+			],
+			"notes": ["容器至少包含一张 Markdown 图片；非图片子节点不会成为画廊项。"]
+		},
+		{
+			"id": "image-presentation",
+			"name": "Image Width and Caption",
+			"status": "stable",
+			"category": "inline-extension",
+			"source": "shirone",
+			"summary": "在图片 alt 中使用 w-N% 控制独立图片宽度，并将 Markdown title 渲染为可见图注。",
+			"forms": [
+				{
+					"kind": "image",
+					"pattern": "![alt w-N%](src \"caption\")",
+					"example": "![架构图 w-60%](./architecture.webp \"处理流程\")"
+				}
+			],
+			"attributes": [
+				{
+					"name": "w-N%",
+					"required": false,
+					"values": "integer 1..100 in image alt",
+					"default": null
+				},
+				{
+					"name": "title",
+					"required": false,
+					"values": "Markdown image title string",
+					"default": null
+				}
+			],
+			"implementation": ["src/plugins/rehype-markdown-images.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/image-presentations.css"],
+			"runtime": {
+				"mode": "none",
+				"modules": [],
+				"network": ["author-declared image URLs only"]
+			},
+			"docs": [
+				"src/content/posts/spoilers.md",
+				"docs/markdown-extensions.md"
+			],
+			"tests": ["tests/plugins/rehype-markdown-images.test.mjs"],
+			"notes": ["非法或越界宽度令牌保留在 alt，不静默改写。"]
+		},
+		{
+			"id": "include",
+			"name": "File Include",
+			"status": "stable",
+			"category": "inline-extension",
+			"source": "shirone",
+			"summary": "在构建期将仓库内 Markdown 文件或其中的行范围、命名区域展开到当前文章。",
+			"forms": [
+				{
+					"kind": "comment-directive",
+					"pattern": "<!-- @include: path -->",
+					"example": "<!-- @include: ../snippets/example.md -->"
+				},
+				{
+					"kind": "comment-directive-range",
+					"pattern": "<!-- @include: path{start-end} -->",
+					"example": "<!-- @include: ../snippets/example.md{2-6} -->"
+				},
+				{
+					"kind": "comment-directive-region",
+					"pattern": "<!-- @include: path#region -->",
+					"example": "<!-- @include: ../snippets/example.md#public-api -->"
+				}
+			],
+			"attributes": [
+				{
+					"name": "path",
+					"required": true,
+					"values": "repository-relative path (current-file-relative when a source path is available)",
+					"default": null
+				},
+				{
+					"name": "range or region",
+					"required": false,
+					"values": "{start-end}, {start-}, {-end}, or #region",
+					"default": null
+				}
+			],
+			"implementation": ["src/plugins/markdown/remark-includes.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": [],
+			"runtime": {
+				"mode": "none",
+				"modules": [],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/markdown-includes.md",
+				"docs/markdown-extensions.md"
+			],
+			"tests": ["tests/plugins/markdown/inline/includes.test.mjs"],
+			"notes": [
+				"只处理独立一行且位于 fenced code 之外的注释；缺失、越界、未闭合或递归包含保留原注释。",
+				"文件读取限制在仓库根目录内，展开结果继续经过同一 Markdown 处理链。",
+				"这是构建期纯文本展开，不增加 CSS、客户端脚本、hydration 或网络请求。"
+			]
+		},
+		{
+			"id": "marker",
+			"name": "Marker Highlight",
+			"status": "stable",
+			"category": "inline-extension",
+			"source": "shirone",
+			"summary": "使用双等号高亮正文短语，并以可选语义变体表达不同强调层级。",
+			"forms": [
+				{
+					"kind": "inline",
+					"pattern": "==content==",
+					"example": "使用 ==主题主色强调== 标记核心结论。"
+				},
+				{
+					"kind": "inline-with-suffix",
+					"pattern": "==content=={.<variant>}",
+					"example": "==需要修正的条件=={.error}"
+				}
+			],
+			"attributes": [
+				{
+					"name": "variant",
+					"required": false,
+					"values": "primary | secondary | tertiary | error | tip",
+					"default": "primary"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/remark-marker.mjs",
+				"src/plugins/rehype-component-marker.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/marker.css"],
+			"runtime": {
+				"mode": "none",
+				"modules": [],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/marker-highlights.md",
+				"docs/markdown-extensions.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/inline/markers.test.mjs",
+				"tests/site/markers.spec.ts"
+			],
+			"notes": [
+				"代码围栏、行内代码、未知变体、空内容、未闭合语法和转义文本保留原文。",
+				"输出原生 mark 元素，使用主题 token 渲染，不增加 hydration、客户端模块或网络请求。"
+			]
+		},
+		{
+			"id": "math",
+			"name": "Math and KaTeX",
+			"status": "stable",
+			"category": "inline-extension",
+			"source": "integration",
+			"summary": "使用美元符号定界的 LaTeX 数学表达式，并在构建期渲染为 KaTeX。",
+			"forms": [
+				{
+					"kind": "inline",
+					"pattern": "$expression$",
+					"example": "Euler: $e^{i\\pi}+1=0$"
+				},
+				{
+					"kind": "block",
+					"pattern": "$$ expression $$",
+					"example": "$$\nE = mc^2\n$$"
+				}
+			],
+			"attributes": [],
+			"implementation": [],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/math.css"],
+			"runtime": {
+				"mode": "none",
+				"modules": [],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/guide/index.md",
+				"src/content/posts/markdown.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/katex-version.test.mjs",
+				"tests/site/math.spec.ts",
+				"tests/site/post-encryption.spec.ts"
+			],
+			"notes": ["解析由 remark-math 与 rehype-katex 提供。"]
+		},
+		{
+			"id": "mermaid",
+			"name": "Mermaid Diagram",
+			"status": "stable",
+			"category": "fence",
+			"source": "integration",
+			"summary": "将 mermaid fenced code 保留为可读 fallback，并在客户端按需增强为主题化 SVG。",
+			"forms": [
+				{
+					"kind": "fenced-code",
+					"pattern": "```mermaid ... ```",
+					"example": "```mermaid\nflowchart LR\n  A --> B\n```"
+				}
+			],
+			"attributes": [],
+			"implementation": ["src/plugins/remark-mermaid.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/mermaid.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/mermaid.ts", "src/utils/mermaid-interaction.ts"],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/markdown-mermaid.md",
+				"src/content/posts/guide/index.md"
+			],
+			"tests": ["tests/site/mermaid.spec.ts"],
+			"notes": [
+				"客户端脚本与样式仅在页面含 Mermaid 语法时按需加载；初始化必须覆盖直接加载、Swup、主题变化和文章解密。"
+			]
+		},
+		{
+			"id": "option-groups",
+			"name": "Option Groups",
+			"status": "stable",
+			"category": "container",
+			"source": "shirone",
+			"summary": "将多个完整 Markdown 片段渲染为可同步、可记忆且支持键盘操作的 M3E 选项组。",
+			"forms": [
+				{
+					"kind": "container-directive",
+					"pattern": "::: tabs[#sync-id] ... :::",
+					"example": "::: tabs#runtime\n\n@tab Node.js#node\n\nNode 正文。\n\n@tab:active Bun#bun\n\nBun 正文。\n\n:::"
+				}
+			],
+			"attributes": [
+				{
+					"name": "sync id",
+					"required": false,
+					"values": "letters, digits, dot, underscore, or hyphen after #",
+					"default": null
+				},
+				{
+					"name": "active marker",
+					"required": false,
+					"values": "@tab | @tab:active",
+					"default": "first tab"
+				},
+				{
+					"name": "option value",
+					"required": false,
+					"values": "text after the final # in a tab title",
+					"default": "plain title text"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/remark-option-groups.mjs",
+				"src/plugins/markdown/containers/rehype-option-groups.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/option-groups.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/option-groups.ts"],
+				"network": []
+			},
+			"docs": [
+				"src/content/posts/option-groups.md",
+				"docs/markdown-extensions.md"
+			],
+			"tests": [
+				"tests/plugins/markdown/containers/option-groups.test.mjs",
+				"tests/site/option-groups.spec.ts"
+			],
+			"notes": [
+				"至少需要两个值不重复的选项且每个选项必须有独立正文；非法结构保留为普通 Markdown。",
+				"SSR 不隐藏任何面板；客户端增强后启用 ARIA tabs、同 id 同步与本地偏好记忆。",
+				"客户端初始化覆盖直接加载、Swup 内容替换和文章解密，且不产生网络请求。"
+			]
+		},
+		{
+			"id": "spoiler",
+			"name": "Inline Spoiler",
+			"status": "stable",
+			"category": "text-directive",
+			"source": "shirone",
+			"summary": "将 text directive 输出为 spoiler 自定义元素并使用 CSS 隐藏内容。",
+			"forms": [
+				{
+					"kind": "text-directive",
+					"pattern": ":spoiler[content]",
+					"example": "答案是 :spoiler[42]。"
+				}
+			],
+			"attributes": [],
+			"implementation": ["src/plugins/rehype-component-spoiler.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/spoiler.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/spoilers.ts"],
+				"network": []
+			},
+			"docs": ["src/content/posts/markdown-extended.md"],
+			"tests": [
+				"tests/plugins/markdown/inline/spoilers.test.mjs",
+				"tests/site/spoilers.spec.ts"
+			],
+			"notes": ["保留兼容；缺少触屏与键盘契约，不作为新行内语法样板。"]
+		},
+		{
+			"id": "steps",
+			"name": "Steps",
+			"status": "stable",
+			"category": "container",
+			"source": "shirone",
+			"summary": "将单个有序列表增强为无外框的序号导轨步骤流，非法或混合输入保留为普通 Markdown。",
+			"forms": [
+				{
+					"kind": "container-directive",
+					"pattern": ":::steps{title=\"...\" start=1} ... :::",
+					"example": ":::steps{title=\"部署流程\"}\n1. **准备环境**\n\n   克隆仓库并安装依赖。\n2. **启动服务**\n\n   运行构建并发布。\n:::"
+				},
+				{
+					"kind": "container-directive",
+					"pattern": ":::steps[标题] ... :::",
+					"example": ":::steps[快速入门]\n1. 安装依赖\n2. 启动开发服务器\n:::"
+				}
+			],
+			"attributes": [
+				{
+					"name": "title",
+					"required": false,
+					"values": "string, at most 200 characters",
+					"default": ""
+				},
+				{
+					"name": "start",
+					"required": false,
+					"values": "positive integer",
+					"default": 1
+				}
+			],
+			"implementation": ["src/plugins/markdown/containers/rehype-steps.mjs"],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/steps.css"],
+			"runtime": {
+				"mode": "none",
+				"modules": [],
+				"network": []
+			},
+			"docs": ["src/content/posts/steps.md"],
+			"tests": [
+				"tests/plugins/markdown/containers/steps.test.mjs",
+				"tests/site/steps.spec.ts"
+			],
+			"notes": [
+				"容器只接受一个有序列表；视觉序号附带 aria-hidden，原始 ol/li 语义保留，纯 SSR 输出且零客户端 JavaScript 负担。"
+			]
+		},
+		{
+			"id": "youtube",
+			"name": "YouTube Video",
+			"status": "stable",
+			"category": "leaf-directive",
+			"source": "shirone",
+			"summary": "将受限 YouTube 视频 ID 渲染为可访问的 SSR 视频 facade，并在接近视口时预加载或由点击加载 privacy-enhanced 播放器。",
+			"forms": [
+				{
+					"kind": "leaf-directive",
+					"pattern": "::youtube{id=\"...\" title=\"...\" preload=\"auto\"}",
+					"example": "::youtube{id=\"5gIf0_xpFPI\" title=\"YouTube video\"}"
+				}
+			],
+			"attributes": [
+				{
+					"name": "id",
+					"required": true,
+					"values": "strict 11-character YouTube video ID",
+					"default": null
+				},
+				{
+					"name": "title",
+					"required": true,
+					"values": "non-empty video title",
+					"default": null
+				},
+				{
+					"name": "preload",
+					"required": false,
+					"values": "none or auto; auto prepares the player near the viewport",
+					"default": "none"
+				}
+			],
+			"implementation": [
+				"src/plugins/markdown/core/youtube.d.mts",
+				"src/plugins/markdown/core/youtube.mjs",
+				"src/plugins/markdown/core/video-preload.mjs",
+				"src/plugins/markdown/remark-youtube.mjs",
+				"src/plugins/rehype-component-youtube.mjs"
+			],
+			"registeredIn": "src/utils/markdown-processor.mjs",
+			"styles": ["src/styles/markdown/youtube.css"],
+			"runtime": {
+				"mode": "client-enhanced",
+				"modules": ["src/utils/youtube.ts", "src/utils/video-facade.ts"],
+				"network": [
+					"viewport preloading or explicit activation: https://www.youtube-nocookie.com/embed/{id}?rel=0&modestbranding=1"
+				]
+			},
+			"docs": ["src/content/posts/video.md"],
+			"tests": [
+				"tests/plugins/markdown/leaf/youtube.test.mjs",
+				"tests/site/markdown-runtime.spec.ts"
+			],
+			"notes": [
+				"初始 SSR DOM 不含 iframe、YouTube 脚本或 provider 请求；标题和 YouTube 页面链接始终保留。",
+				"非法视频 ID 或空标题不触发可选资源；运行时只从验证后的字段生成白名单播放器 URL。"
+			]
+		}
+	]
+}

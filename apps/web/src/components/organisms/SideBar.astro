@@ -1,0 +1,328 @@
+---
+/**
+ * 侧边栏（数据驱动）：遍历 sidebarConfig.components 渲染 widget。
+ * componentMap 是唯一的 widget 注册表——新增 widget 时在
+ * src/types/sidebarConfig.ts 扩展联合分支，并在此注册组件。
+ * 职责仅是编排，不取数；widget 自己的配置经 `widget` prop 透传。
+ *
+ * 页面过滤（widget.pages）：SSR 全量渲染并在包装层打
+ * data-sidebar-pages + hidden 初始标记；侧栏静态渲染在 Swup 容器外，
+ * 导航后不重渲染，由底部脚本监听 content:replace 按新页面的
+ * data-current-page（#swup-container，Swup 同步属性）重新过滤。
+ */
+import Announcement from "@components/molecules/Announcement.astro";
+import Calendar from "@components/molecules/Calendar.astro";
+import Categories from "@components/molecules/Categories.astro";
+import Series from "@components/molecules/Series.astro";
+import SidebarTOC from "@components/molecules/SidebarTOC.astro";
+import SiteStats from "@components/molecules/SiteStats.astro";
+import Tags from "@components/molecules/Tags.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { isWidgetVisibleOnPage, pagesToAttribute } from "@utils/sidebar-page";
+import { musicConfig, resolveMusicOptions } from "@/config/musicConfig";
+import { sidebarConfig } from "@/config/sidebarConfig";
+import type {
+	SidebarColumn,
+	SidebarPage,
+	SidebarWidget,
+} from "@/types/sidebarConfig";
+import Profile from "./Profile.astro";
+
+interface Props {
+	class?: string;
+	/** 本实例渲染哪一栏的 widget（dual 编排下主/副栏各挂一个实例） */
+	column?: SidebarColumn;
+	/** 侧栏根元素 id，sticky 容器 id 由其派生（多实例必须不同，默认 "sidebar"） */
+	id?: string;
+	/** 当前页面标识符，用于 widget 的 pages 过滤 */
+	currentPage?: SidebarPage;
+	headings?: import("astro").MarkdownHeading[];
+}
+
+const {
+	class: className,
+	column = "primary",
+	id = "sidebar",
+	currentPage,
+	headings = [],
+} = Astro.props;
+
+// 双栏时页面存在两个 complementary landmark，axe landmark-unique
+// 要求每个 aside 有区分性名称
+const ariaLabel =
+	column === "secondary"
+		? i18n(I18nKey.sidebarSecondary)
+		: i18n(I18nKey.sidebar);
+
+const musicOptions = resolveMusicOptions(musicConfig);
+const hasEnabledMusicWidget =
+	sidebarConfig.enable &&
+	sidebarConfig.components.some(
+		(widget) => widget.type === "music" && widget.enable,
+	);
+const MusicSidebar =
+	musicOptions && hasEnabledMusicWidget
+		? (await import("virtual:shirone-music-sidebar")).default
+		: null;
+
+// widget 类型 → 组件（键必须覆盖 SidebarWidget 的全部 type）
+const componentMap = {
+	profile: Profile,
+	categories: Categories,
+	tags: Tags,
+	series: Series,
+	announcement: Announcement,
+	stats: SiteStats,
+	calendar: Calendar,
+	toc: SidebarTOC,
+	music: MusicSidebar,
+} satisfies Record<SidebarWidget["type"], unknown>;
+
+type WidgetRenderer = (props: Record<string, unknown>) => unknown;
+
+// 按列取整：SSR 不做页面过滤（全量渲染，swup 导航后客户端才能恢复
+// 被隐藏的 widget），页面可见性仅体现在包装层的 hidden 标记上
+const widgets = sidebarConfig.enable
+	? sidebarConfig.components.filter(
+			(widget) =>
+				widget.enable &&
+				(widget.column ?? "primary") === column &&
+				(widget.type !== "music" || MusicSidebar !== null),
+		)
+	: [];
+const topWidgets = widgets.filter((widget) => widget.slot === "top");
+const stickyWidgets = widgets.filter((widget) => widget.slot === "sticky");
+
+// stagger 揭幕：基础延迟 = --m3e-duration-short（150ms），每张卡片递增一档
+const STAGGER_BASE_MS = 150;
+const STAGGER_STEP_MS = 50;
+const animationDelay = (index: number) =>
+	`${STAGGER_BASE_MS + index * STAGGER_STEP_MS}ms`;
+
+// 首屏可见性：与客户端脚本共用 utils/sidebar-page 的判定，避免漂移
+const isVisible = (widget: SidebarWidget) =>
+	isWidgetVisibleOnPage(widget.pages, currentPage);
+const hasVisibleTop = topWidgets.some(isVisible);
+const hasVisibleSticky = stickyWidgets.some(isVisible);
+---
+
+<aside id={id} aria-label={ariaLabel} class:list={[className, "w-full lg:h-full"]}>
+	{topWidgets.length > 0 && (
+		<div
+			data-sidebar-group
+			class:list={["flex flex-col w-full gap-4 mb-4", { hidden: !hasVisibleTop }]}
+		>
+			{topWidgets.map((widget) => {
+				const Component = componentMap[widget.type] as WidgetRenderer;
+				return (
+					<div
+						data-sidebar-pages={pagesToAttribute(widget.pages)}
+						class:list={["sidebar-widget", { hidden: !isVisible(widget) }]}
+					>
+						<Component
+							widget={widget}
+							headings={widget.type === "toc" ? headings : undefined}
+							priority={widget.type === "profile" && currentPage === "about"}
+						/>
+					</div>
+				);
+			})}
+		</div>
+	)}
+	{stickyWidgets.length > 0 && (
+		<div
+			id={`${id}-sticky`}
+			data-sidebar-group
+			class:list={[
+				"flex flex-col w-full gap-4 lg:sticky lg:top-20",
+				{ hidden: !hasVisibleSticky },
+				{ "lg:min-h-0 lg:flex-1": column === "secondary" },
+			]}
+		>
+			{stickyWidgets.map((widget, index) => {
+				const Component = componentMap[widget.type] as WidgetRenderer;
+				return (
+					<div
+						data-sidebar-pages={pagesToAttribute(widget.pages)}
+						class:list={["sidebar-widget", { hidden: !isVisible(widget) }]}
+					>
+						<Component
+							widget={widget}
+							headings={widget.type === "toc" ? headings : undefined}
+							priority={widget.type === "profile" && currentPage === "about"}
+							class="onload-animation"
+							style={`animation-delay: ${animationDelay(index)}`}
+						/>
+					</div>
+				);
+			})}
+		</div>
+	)}
+</aside>
+
+<style lang="stylus">
+	/* 包装层修正：widget 根元素原本直接作为 flex item 被 blockified；
+	   包进 .sidebar-widget 后自定义元素（widget-layout）恢复 inline，
+	   需显式拉满宽度 */
+	.sidebar-widget > *
+		display: block
+		width: 100%
+</style>
+
+<script>
+	import type { SidebarPage } from "@/types/sidebarConfig";
+	import {
+		fadeOutThenHide,
+		prefersReducedMotion,
+		revealIn,
+	} from "@utils/motion";
+	import { attributeToPages, isWidgetVisibleOnPage } from "@utils/sidebar-page";
+
+	// 页面过滤同步：侧栏静态渲染在 Swup 容器外，导航后不重渲染。
+	// 当前页面标识由 MainGridLayout 输出到 #swup-container 的
+	// data-current-page（Swup 替换容器时同步属性），据此切换各 widget
+	// 与空组的 hidden 状态。判定与 SSR 共用 utils/sidebar-page。
+	//
+	// 动效（motion.ts 集合变更原语，reduced-motion 瞬切）：
+	// 退场组件先原地淡出（150ms，让出布局后再隐藏）→ 留存组件从旧位置
+	// FLIP 平移到位 → 入场组件淡入上移。快速连续导航用代际计数丢弃过期回调。
+
+	function readCurrentPage(): SidebarPage | undefined {
+		const container = document.getElementById("swup-container");
+		return (container?.dataset.currentPage || undefined) as
+			| SidebarPage
+			| undefined;
+	}
+
+	function collectWrappers(): HTMLElement[] {
+		return Array.from(
+			document.querySelectorAll<HTMLElement>("[data-sidebar-pages]"),
+		);
+	}
+
+	/** 空组收起：组内 widget 全部隐藏时隐藏容器，避免残留底部间距 */
+	function collapseEmptyGroups(): void {
+		document
+			.querySelectorAll<HTMLElement>("[data-sidebar-group]")
+			.forEach((group) => {
+				const hasVisible =
+					group.querySelectorAll("[data-sidebar-pages]:not(.hidden)")
+						.length > 0;
+				group.classList.toggle("hidden", !hasVisible);
+			});
+	}
+
+	// 代际计数：退场淡出 await 期间若又发生导航（sync 再次被调用），
+	// 旧回调在恢复点作废，由最新一次接管终态
+	let generation = 0;
+
+	async function syncSidebarPages(): Promise<void> {
+		const my = ++generation;
+		const currentPage = readCurrentPage();
+		const willShow = (widget: HTMLElement) =>
+			isWidgetVisibleOnPage(
+				attributeToPages(widget.dataset.sidebarPages),
+				currentPage,
+			);
+
+		const wrappers = collectWrappers();
+		const visibleBefore = wrappers.filter(
+			(widget) => !widget.classList.contains("hidden"),
+		);
+		const exiters = visibleBefore.filter((widget) => !willShow(widget));
+		const enterers = wrappers.filter(
+			(widget) => widget.classList.contains("hidden") && willShow(widget),
+		);
+
+		if (exiters.length === 0 && enterers.length === 0) {
+			collapseEmptyGroups();
+			return;
+		}
+
+		if (prefersReducedMotion()) {
+			exiters.forEach((widget) => widget.classList.add("hidden"));
+			enterers.forEach((widget) => widget.classList.remove("hidden"));
+			collapseEmptyGroups();
+			return;
+		}
+
+		// 变更前记录位置（淡出期间布局未变，随后一次性切换）
+		await Promise.all(exiters.map((widget) => fadeOutThenHide(widget)));
+		if (my !== generation) return;
+
+		enterers.forEach((widget) => widget.classList.remove("hidden"));
+		collapseEmptyGroups();
+
+		// 留存组件：从旧位置 FLIP 到新位置（退场让出的位移被平滑吸收）
+		// 入场组件：淡入上移，多个时 50ms 阶梯
+		enterers.forEach((widget, index) => revealIn(widget, { delay: index * 50 }));
+	}
+
+	void syncSidebarPages();
+
+	let navigationGeneration = 0;
+	let navigationActive = false;
+	let scrollStarted = false;
+	let sidebarSyncPending = false;
+
+	function resetPersistentSidebars(): void {
+		document.querySelectorAll<HTMLElement>("[data-sidebar-pages]").forEach((widget) => {
+			widget.getAnimations().forEach((animation) => animation.cancel());
+		});
+		document
+			.querySelectorAll<HTMLElement>("#sidebar-sticky, #sidebar-secondary-sticky")
+			.forEach((group) => {
+				group.scrollTop = 0;
+			});
+	}
+
+	function onVisitStart(): void {
+		navigationGeneration += 1;
+		generation += 1;
+		navigationActive = true;
+		scrollStarted = false;
+		sidebarSyncPending = false;
+		resetPersistentSidebars();
+	}
+
+	function onSwupReplace(): void {
+		sidebarSyncPending = true;
+	}
+
+	async function finishNavigation(): Promise<void> {
+		if (!navigationActive || !sidebarSyncPending) return;
+		const currentGeneration = navigationGeneration;
+		navigationActive = false;
+		if (currentGeneration !== navigationGeneration) return;
+		sidebarSyncPending = false;
+		await syncSidebarPages();
+	}
+
+	function onVisitAbort(): void {
+		navigationGeneration += 1;
+		navigationActive = false;
+		sidebarSyncPending = false;
+	}
+
+	function bindSwupHooks(): void {
+		const swup = window.swup;
+		if (!swup || window.__shironeSidebarBound) return;
+		window.__shironeSidebarBound = true;
+		swup.hooks.on("visit:start", onVisitStart);
+		swup.hooks.on("content:replace", onSwupReplace);
+		swup.hooks.on("visit:end", () => {
+			if (!scrollStarted) void finishNavigation();
+		});
+		swup.hooks.on("visit:abort", onVisitAbort);
+		if (swup.hooks.exists("scroll:end")) {
+			swup.hooks.on("scroll:start", () => {
+				if (navigationActive) scrollStarted = true;
+			});
+			swup.hooks.on("scroll:end", () => void finishNavigation());
+		}
+	}
+
+	bindSwupHooks();
+	document.addEventListener("swup:enable", bindSwupHooks, { once: true });
+</script>

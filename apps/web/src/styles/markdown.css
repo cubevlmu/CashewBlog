@@ -1,0 +1,215 @@
+@reference "tailwindcss";
+
+@import "./markdown/disclosures.css";
+
+.custom-md {
+  h1 {
+    @apply text-3xl;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    .anchor {
+      @apply transition -m-0.5 ml-[0.2ch] p-0.5 select-none opacity-0 no-underline;
+
+      .anchor-icon {
+        @apply mx-[0.45ch];
+      }
+    }
+
+    &:hover {
+      .anchor {
+        @apply opacity-100;
+      }
+    }
+  }
+
+  a:not(.no-styling) {
+    @apply relative bg-none transition rounded-md font-medium text-[var(--primary)]
+        underline decoration-[var(--link-underline)] decoration-1 decoration-dashed underline-offset-4;
+    padding: var(--m3e-space-1);
+    margin: calc(var(--m3e-space-1) * -1);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    display: inline;
+    /* anywhere 而非 break-word：换行机会参与 min-content 计算，
+       长链接才不会在窄网格/弹性容器（如动态卡片）里撑破轨道 */
+    overflow-wrap: anywhere;
+
+    &:hover,
+    &:active {
+      @apply decoration-transparent;
+      background: var(--btn-plain-bg-hover);
+      border-bottom: 1px dashed var(--link-hover);
+      text-decoration: none;
+    }
+  }
+
+  code {
+    @apply bg-[var(--inline-code-bg)] text-[var(--inline-code-color)] px-1 py-0.5 rounded-md overflow-hidden;
+
+    font-family:
+      var(--m3e-font-mono-family),
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      Monaco,
+      Consolas,
+      Liberation Mono,
+      Courier New,
+      monospace;
+    /* !important boundary: Tailwind Typography owns generated code markers; Shirone's Markdown renderer suppresses them. */
+    &:before {
+      content: none !important;
+    }
+    &:after {
+      content: none !important;
+    }
+
+    counter-reset: line;
+    span.line {
+      &:before {
+        @apply text-white/25 mr-4 w-4 inline-block;
+        content: counter(line);
+        counter-increment: line;
+        direction: rtl;
+      }
+      &:last-child:empty,
+      &:last-child:has(> span:empty:only-child) {
+        display: none;
+      }
+    }
+  }
+
+  ul,
+  ol {
+    li::marker {
+      @apply text-[var(--primary)];
+    }
+  }
+
+  blockquote {
+    @apply not-italic border-transparent relative;
+    font-weight: inherit;
+
+    &:before {
+      @apply content-[''] absolute -left-1 block transition bg-[var(--primary)] h-full w-1 rounded-full;
+    }
+
+    /* Remove the double quotes from default styles */
+    p:before,
+    p:after {
+      @apply content-none;
+    }
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-inline: auto;
+  }
+
+  /* --- M3 表格：容器圆角 + 表头表面分层 + outline-variant 分隔线 --- */
+  .markdown-table-scroll {
+    width: 100%;
+    max-width: 100%;
+    margin: var(--m3e-space-4) 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    border-radius: var(--shape-corner-m);
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-bg) transparent;
+    -webkit-overflow-scrolling: touch;
+
+    &:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    &::-webkit-scrollbar {
+      height: var(--m3e-space-2);
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+      margin-inline: var(--m3e-space-2);
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-bg);
+      border-radius: var(--shape-corner-full);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-bg-hover);
+    }
+
+    &::-webkit-scrollbar-thumb:active {
+      background: var(--scrollbar-bg-active);
+    }
+  }
+
+  table {
+    width: 100%;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--outline-variant);
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: var(--shape-corner-m);
+
+    /* !important boundary: Tailwind Typography owns prose cell spacing; the responsive table owns its cell geometry. */
+    th {
+      @apply text-left bg-[var(--surface-container-high)] text-[var(--on-surface)] font-semibold;
+      padding: var(--m3e-space-3) var(--m3e-space-4) !important;
+    }
+
+    td {
+      @apply text-[var(--on-surface-variant)];
+      padding: var(--m3e-space-2) var(--m3e-space-4) !important;
+    }
+
+    th,
+    td {
+      @apply border-b border-[var(--outline-variant)];
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      @apply border-b-0;
+    }
+
+    /* !important boundary: Tailwind Typography owns prose code presentation; table cells own this compact code variant. */
+    :is(th, td) code {
+      padding: 0 var(--m3e-space-1) !important;
+      border-radius: var(--shape-corner-xs) !important;
+      background: color-mix(in oklab, var(--on-surface) 8%, transparent) !important;
+      color: var(--on-surface) !important;
+      font: var(--m3e-type-code) !important;
+      letter-spacing: 0;
+      white-space: nowrap;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+  }
+
+  /* !important boundary: Tailwind Typography owns prose table margins; the scroll wrapper owns table spacing. */
+  .markdown-table-scroll > table {
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+    margin: 0 !important;
+  }
+
+  /* --- 标题间距 --- */
+  :is(h1, h2, h3) {
+    margin-top: var(--m3e-space-4);
+    margin-bottom: var(--m3e-space-2);
+  }
+}

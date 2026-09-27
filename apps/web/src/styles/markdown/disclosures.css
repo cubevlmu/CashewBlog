@@ -1,0 +1,37 @@
+.custom-md .m3-disclosure__summary {
+	cursor: pointer;
+	list-style: none;
+	user-select: none;
+}
+
+.custom-md .m3-disclosure__summary::-webkit-details-marker {
+	display: none;
+}
+
+.custom-md .m3-disclosure__summary::marker {
+	content: "";
+}
+
+.custom-md .m3-disclosure__summary:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: -2px;
+}
+
+.custom-md .m3-disclosure__indicator {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--m3e-space-4);
+	height: var(--m3e-space-4);
+	color: var(--on-surface-variant);
+	transition: transform var(--m3e-duration-medium)
+		var(--m3e-easing-emphasized-decelerate);
+}
+
+.custom-md .m3-disclosure[open] > .m3-disclosure__summary > .m3-disclosure__indicator {
+	transform: rotate(90deg);
+}
+
+.custom-md .m3-disclosure__indicator--spacer {
+	visibility: hidden;
+}

@@ -1,0 +1,218 @@
+---
+/**
+ * FeedGuide.astro
+ * RSS 与 Atom 订阅引导有机体组件：展示订阅地址、快速复制、原始 XML 链接、阅读器推荐与最新推送预览。
+ */
+import AccentBar from "@components/atoms/display/AccentBar.svelte";
+import Card from "@components/atoms/display/Card.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { getSortedPosts } from "@utils/content-utils";
+import { formatDateToYYYYMMDD } from "@utils/date-utils";
+import { getPostUrl, url } from "@utils/url-utils";
+import { Icon } from "astro-icon/components";
+import { siteConfig } from "@/config";
+
+interface Props {
+	type: "rss" | "atom";
+}
+
+const { type } = Astro.props;
+const isRss = type === "rss";
+const title = i18n(isRss ? I18nKey.rss : I18nKey.atom);
+const subtitle = i18n(isRss ? I18nKey.rssSubtitle : I18nKey.atomSubtitle);
+const feedPath = isRss ? "rss.xml" : "atom.xml";
+const feedUrl = url(feedPath);
+const siteBase = Astro.site ? Astro.site.href : siteConfig.site;
+const feedAbsoluteUrl = new URL(feedUrl, siteBase).href;
+
+const allPosts = await getSortedPosts();
+const posts = allPosts.slice(0, 6);
+---
+
+<div class="feed-guide w-full">
+	<!-- Hero Card -->
+	<Card color="var(--card-bg)" radius="l" class="p-6 md:p-8 mb-4 onload-animation">
+		<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+			<div class="flex items-center justify-center w-14 h-14 rounded-[var(--shape-corner-m)] bg-[var(--primary)] text-[var(--on-primary)] shrink-0 shadow-[var(--m3e-elevation-1)]">
+				<Icon name={isRss ? "material-symbols:rss-feed-rounded" : "material-symbols:cell-tower-rounded"} class="text-3xl" />
+			</div>
+			<div class="flex-1 min-w-0">
+				<div class="flex items-center gap-2 mb-1">
+					<AccentBar size="medium" class="!hidden md:!inline-block" />
+					<h1 class="text-2xl md:text-3xl font-bold text-[var(--on-surface)]">{title}</h1>
+				</div>
+				<p class="text-sm md:text-base text-[var(--on-surface-variant)]">{subtitle}</p>
+			</div>
+		</div>
+	</Card>
+
+	<!-- Feed URL & Action Card -->
+	<Card color="var(--card-bg)" radius="l" class="p-6 mb-4 onload-animation">
+		<div class="flex items-center gap-2 mb-2">
+			<Icon name="material-symbols:link-rounded" class="text-xl text-[var(--primary)]" />
+			<h2 class="text-lg font-bold text-[var(--on-surface)]">{i18n(I18nKey.feedLink)}</h2>
+		</div>
+		<p class="text-sm text-[var(--on-surface-variant)] mb-4">{i18n(I18nKey.feedHowToUseDesc)}</p>
+		<div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+			<code
+				data-feed-url-display
+				data-feed-relative-url={feedUrl}
+				class="flex-1 px-4 py-3 rounded-[var(--shape-corner-m)] bg-[var(--surface-container-high)] text-[var(--on-surface)] font-mono text-sm border border-[var(--outline-variant)] select-all break-all"
+			>
+				{feedAbsoluteUrl}
+			</code>
+			<div class="flex items-center gap-2 shrink-0">
+				<button
+					type="button"
+					data-feed-copy-btn
+					data-feed-url={feedAbsoluteUrl}
+					data-feed-relative-url={feedUrl}
+					class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[var(--shape-corner-m)] bg-[var(--primary)] text-[var(--on-primary)] font-medium text-sm transition-all hover:opacity-90 active:scale-95 shadow-[var(--m3e-elevation-1)] cursor-pointer"
+				>
+					<Icon name="material-symbols:content-copy-rounded" class="text-lg" />
+					<span>{i18n(I18nKey.copyLink)}</span>
+				</button>
+				<a
+					data-feed-xml-link
+					data-feed-relative-url={feedUrl}
+					href={feedAbsoluteUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[var(--shape-corner-m)] bg-[var(--surface-container-high)] text-[var(--on-surface)] border border-[var(--outline-variant)] font-medium text-sm transition-all hover:bg-[var(--surface-container-highest)] cursor-pointer"
+				>
+					<Icon name="material-symbols:open-in-new-rounded" class="text-lg" />
+					<span>{i18n(I18nKey.feedOpenXml)}</span>
+				</a>
+			</div>
+		</div>
+	</Card>
+
+	<!-- Recommendations Card -->
+	<Card color="var(--card-bg)" radius="l" class="p-6 mb-4 onload-animation">
+		<div class="flex items-center gap-2 mb-3">
+			<Icon name="material-symbols:help-outline-rounded" class="text-xl text-[var(--primary)]" />
+			<h2 class="text-lg font-bold text-[var(--on-surface)]">{i18n(I18nKey.feedHowToUse)}</h2>
+		</div>
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+			<div class="p-4 rounded-[var(--shape-corner-m)] bg-[var(--surface-container-low)] border border-[var(--outline-variant)]">
+				<div class="flex items-center gap-2 mb-1.5 font-semibold text-[var(--on-surface)] text-sm">
+					<Icon name="material-symbols:devices-rounded" class="text-[var(--primary)] text-base" />
+					<span>Cross-Platform / Web</span>
+				</div>
+				<p class="text-xs text-[var(--on-surface-variant)] leading-relaxed">
+					Follow, Feedly, Inoreader, FreshRSS, Miniflux
+				</p>
+			</div>
+			<div class="p-4 rounded-[var(--shape-corner-m)] bg-[var(--surface-container-low)] border border-[var(--outline-variant)]">
+				<div class="flex items-center gap-2 mb-1.5 font-semibold text-[var(--on-surface)] text-sm">
+					<Icon name="material-symbols:desktop-mac-rounded" class="text-[var(--primary)] text-base" />
+					<span>Desktop / Mobile Apps</span>
+				</div>
+				<p class="text-xs text-[var(--on-surface-variant)] leading-relaxed">
+					NetNewsWire, Reeder, Read You, Fluent Reader
+				</p>
+			</div>
+		</div>
+	</Card>
+
+	<!-- Recent Posts Preview Card -->
+	<Card color="var(--card-bg)" radius="l" class="p-6 mb-4 onload-animation">
+		<div class="flex items-center gap-2 mb-4">
+			<Icon name="material-symbols:article-outline-rounded" class="text-xl text-[var(--primary)]" is:inline />
+			<h2 class="text-lg font-bold text-[var(--on-surface)]">{i18n(I18nKey.feedRecentPosts)}</h2>
+		</div>
+		<div class="flex flex-col gap-3">
+			{posts.map((post) => (
+				<a
+					href={getPostUrl(post)}
+					class="group flex flex-col md:flex-row md:items-center justify-between p-4 rounded-[var(--shape-corner-m)] bg-[var(--surface-container-low)] hover:bg-[var(--surface-container-high)] border border-[var(--outline-variant)] transition-all"
+				>
+					<div class="min-w-0 flex-1 md:mr-4">
+						<h3 class="font-semibold text-base text-[var(--on-surface)] group-hover:text-[var(--primary)] transition-colors truncate mb-1">
+							{post.data.title}
+						</h3>
+						{post.data.description && (
+							<p class="text-xs text-[var(--on-surface-variant)] line-clamp-1">
+								{post.data.description}
+							</p>
+						)}
+					</div>
+					<div class="flex items-center gap-3 shrink-0 mt-2 md:mt-0 text-xs text-[var(--on-surface-variant)]">
+						{post.data.category && (
+							<span class="px-2 py-0.5 rounded-full bg-[var(--surface-container-highest)] font-medium text-[var(--on-surface)]">
+								{post.data.category}
+							</span>
+						)}
+						<time datetime={new Date(post.data.published).toISOString()}>
+							{formatDateToYYYYMMDD(post.data.published)}
+						</time>
+					</div>
+				</a>
+			))}
+		</div>
+	</Card>
+</div>
+
+<script>
+	import { showSnackbar } from "@utils/snackbar";
+	import I18nKey from "@i18n/i18nKey";
+	import { i18n } from "@i18n/translation";
+
+	function syncDynamicFeedUrls(): void {
+		if (typeof window === "undefined") return;
+		const currentOrigin = window.location.origin;
+
+		document
+			.querySelectorAll<HTMLElement>("[data-feed-relative-url]")
+			.forEach((element) => {
+				const relativeUrl = element.dataset.feedRelativeUrl;
+				if (!relativeUrl) return;
+				const fullUrl = new URL(relativeUrl, currentOrigin).href;
+
+				if (element.hasAttribute("data-feed-url-display")) {
+					element.textContent = fullUrl;
+				}
+				if (element.hasAttribute("data-feed-copy-btn")) {
+					element.dataset.feedUrl = fullUrl;
+				}
+				if (
+					element instanceof HTMLAnchorElement &&
+					element.hasAttribute("data-feed-xml-link")
+				) {
+					element.href = fullUrl;
+				}
+			});
+	}
+
+	syncDynamicFeedUrls();
+
+	function bindSwupFeedHook(): void {
+		if (window.swup) {
+			window.swup.hooks.on("page:view", syncDynamicFeedUrls);
+			window.swup.hooks.on("content:replace", syncDynamicFeedUrls);
+		}
+	}
+
+	bindSwupFeedHook();
+	document.addEventListener("swup:enable", bindSwupFeedHook, { once: true });
+
+	document.addEventListener("click", async (event) => {
+		const target = event.target as HTMLElement | null;
+		const btn = target?.closest<HTMLElement>("[data-feed-copy-btn]");
+		if (!btn) return;
+		const relativeUrl = btn.dataset.feedRelativeUrl || "";
+		const feedUrl =
+			btn.dataset.feedUrl || new URL(relativeUrl, window.location.origin).href;
+		if (!feedUrl) return;
+
+		try {
+			await navigator.clipboard.writeText(feedUrl);
+			showSnackbar(i18n(I18nKey.copySuccess), {
+				icon: "material-symbols:link-rounded",
+			});
+		} catch {
+			showSnackbar(i18n(I18nKey.copyFailed));
+		}
+	});
+</script>

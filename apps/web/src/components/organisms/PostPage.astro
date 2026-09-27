@@ -1,0 +1,133 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { getPostUrl } from "@utils/url-utils";
+import { POST_CARD_MIN_WIDTH, postListConfig } from "@/config/postListConfig";
+import PostCard from "./PostCard.astro";
+
+const { page } = Astro.props;
+
+let delay = 0;
+const interval = 50;
+
+const { mode, cover, cardWidth } = postListConfig.layout;
+---
+
+<!-- 卡片间留白分隔（gap = --m3e-space-4，无容器底色 / 无虚线）。
+     容器承载布局模式：m3e-post-list--list / --grid（PostCard 原子经
+     :global 祖先钩子联动形态），--cover-left 仅 list 模式生效。 -->
+<div class:list={["m3e-post-list-shell", `m3e-post-list-shell--${cardWidth}`]}>
+    <div
+        id="post-list"
+        class:list={[
+            "transition m3e-post-list mb-4",
+            `m3e-post-list--${mode}`,
+            { "m3e-post-list--cover-left": mode === "list" && cover === "left" },
+        ]}
+        data-layout-mode={mode}
+        style={`--post-card-min: ${POST_CARD_MIN_WIDTH[cardWidth]};`}
+    >
+        {page.data.map((entry: CollectionEntry<"posts">) => (
+            <PostCard
+                entry={entry}
+                title={entry.data.title}
+                tags={entry.data.tags}
+                category={entry.data.category}
+                published={entry.data.published}
+                updated={entry.data.updated}
+                pinned={entry.data.pinned}
+                url={getPostUrl(entry)}
+                image={entry.data.image}
+                description={entry.data.description}
+                draft={entry.data.draft}
+                class:list="onload-animation"
+                style={`animation-delay: calc(var(--content-delay) + ${delay++ * interval}ms);`}
+            ></PostCard>
+        ))}
+    </div>
+</div>
+
+<style lang="stylus">
+@import "../../styles/breakpoints.styl"
+.m3e-post-list-shell
+	container: post-list-layout / inline-size
+
+.m3e-post-list
+	display: flex
+	flex-direction: column
+	gap: var(--m3e-space-4)
+
+	/* 网格（瀑布流）模式：仅在内容容器至少能容纳两张所选宽度的卡片时生效。
+	   这让单/双侧栏压窄内容列时自动回退 list，而不是留下单列 GridUI。
+	   手机端同样回退到上方基础 flex 单列。窄容器下最短列打包的
+	   colCount ≤ 1，自动清空 span，无需 JS 分支。
+	   卡片高度天然混合（有/无封面），由 utils/masonry.ts 做最短列打包：
+	   JS 给每张卡片设置 grid-column-start + grid-row-end: span N。
+	   行轨道 8px、row-gap 0（16px 行距烘焙进 span）——与 masonry.ts 的
+	   ROW_UNIT / ROW_GAP 常量约定，两处需同步改。 */
+
+activate-post-grid()
+	display: grid
+	grid-template-columns: repeat(auto-fill, minmax(var(--post-card-min, 20rem), 1fr))
+	align-items: start
+	grid-auto-rows: 8px
+	row-gap: 0
+	column-gap: var(--m3e-space-4)
+
+/* 阈值 = 2 × POST_CARD_MIN_WIDTH + --m3e-space-4（列间距）。 */
+@media (min-width: bp-md)
+	@container post-list-layout (min-width: 41rem)
+		.m3e-post-list-shell--compact .m3e-post-list--grid
+			activate-post-grid()
+
+	@container post-list-layout (min-width: 49rem)
+		.m3e-post-list-shell--regular .m3e-post-list--grid
+			activate-post-grid()
+
+	@container post-list-layout (min-width: 57rem)
+		.m3e-post-list-shell--relaxed .m3e-post-list--grid
+			activate-post-grid()
+</style>
+
+<!-- 首屏防闪：SSR 输出的是站点默认模式，访客偏好（localStorage）在容器
+     解析后立即覆盖（is:inline 无依赖、随 HTML 流式执行；swup 导航由
+     Layout 的 content:replace 钩子兜底，见 utils/layout-mode.ts）。
+     grid 模式需同步做一次最简瀑布流打包（与 utils/masonry.ts 同算法），
+     避免未打包的 8px 行轨道在首帧叠加渲染。 -->
+<script is:inline>
+(function () {
+	var el = document.getElementById("post-list");
+	if (!el) return;
+	var m = localStorage.getItem("post-list-mode");
+	if (m !== "list" && m !== "grid") return;
+	if (m !== el.getAttribute("data-layout-mode")) {
+		el.classList.remove("m3e-post-list--list", "m3e-post-list--grid");
+		el.classList.add("m3e-post-list--" + m);
+		el.setAttribute("data-layout-mode", m);
+	}
+	if (m !== "grid") return;
+	var cols = getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length;
+	if (cols <= 1) return;
+	var heights = new Array(cols).fill(0);
+	var cards = el.children;
+	for (var i = 0; i < cards.length; i++) {
+		var card = cards[i];
+		var shortest = 0;
+		for (var c = 1; c < cols; c++) if (heights[c] < heights[shortest]) shortest = c;
+		var h = card.offsetHeight + 16; /* 行距 16px，与 masonry.ts ROW_GAP 同步 */
+		card.style.gridColumnStart = String(shortest + 1);
+		card.style.gridRowEnd = "span " + Math.ceil(h / 8); /* 8px 与 grid-auto-rows 同步 */
+		heights[shortest] += h;
+	}
+})();
+</script>
+
+<script>
+	// 首载挂接瀑布流（打包 + ResizeObserver）；字体加载后卡片高度可能微调，重排一次。
+	// swup 导航由 Layout 的 content:replace 钩子调用 applyStoredLayoutMode 兜底。
+	import { packMasonry, setupMasonry } from "@utils/masonry";
+	const container = document.getElementById("post-list");
+	if (container) {
+		setupMasonry(container);
+		document.fonts?.ready.then(() => packMasonry(container));
+	}
+</script>

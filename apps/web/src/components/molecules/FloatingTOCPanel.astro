@@ -1,0 +1,156 @@
+---
+import TocList from "@components/atoms/blog/TocList.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import type { MarkdownHeading } from "astro";
+/**
+ * FloatingTOCPanel.astro
+ * 专为移动端/平板设计的悬浮大纲目录面板卡片。
+ * M3 Surface Container High 风格，支持平滑滚动跳转、当前大纲高亮与键盘无障碍退出。
+ */
+import { Icon } from "astro-icon/components";
+import { siteConfig } from "@/config";
+
+interface Props {
+	headings?: MarkdownHeading[];
+	maxDepth?: number;
+	closeOnSelect?: boolean;
+}
+
+const {
+	headings = [],
+	maxDepth = siteConfig.toc.depth,
+	closeOnSelect = true,
+} = Astro.props;
+
+const removeTailingHash = (text: string) => {
+	const lastIndexOfHash = text.lastIndexOf("#");
+	return lastIndexOfHash === text.length - 1
+		? text.substring(0, lastIndexOfHash)
+		: text;
+};
+
+const tocHeadings = headings.map((h) => ({
+	depth: h.depth,
+	text: removeTailingHash(h.text),
+	slug: h.slug,
+}));
+---
+
+<div
+	id="floating-toc-panel"
+	class="m3-floating-toc-panel"
+	role="dialog"
+	aria-modal="true"
+	aria-label={i18n(I18nKey.tableOfContents)}
+	aria-hidden="true"
+	tabindex="-1"
+	data-toc-close-on-select={closeOnSelect ? "true" : "false"}
+	data-toc-max-depth={maxDepth}
+	data-empty-label={i18n(I18nKey.noData)}
+>
+	<!-- 头部栏 -->
+	<div class="m3-floating-toc-panel__header">
+		<div class="flex items-center gap-2">
+			<Icon name="material-symbols:format-list-bulleted-rounded" class="text-xl text-[var(--primary)]" />
+			<h3 class="m3-floating-toc-panel__title">
+				{i18n(I18nKey.tableOfContents)}
+			</h3>
+		</div>
+		<button
+			id="floating-toc-close-btn"
+			type="button"
+			class="m3-floating-toc-close m3-state-layer"
+			aria-label={i18n(I18nKey.close)}
+		>
+			<Icon name="material-symbols:close-rounded" class="text-lg" />
+		</button>
+	</div>
+
+	<!-- 目录内容区 -->
+	<div id="floating-toc-scroll-content" class="m3-floating-toc-panel__content">
+		<div id="floating-toc-tree" class="m3-floating-toc-tree">
+			{tocHeadings.length > 0 ? (
+				<TocList headings={tocHeadings} maxDepth={maxDepth} />
+			) : (
+				<div class="py-6 text-center text-xs text-[var(--on-surface-variant)]">
+					{i18n(I18nKey.noData)}
+				</div>
+			)}
+		</div>
+	</div>
+</div>
+
+<style lang="stylus">
+.m3-floating-toc-panel
+	position: absolute
+	bottom: calc(100% + var(--m3e-space-3))
+	right: 0
+	width: min(85vw, 20rem)
+	max-height: min(65vh, 28rem)
+	display: flex
+	flex-direction: column
+	background: var(--surface-container-high)
+	color: var(--on-surface)
+	border: 1px solid var(--outline-variant)
+	border-radius: var(--shape-corner-xl)
+	box-shadow: var(--m3e-elevation-3)
+	overflow: hidden
+	opacity: 0
+	visibility: hidden
+	transform: translateY(var(--m3e-space-3)) scale(0.94)
+	transform-origin: bottom right
+	transition:
+		transform var(--m3e-duration-medium) var(--m3e-easing-emphasized-decelerate),
+		opacity var(--m3e-duration-short) var(--m3e-easing-standard),
+		visibility var(--m3e-duration-short)
+	pointer-events: none
+	z-index: 60
+
+	&.is-open
+		opacity: 1
+		visibility: visible
+		transform: translateY(0) scale(1)
+		pointer-events: auto
+
+	&__header
+		display: flex
+		align-items: center
+		justify-content: space-between
+		padding: var(--m3e-space-3) var(--m3e-space-4)
+		border-bottom: 1px solid var(--outline-variant)
+		background: var(--surface-container-high)
+
+	&__title
+		font: var(--m3e-type-title-small)
+		font-weight: 600
+		color: var(--on-surface)
+		margin: 0
+
+	&__content
+		padding: var(--m3e-space-2)
+		overflow-y: auto
+		overscroll-behavior: contain
+		scrollbar-width: none
+		-ms-overflow-style: none
+		-webkit-overflow-scrolling: touch
+
+		&::-webkit-scrollbar
+			display: none
+			width: 0
+			height: 0
+
+.m3-floating-toc-close
+	display: inline-flex
+	align-items: center
+	justify-content: center
+	width: 2rem
+	height: 2rem
+	border-radius: var(--shape-corner-full)
+	border: none
+	background: transparent
+	color: var(--on-surface-variant)
+	cursor: pointer
+	--m3e-state-color: var(--on-surface)
+	transition: background-color var(--m3e-duration-short)
+</style>

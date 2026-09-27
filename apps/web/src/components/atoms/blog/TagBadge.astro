@@ -1,0 +1,47 @@
+---
+/**
+ * M3E 博客原子 — TagBadge 文字型小标签。
+ * `# 名称` 的 tonal 小盒标签（卡片底部标签行用）：24px 高、corner-s 圆角、
+ * btn-regular 容器色（跟随明暗），hover 逐级加深、`#` 前缀随文字轻微右移。
+ */
+interface Props {
+	name: string;
+	href: string;
+	class?: string;
+}
+
+const { name, href, class: className } = Astro.props;
+---
+
+<a
+	class:list={["m3-blog-tagbadge", className]}
+	href={href}
+	aria-label={`View all posts with the ${name} tag`}
+>
+	<span class="m3-blog-tagbadge__text">#&nbsp;{name}</span>
+</a>
+
+<style lang="stylus">
+.m3-blog-tagbadge
+	display: inline-flex
+	align-items: center
+	height: 1.5rem
+	padding: 0 0.5rem
+	border-radius: var(--shape-corner-s)
+	background: var(--btn-regular-bg)
+	color: var(--btn-content)
+	text-decoration: none
+	white-space: nowrap
+	transition: background-color var(--m3e-duration-short) var(--m3e-easing-standard)
+	&:hover
+		background: var(--btn-regular-bg-hover)
+	&:active
+		background: var(--btn-regular-bg-active)
+
+	&__text
+		font: var(--m3e-type-label-medium)
+		font-weight: 500
+		transition: transform var(--m3e-duration-short) var(--m3e-easing-emphasized-decelerate)
+	.m3-blog-tagbadge:hover &
+		transform: translateX(0.125rem)
+</style>

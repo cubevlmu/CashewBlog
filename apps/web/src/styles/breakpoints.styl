@@ -1,0 +1,12 @@
+/* 断点变量（stylus 编译期替换，对齐 Tailwind 默认断点）。
+   组件在 <style lang="stylus"> 里用 @import "../../../styles/breakpoints.styl"（按层级调整）后引用：
+     @media (min-width: bp-md)        → @media (min-width: 768px)
+     @media (max-width: bp-md - 1px)  → @media (max-width: 767px)
+   同步维护：src/styles/variables.styl 的 --m3e-bp-* CSS 变量（供 JS/内联使用）。
+   Tailwind 断点：sm 640 / md 768 / lg 1024 / xl 1280 / 2xl 1536
+*/
+bp-sm = 640px
+bp-md = 768px
+bp-lg = 1024px
+bp-xl = 1280px
+bp-2xl = 1536px

@@ -1,0 +1,1164 @@
+---
+import { getImage } from "astro:assets";
+import BannerWaves from "@components/molecules/BannerWaves.astro";
+import { resolveImageAsset } from "@utils/asset-utils";
+import { url } from "@utils/url-utils";
+import { Icon } from "astro-icon/components";
+import { siteConfig } from "@/config";
+import type { SidebarPage } from "@/types/sidebarConfig";
+
+interface Props {
+	page?: SidebarPage;
+	title?: string;
+	description?: string;
+	date?: string;
+}
+
+const { page, title = "", description = "", date = "" } = Astro.props;
+const normalizedTitle = title.trim();
+const normalizedDescription = description.trim();
+const initialSupportingText =
+	normalizedDescription !== normalizedTitle ? normalizedDescription : "";
+const initialDate = date.trim();
+const initialCopyMode =
+	page === "home" ? "home" : page && normalizedTitle ? "context" : "none";
+const initialLabel =
+	initialCopyMode === "context"
+		? normalizedTitle
+		: siteConfig.banner.homeText.title;
+
+interface ResponsiveBannerImage {
+	fallback: string;
+	avifSrcset: string;
+	webpSrcset: string;
+	width?: number;
+	height?: number;
+}
+
+const optimizeBannerImage = async (
+	src: string,
+	viewport: "desktop" | "mobile",
+): Promise<ResponsiveBannerImage> => {
+	const resolved = await resolveImageAsset(src);
+	if (typeof resolved === "string") {
+		return {
+			fallback: resolved.startsWith("/") ? url(resolved) : resolved,
+			avifSrcset: "",
+			webpSrcset: "",
+		};
+	}
+
+	const requestedWidths =
+		viewport === "desktop" ? [1280, 1600, 1920] : [640, 828, 1080];
+	const widths = [
+		...new Set([
+			...requestedWidths.filter((width) => width <= resolved.width),
+			Math.min(requestedWidths.at(-1) ?? resolved.width, resolved.width),
+		]),
+	].sort((a, b) => a - b);
+	const createCandidates = async (format: "avif" | "webp", quality: number) =>
+		Promise.all(
+			widths.map(async (width) => ({
+				width,
+				image: await getImage({ src: resolved, width, format, quality }),
+			})),
+		);
+	const [avif, webp] = await Promise.all([
+		createCandidates("avif", 55),
+		createCandidates("webp", 68),
+	]);
+	const fallback = webp.at(-1)?.image.src ?? resolved.src;
+	return {
+		fallback,
+		avifSrcset: avif
+			.map(({ image, width }) => `${image.src} ${width}w`)
+			.join(", "),
+		webpSrcset: webp
+			.map(({ image, width }) => `${image.src} ${width}w`)
+			.join(", "),
+		width: resolved.width,
+		height: resolved.height,
+	};
+};
+
+function normalizeBannerSource(source: unknown, name: string): { light: string[]; dark: string[] } {
+	if (Array.isArray(source)) {
+		const list = source.filter((item): item is string => typeof item === "string");
+		return { light: list, dark: list };
+	}
+	if (typeof source === "object" && source !== null) {
+		const obj = source as Record<string, unknown>;
+		if (!Array.isArray(obj.light) || !Array.isArray(obj.dark)) {
+			throw new Error(
+				`[config] site.banner.src.${name} 对象形式必须同时提供 light 与 dark 数组。若亮暗两色使用相同图片，请直接使用数组形式。`,
+			);
+		}
+		return {
+			light: obj.light.filter((item): item is string => typeof item === "string"),
+			dark: obj.dark.filter((item): item is string => typeof item === "string"),
+		};
+	}
+	return { light: [], dark: [] };
+}
+
+const desktopSource = normalizeBannerSource(siteConfig.banner.src.desktop, "desktop");
+const mobileSource = normalizeBannerSource(siteConfig.banner.src.mobile, "mobile");
+
+// 对图片按路径去重进行优化缓存
+const optimizationCache = new Map<string, Promise<ResponsiveBannerImage>>();
+const getOptimized = (src: string, viewport: "desktop" | "mobile") => {
+	const key = `${viewport}:${src}`;
+	let p = optimizationCache.get(key);
+	if (!p) {
+		p = optimizeBannerImage(src, viewport);
+		optimizationCache.set(key, p);
+	}
+	return p;
+};
+
+const desktopLightResponsive = await Promise.all(
+	desktopSource.light.map((src) => getOptimized(src, "desktop")),
+);
+const desktopDarkResponsive = await Promise.all(
+	desktopSource.dark.map((src) => getOptimized(src, "desktop")),
+);
+const mobileLightResponsive = await Promise.all(
+	mobileSource.light.map((src) => getOptimized(src, "mobile")),
+);
+const mobileDarkResponsive = await Promise.all(
+	mobileSource.dark.map((src) => getOptimized(src, "mobile")),
+);
+
+const desktopImages = {
+	light: desktopLightResponsive.map(({ fallback }) => fallback),
+	dark: desktopDarkResponsive.map(({ fallback }) => fallback),
+};
+const mobileImages = {
+	light: mobileLightResponsive.map(({ fallback }) => fallback),
+	dark: mobileDarkResponsive.map(({ fallback }) => fallback),
+};
+
+const dimOpacity = Math.min(Math.max(siteConfig.banner.dim.opacity, 0), 1);
+const rawSubtitles = siteConfig.banner.homeText.subtitle;
+const subtitleArray = Array.isArray(rawSubtitles)
+	? rawSubtitles
+	: [rawSubtitles];
+const defaultInitialSubtitle = subtitleArray[0] ?? "";
+const typewriter = siteConfig.banner.homeText.typewriter;
+const carouselFadeDuration = Math.min(
+	Math.max(siteConfig.banner.carousel?.fadeDuration ?? 1200, 300),
+	3000,
+);
+const carouselAnimation = siteConfig.banner.carousel?.animation ?? "ken-burns";
+const initialDesktopSrc = desktopImages.light[0] ?? "";
+const initialMobileSrc = mobileImages.light[0] ?? "";
+const initialSrc = initialDesktopSrc || initialMobileSrc;
+const initialDesktopImage = desktopLightResponsive[0];
+const initialMobileImage = mobileLightResponsive[0];
+const initialImage = initialDesktopImage ?? initialMobileImage;
+const initialMobileBanner = page === "home";
+---
+
+<section
+	id="banner-wrapper"
+	class="banner-stage"
+	aria-label={initialLabel}
+	data-copy-mode={initialCopyMode}
+	data-context-motion="idle"
+	data-desktop-images={JSON.stringify(desktopImages)}
+	data-mobile-images={JSON.stringify(mobileImages)}
+	data-carousel-enabled={String(siteConfig.banner.carousel.enable)}
+	data-carousel-interval={String(Math.max(siteConfig.banner.carousel.interval, 3000))}
+	data-carousel-fade-duration={String(carouselFadeDuration)}
+	data-carousel-animation={carouselAnimation}
+	style={`--banner-fade-duration: ${carouselFadeDuration}ms;`}
+	data-position={siteConfig.banner.position ?? "center"}
+	data-home-title={siteConfig.banner.homeText.title}
+	data-home-subtitles={JSON.stringify(subtitleArray)}
+	data-subtitle-typewriter-enabled={String(typewriter.enable)}
+	data-subtitle-typewriter-loop={String(typewriter.loop)}
+	data-subtitle-typewriter-speed={String(Math.max(typewriter.speed, 1))}
+	data-subtitle-typewriter-delete-speed={String(Math.max(typewriter.deleteSpeed ?? 50, 1))}
+	data-subtitle-typewriter-pause-time={String(Math.max(typewriter.pauseTime ?? 2000, 0))}
+>
+	<div class="banner-stage__media" aria-hidden="true">
+		<picture>
+			{initialDesktopImage?.avifSrcset && (
+				<source media="(min-width: 1024px)" type="image/avif" srcset={initialDesktopImage.avifSrcset} sizes="100vw" />
+			)}
+			{initialDesktopImage?.webpSrcset && (
+				<source media="(min-width: 1024px)" type="image/webp" srcset={initialDesktopImage.webpSrcset} sizes="100vw" />
+			)}
+			{initialDesktopImage && !initialDesktopImage.avifSrcset && !initialDesktopImage.webpSrcset && (
+				<source media="(min-width: 1024px)" srcset={initialDesktopImage.fallback} />
+			)}
+			{initialMobileBanner && initialMobileImage?.avifSrcset && (
+				<source media="(max-width: 1023.98px)" type="image/avif" srcset={initialMobileImage.avifSrcset} sizes="100vw" />
+			)}
+			{initialMobileBanner && initialMobileImage?.webpSrcset && (
+				<source media="(max-width: 1023.98px)" type="image/webp" srcset={initialMobileImage.webpSrcset} sizes="100vw" />
+			)}
+			{initialMobileBanner && initialMobileImage && !initialMobileImage.avifSrcset && !initialMobileImage.webpSrcset && (
+				<source media="(max-width: 1023.98px)" srcset={initialMobileImage.fallback} />
+			)}
+			<img
+				class="banner-stage__image banner-stage__image--front banner-stage__image--active"
+				src={initialMobileBanner ? initialSrc || undefined : undefined}
+				width={initialImage?.width}
+				height={initialImage?.height}
+				fetchpriority="high"
+				loading="eager"
+				decoding="async"
+				alt=""
+				style={`object-position: ${siteConfig.banner.position ?? "center"};`}
+			/>
+		</picture>
+		<img class="banner-stage__image banner-stage__image--back" alt="" />
+	</div>
+	{siteConfig.banner.dim.enable && (
+		<div class="banner-stage__scrim" style={`--banner-dim-opacity: ${dimOpacity}`}></div>
+	)}
+	{siteConfig.banner.homeText.enable && (
+		<div class="banner-stage__copy banner-stage__copy--home" data-banner-home-copy>
+			<h1>{siteConfig.banner.homeText.title}</h1>
+			<p
+				aria-label={defaultInitialSubtitle}
+				data-subtitle-state="complete"
+			>
+				{defaultInitialSubtitle}
+			</p>
+		</div>
+	)}
+	<div class="banner-stage__copy banner-stage__copy--context" data-banner-context>
+		<div class="banner-stage__context-title" data-banner-context-title>
+			{normalizedTitle}
+		</div>
+		<div
+			class="banner-stage__context-details"
+			data-banner-context-details
+			hidden={!initialSupportingText && !initialDate}
+		>
+			<span class="banner-stage__context-divider" aria-hidden="true"></span>
+			<p data-banner-context-description hidden={!initialSupportingText}>
+				{initialSupportingText}
+			</p>
+			<div class="banner-stage__context-meta" data-banner-context-meta hidden={!initialDate}>
+				<Icon name="material-symbols:calendar-today-rounded" aria-hidden="true" />
+				<time data-banner-context-date datetime={initialDate}>{initialDate}</time>
+			</div>
+		</div>
+	</div>
+	{siteConfig.banner.waves.enable && <BannerWaves />}
+</section>
+
+<script>
+	import { resolveBannerState, type BannerViewport } from "@utils/banner-state";
+	import {
+		playBannerMotion,
+		type BannerAnimationHandle,
+		type BannerAnimationPreset,
+	} from "@utils/banner-animation";
+	import {
+		EASING_ACCELERATE,
+		EASING_DECELERATE,
+		prefersReducedMotion,
+	} from "@utils/motion";
+	import { getStoredWallpaperMode } from "@utils/setting-utils";
+	import { WALLPAPER_MODE_CHANGE_EVENT, THEME_CHANGE_EVENT } from "@constants/constants";
+	import type { SidebarPage } from "@/types/sidebarConfig";
+
+	interface BannerRuntime {
+		activeGroup: BannerViewport | null;
+		activeIndex: number;
+		activeLayer: 0 | 1;
+		images: Record<BannerViewport, { light: string[]; dark: string[] }>;
+		activeTheme: "light" | "dark";
+		preloaded: HTMLImageElement | null;
+		subtitleGeneration: number;
+		subtitlePage: SidebarPage | null;
+		subtitleTimer: number | null;
+		subtitleVisible: boolean;
+		contextAnimation: Animation | null;
+		contextTransitionPending: boolean;
+		titleFitFrame: number | null;
+		navigationSyncFrame: number | null;
+		timer: number | null;
+		layerMotions: [BannerAnimationHandle | null, BannerAnimationHandle | null];
+		carouselMediaPrepared: boolean;
+	}
+
+	declare global {
+		interface Window {
+			__shironeBannerBound?: boolean;
+		}
+	}
+
+	const stage = document.getElementById("banner-wrapper") as HTMLElement | null;
+	const layers = stage
+		? [...stage.querySelectorAll<HTMLImageElement>(".banner-stage__image")]
+		: [];
+	const subtitle = stage?.querySelector<HTMLParagraphElement>(
+		"[data-banner-home-copy] p",
+	);
+	const contextTitle = stage?.querySelector<HTMLElement>(
+		"[data-banner-context-title]",
+	);
+	const contextDescription = stage?.querySelector<HTMLElement>(
+		"[data-banner-context-description]",
+	);
+	const contextDetails = stage?.querySelector<HTMLElement>(
+		"[data-banner-context-details]",
+	);
+	const contextMeta = stage?.querySelector<HTMLElement>(
+		"[data-banner-context-meta]",
+	);
+	const contextDate = stage?.querySelector<HTMLTimeElement>(
+		"[data-banner-context-date]",
+	);
+	function parseThemeImages(value: string | undefined): { light: string[]; dark: string[] } {
+		if (!value) return { light: [], dark: [] };
+		try {
+			const parsed = JSON.parse(value);
+			if (Array.isArray(parsed)) {
+				const list = parsed.filter((item): item is string => typeof item === "string");
+				return { light: list, dark: list };
+			}
+			if (typeof parsed === "object" && parsed !== null) {
+				return {
+					light: Array.isArray(parsed.light) ? parsed.light.filter((i: unknown): i is string => typeof i === "string") : [],
+					dark: Array.isArray(parsed.dark) ? parsed.dark.filter((i: unknown): i is string => typeof i === "string") : [],
+				};
+			}
+			return { light: [], dark: [] };
+		} catch {
+			return { light: [], dark: [] };
+		}
+	}
+
+	function isDarkMode(): boolean {
+		return document.documentElement.classList.contains("dark");
+	}
+
+	function getActiveImages(viewport: BannerViewport): string[] {
+		const store = runtime.images[viewport];
+		const mode = isDarkMode() ? "dark" : "light";
+		return store[mode] ?? [];
+	}
+
+	const runtime: BannerRuntime = {
+		activeGroup: null,
+		activeIndex: 0,
+		activeLayer: 0,
+		images: {
+			desktop: parseThemeImages(stage?.dataset.desktopImages),
+			mobile: parseThemeImages(stage?.dataset.mobileImages),
+		},
+		activeTheme: isDarkMode() ? "dark" : "light",
+		preloaded: null,
+		subtitleGeneration: 0,
+		subtitlePage: null,
+		subtitleTimer: null,
+		subtitleVisible: false,
+		contextAnimation: null,
+		contextTransitionPending: false,
+		titleFitFrame: null,
+		navigationSyncFrame: null,
+		timer: null,
+		layerMotions: [null, null],
+		carouselMediaPrepared: false,
+	};
+
+	function currentPage(): SidebarPage | undefined {
+		return document.getElementById("swup-container")?.dataset.currentPage as
+			| SidebarPage
+			| undefined;
+	}
+
+	function currentViewport(): BannerViewport {
+		return window.matchMedia("(min-width: 1024px)").matches
+			? "desktop"
+			: "mobile";
+	}
+
+	function stopRotation() {
+		if (runtime.timer !== null) window.clearTimeout(runtime.timer);
+		runtime.timer = null;
+	}
+
+	function subtitleSegments(value: string): string[] {
+		if (typeof Intl.Segmenter === "function") {
+			const segmenter = new Intl.Segmenter(undefined, {
+				granularity: "grapheme",
+			});
+			return [...segmenter.segment(value)].map(({ segment }) => segment);
+		}
+		return Array.from(value);
+	}
+
+	function getSubtitleTexts(): string[] {
+		try {
+			const parsed = JSON.parse(stage?.dataset.homeSubtitles || "[]");
+			if (Array.isArray(parsed) && parsed.length > 0) {
+				return parsed.filter(Boolean);
+			}
+		} catch {
+			// ignore
+		}
+		const initial =
+			subtitle?.getAttribute("aria-label") || subtitle?.textContent || "";
+		return initial ? [initial] : [];
+	}
+
+	function stopSubtitleTyping() {
+		runtime.subtitleGeneration += 1;
+		if (runtime.subtitleTimer !== null) {
+			window.clearTimeout(runtime.subtitleTimer);
+		}
+		runtime.subtitleTimer = null;
+		runtime.subtitleVisible = false;
+		if (subtitle) {
+			const texts = getSubtitleTexts();
+			subtitle.textContent = texts[0] || "";
+			subtitle.dataset.subtitleState = "complete";
+		}
+	}
+
+	function showSubtitleImmediately() {
+		stopSubtitleTyping();
+		runtime.subtitleVisible = true;
+		if (subtitle) {
+			const texts = getSubtitleTexts();
+			subtitle.textContent = texts[0] || "";
+			subtitle.dataset.subtitleState = "complete";
+		}
+	}
+
+	function readMotionDuration(property: string, fallback: number): number {
+		const value = Number.parseFloat(
+			getComputedStyle(document.documentElement).getPropertyValue(property),
+		);
+		return Number.isFinite(value) && value > 0 ? value : fallback;
+	}
+
+	function startSubtitleTyping(page: SidebarPage | undefined) {
+		if (!subtitle || !page || page !== "home") {
+			stopSubtitleTyping();
+			runtime.subtitlePage = page ?? null;
+			return;
+		}
+
+		if (
+			runtime.subtitlePage === page &&
+			runtime.subtitleVisible &&
+			!(prefersReducedMotion() && subtitle.dataset.subtitleState === "typing")
+		)
+			return;
+		runtime.subtitlePage = page;
+		if (
+			stage?.dataset.subtitleTypewriterEnabled !== "true" ||
+			prefersReducedMotion()
+		) {
+			showSubtitleImmediately();
+			return;
+		}
+
+		runtime.subtitleGeneration += 1;
+		const generation = runtime.subtitleGeneration;
+		if (runtime.subtitleTimer !== null) {
+			window.clearTimeout(runtime.subtitleTimer);
+		}
+		runtime.subtitleTimer = null;
+		runtime.subtitleVisible = true;
+
+		const texts = getSubtitleTexts();
+		if (!texts.length) {
+			subtitle.textContent = "";
+			subtitle.dataset.subtitleState = "complete";
+			return;
+		}
+
+		const loop = stage?.dataset.subtitleTypewriterLoop === "true";
+		const configuredSpeed = Number.parseFloat(
+			stage?.dataset.subtitleTypewriterSpeed || "120",
+		);
+		const speed = Number.isFinite(configuredSpeed)
+			? Math.max(configuredSpeed, 1)
+			: 120;
+		const configuredDeleteSpeed = Number.parseFloat(
+			stage?.dataset.subtitleTypewriterDeleteSpeed || "50",
+		);
+		const deleteSpeed = Number.isFinite(configuredDeleteSpeed)
+			? Math.max(configuredDeleteSpeed, 1)
+			: 50;
+		const configuredPauseTime = Number.parseFloat(
+			stage?.dataset.subtitleTypewriterPauseTime || "2000",
+		);
+		const pauseTime = Number.isFinite(configuredPauseTime)
+			? Math.max(configuredPauseTime, 0)
+			: 2000;
+
+		let textIndex = 0;
+		let charIndex = 0;
+		let isDeleting = false;
+		subtitle.textContent = "";
+		subtitle.dataset.subtitleState = "typing";
+
+		const step = () => {
+			if (generation !== runtime.subtitleGeneration || !subtitle) return;
+
+			const currentText = texts[textIndex] || "";
+			const segments = subtitleSegments(currentText);
+
+			if (isDeleting) {
+				if (charIndex > 0) {
+					charIndex -= 1;
+					subtitle.textContent = segments.slice(0, charIndex).join("");
+					runtime.subtitleTimer = window.setTimeout(step, deleteSpeed);
+				} else {
+					// 当前句子已反向回退完毕，切换至下一条并开始正向打字
+					isDeleting = false;
+					textIndex = (textIndex + 1) % texts.length;
+					runtime.subtitleTimer = window.setTimeout(step, speed);
+				}
+			} else {
+				if (charIndex < segments.length) {
+					charIndex += 1;
+					subtitle.textContent = segments.slice(0, charIndex).join("");
+					runtime.subtitleTimer = window.setTimeout(step, speed);
+				} else {
+					// 当前句子完整打字呈现
+					subtitle.dataset.subtitleState = "complete";
+					// 若配置了多句或者启用了循环回退
+					if (texts.length > 1 || loop) {
+						isDeleting = true;
+						runtime.subtitleTimer = window.setTimeout(() => {
+							if (generation !== runtime.subtitleGeneration || !subtitle) return;
+							subtitle.dataset.subtitleState = "typing";
+							step();
+						}, pauseTime);
+					} else {
+						runtime.subtitleTimer = null;
+					}
+				}
+			}
+		};
+
+		step();
+	}
+
+	function preloadNext(images: string[], index: number) {
+		if (images.length < 2) return;
+		const schedulePreload = () => {
+			const load = () => {
+				runtime.preloaded = new Image();
+				runtime.preloaded.src = images[(index + 1) % images.length];
+			};
+			if (typeof window.requestIdleCallback === "function") {
+				window.requestIdleCallback(load, { timeout: 3000 });
+			} else {
+				window.setTimeout(load, 1500);
+			}
+		};
+		const current = layers[runtime.activeLayer];
+		if (current && !current.complete) {
+			current.addEventListener("load", schedulePreload, { once: true });
+		} else {
+			schedulePreload();
+		}
+	}
+
+	function getCarouselInterval(): number {
+		return Math.max(
+			Number.parseInt(stage?.dataset.carouselInterval || "6000", 10),
+			3000,
+		);
+	}
+
+	function getFadeDuration(): number {
+		return Math.max(
+			Number.parseInt(stage?.dataset.carouselFadeDuration || "1200", 10),
+			300,
+		);
+	}
+
+	function getAnimationPreset(): BannerAnimationPreset {
+		return (
+			(stage?.dataset.carouselAnimation as BannerAnimationPreset) ||
+			"ken-burns"
+		);
+	}
+
+	function stopLayerMotions() {
+		runtime.layerMotions[0]?.cancel();
+		runtime.layerMotions[0] = null;
+		runtime.layerMotions[1]?.cancel();
+		runtime.layerMotions[1] = null;
+	}
+
+	function pauseLayerMotions() {
+		runtime.layerMotions[0]?.pause();
+		runtime.layerMotions[1]?.pause();
+	}
+
+	function resumeLayerMotions() {
+		runtime.layerMotions[0]?.resume();
+		runtime.layerMotions[1]?.resume();
+	}
+
+	// Remove the `<picture><source>` elements after the carousel takes over; otherwise, modifying `src` on the `<img>` tag at runtime will be overridden by the initial `<source>` element
+	function prepareCarouselMedia(images: string[]) {
+		if (runtime.carouselMediaPrepared || !stage || images.length < 2) return;
+		if (stage.dataset.carouselEnabled !== "true") return;
+		stage.querySelectorAll("picture source").forEach((source) => source.remove());
+		runtime.carouselMediaPrepared = true;
+	}
+
+	function resolveImageUrl(src: string): string {
+		return new URL(src, window.location.href).href;
+	}
+
+	function prepareLayerImage(
+		layer: HTMLImageElement,
+		src: string,
+	): Promise<void> {
+		const resolved = resolveImageUrl(src);
+		layer.removeAttribute("srcset");
+		layer.removeAttribute("sizes");
+		layer.style.objectPosition = stage?.dataset.position || "center";
+		if (layer.src === resolved && layer.complete) return Promise.resolve();
+		return new Promise((resolve) => {
+			const finish = () => resolve();
+			layer.addEventListener("load", finish, { once: true });
+			layer.addEventListener("error", finish, { once: true });
+			if (layer.src !== resolved) layer.src = src;
+			if (layer.complete) finish();
+		});
+	}
+
+	function startLayerMotion(layerIndex: 0 | 1, element: HTMLImageElement) {
+		if (prefersReducedMotion()) return;
+		const interval = getCarouselInterval();
+		const fadeDuration = getFadeDuration();
+		runtime.layerMotions[layerIndex]?.cancel();
+		runtime.layerMotions[layerIndex] = playBannerMotion({
+			element,
+			preset: getAnimationPreset(),
+			index: runtime.activeIndex,
+			durationMs: interval + fadeDuration,
+		});
+	}
+
+	function crossfadeToLayer(nextLayer: 0 | 1) {
+		const next = layers[nextLayer];
+		const previous = layers[runtime.activeLayer];
+		const previousLayer = runtime.activeLayer;
+
+		runtime.layerMotions[previousLayer]?.cancel();
+		runtime.layerMotions[previousLayer] = null;
+
+		next.classList.add("banner-stage__image--fading");
+		previous.classList.add("banner-stage__image--fading");
+		// Force a reflow to ensure the opacity transition interpolates correctly from the current frame
+		void next.offsetWidth;
+		next.classList.add("banner-stage__image--active");
+		previous.classList.remove("banner-stage__image--active");
+
+		runtime.activeLayer = nextLayer;
+		startLayerMotion(nextLayer, next);
+	}
+
+	function applyImmediateLayer(nextLayer: 0 | 1) {
+		const next = layers[nextLayer];
+		for (let i = 0; i < layers.length; i += 1) {
+			if (i !== nextLayer) {
+				layers[i].classList.remove("banner-stage__image--active");
+				layers[i].classList.remove("banner-stage__image--fading");
+				runtime.layerMotions[i]?.cancel();
+				runtime.layerMotions[i] = null;
+			}
+		}
+		next.classList.add("banner-stage__image--active");
+		next.classList.remove("banner-stage__image--fading");
+		runtime.activeLayer = nextLayer;
+	}
+
+	function showImageImmediate(nextLayer: 0 | 1, src: string) {
+		const next = layers[nextLayer];
+		const resolved = resolveImageUrl(src);
+		next.removeAttribute("srcset");
+		next.removeAttribute("sizes");
+		next.style.objectPosition = stage?.dataset.position || "center";
+		if (next.src !== resolved) next.src = src;
+		if (next.complete) {
+			applyImmediateLayer(nextLayer);
+			return;
+		}
+		void prepareLayerImage(next, src).then(() => {
+			if (next.src !== resolved) return;
+			applyImmediateLayer(nextLayer);
+		});
+	}
+
+	function showImage(src: string, immediate: boolean) {
+		if (!layers.length) return;
+		const nextLayer: 0 | 1 = immediate
+			? runtime.activeLayer
+			: runtime.activeLayer === 0
+				? 1
+				: 0;
+		const next = layers[nextLayer];
+
+		if (immediate || prefersReducedMotion()) {
+			showImageImmediate(nextLayer, src);
+			return;
+		}
+
+		void prepareLayerImage(next, src).then(() => {
+			if (next.src !== resolveImageUrl(src)) return;
+			crossfadeToLayer(nextLayer);
+		});
+	}
+
+	function scheduleRotation(images: string[]) {
+		stopRotation();
+		const delay = Number.parseInt(stage?.dataset.carouselInterval || "6000", 10);
+		runtime.timer = window.setTimeout(() => {
+			runtime.activeIndex = (runtime.activeIndex + 1) % images.length;
+			showImage(images[runtime.activeIndex], false);
+			preloadNext(images, runtime.activeIndex);
+			syncBanner();
+		}, delay);
+	}
+
+	function canAnimateBannerContext(): boolean {
+		return (
+			currentViewport() === "desktop" &&
+			stage?.hidden === false &&
+			!prefersReducedMotion()
+		);
+	}
+
+	function settleContextAnimation() {
+		runtime.contextAnimation?.cancel();
+		runtime.contextAnimation = null;
+		if (!stage) return;
+		stage.dataset.contextMotion = "idle";
+	}
+
+	function animateContextOut() {
+		runtime.contextTransitionPending = canAnimateBannerContext();
+		settleContextAnimation();
+		if (
+			!runtime.contextTransitionPending ||
+			stage?.dataset.copyMode !== "context" ||
+			!contextTitle
+		)
+			return;
+		const copy = contextTitle.closest<HTMLElement>("[data-banner-context]");
+		if (!copy) return;
+		stage!.dataset.contextMotion = "out";
+		runtime.contextAnimation = copy.animate(
+			[
+				{ opacity: 1, transform: "translate(-50%, -50%) translateY(0)" },
+				{ opacity: 0, transform: "translate(-50%, -50%) translateY(-0.25rem)" },
+			],
+			{
+				duration: readMotionDuration("--m3e-duration-short", 150),
+				easing: EASING_ACCELERATE,
+				fill: "forwards",
+			},
+		);
+	}
+
+	function animateContextIn() {
+		const shouldAnimate =
+			runtime.contextTransitionPending &&
+			canAnimateBannerContext() &&
+			stage?.dataset.copyMode === "context";
+		runtime.contextTransitionPending = false;
+		settleContextAnimation();
+		if (!shouldAnimate || !contextTitle) return;
+		const copy = contextTitle.closest<HTMLElement>("[data-banner-context]");
+		if (!copy) return;
+		stage!.dataset.contextMotion = "in";
+		runtime.contextAnimation = copy.animate(
+			[
+				{ opacity: 0, transform: "translate(-50%, -50%) translateY(0.25rem)" },
+				{ opacity: 1, transform: "translate(-50%, -50%) translateY(0)" },
+			],
+			{
+				duration: readMotionDuration("--m3e-duration-medium", 250),
+				easing: EASING_DECELERATE,
+			},
+		);
+		runtime.contextAnimation.onfinish = settleContextAnimation;
+		runtime.contextAnimation.oncancel = () => {
+			runtime.contextAnimation = null;
+		};
+	}
+
+	function fitContextTitle() {
+		if (!contextTitle || !stage || stage.dataset.copyMode !== "context") return;
+		contextTitle.style.removeProperty("font-size");
+		contextTitle.dataset.titleFit = "full";
+		if (contextTitle.scrollWidth <= contextTitle.clientWidth) return;
+
+		const rootFontSize = Number.parseFloat(
+			getComputedStyle(document.documentElement).fontSize,
+		);
+		const maximum = Number.parseFloat(getComputedStyle(contextTitle).fontSize);
+		const minimum = Number.isFinite(rootFontSize) ? rootFontSize * 2.25 : 36;
+		let lower = Math.min(minimum, maximum);
+		let upper = maximum;
+
+		contextTitle.dataset.titleFit = "scaled";
+		for (let step = 0; step < 8; step += 1) {
+			const candidate = (lower + upper) / 2;
+			contextTitle.style.fontSize = `${candidate}px`;
+			if (contextTitle.scrollWidth <= contextTitle.clientWidth) lower = candidate;
+			else upper = candidate;
+		}
+		contextTitle.style.fontSize = `${lower}px`;
+		if (contextTitle.scrollWidth > contextTitle.clientWidth) {
+			contextTitle.style.removeProperty("font-size");
+			contextTitle.dataset.titleFit = "wrapped";
+		}
+	}
+
+	function scheduleContextTitleFit() {
+		if (runtime.titleFitFrame !== null) {
+			window.cancelAnimationFrame(runtime.titleFitFrame);
+		}
+		runtime.titleFitFrame = window.requestAnimationFrame(() => {
+			runtime.titleFitFrame = null;
+			fitContextTitle();
+		});
+	}
+
+	interface BannerContext {
+		title: string;
+		description: string;
+		date: string;
+	}
+
+	function readContext(): BannerContext {
+		const container = document.getElementById("swup-container");
+		return {
+			title: container?.dataset.bannerTitle?.trim() || "",
+			description: container?.dataset.bannerDescription?.trim() || "",
+			date: container?.dataset.bannerDate?.trim() || "",
+		};
+	}
+
+	function syncContext(context: BannerContext) {
+		if (
+			!stage ||
+			!contextTitle ||
+			!contextDescription ||
+			!contextDetails ||
+			!contextMeta ||
+			!contextDate
+		)
+			return false;
+		const title = context.title;
+		const description = context.description !== title ? context.description : "";
+		const date = context.date;
+		contextTitle.style.removeProperty("font-size");
+		contextTitle.dataset.titleFit = "full";
+		contextTitle.textContent = title;
+		contextDescription.textContent = description;
+		contextDescription.hidden = !description;
+		contextDate.textContent = date;
+		contextDate.dateTime = date;
+		contextMeta.hidden = !date;
+		contextDetails.hidden = !description && !date;
+		scheduleContextTitleFit();
+		return Boolean(title);
+	}
+
+	function syncBanner(pageOverride?: SidebarPage, contextOverride?: BannerContext) {
+		if (!stage) return;
+		const viewport = currentViewport();
+		const images = getActiveImages(viewport);
+		const currentTheme = isDarkMode() ? "dark" : "light";
+		const themeChanged = runtime.activeTheme !== currentTheme;
+		runtime.activeTheme = currentTheme;
+
+		const page = pageOverride ?? currentPage();
+		const state = resolveBannerState({
+			mode: getStoredWallpaperMode(),
+			page,
+			viewport,
+			imageCount: images.length,
+			carouselEnabled: stage.dataset.carouselEnabled === "true",
+			reducedMotion: prefersReducedMotion(),
+		});
+
+		document.body.dataset.currentPage = page || "";
+		document.body.dataset.bannerVisible = String(state.visible);
+		document.body.dataset.bannerLayout = state.contentLayout;
+		document.body.dataset.bannerTopAppBar = String(state.transparentTopAppBar);
+		stage.hidden = !state.visible;
+		const hasContext =
+			state.copyMode === "context" && syncContext(contextOverride ?? readContext());
+		const copyMode = state.copyMode === "home" ? "home" : hasContext ? "context" : "none";
+		stage.dataset.copyMode = copyMode;
+		stage.setAttribute(
+			"aria-label",
+			copyMode === "context"
+				? contextTitle?.textContent || ""
+				: stage.dataset.homeTitle || "",
+		);
+		if (copyMode === "home") startSubtitleTyping(page);
+		else stopSubtitleTyping();
+
+		if (!state.visible || !state.assetGroup) {
+			stopRotation();
+			stopLayerMotions();
+			return;
+		}
+
+		prepareCarouselMedia(images);
+
+		if (runtime.activeGroup !== state.assetGroup || themeChanged) {
+			runtime.activeGroup = state.assetGroup;
+			runtime.activeIndex = 0;
+			showImage(images[0], true);
+			layers[runtime.activeLayer]?.setAttribute("fetchpriority", "high");
+			preloadNext(images, 0);
+		}
+
+		if (state.rotate && !document.hidden) scheduleRotation(images);
+		else stopRotation();
+	}
+
+	function scheduleNavigationSync(animateIn = false) {
+		if (runtime.navigationSyncFrame !== null) {
+			window.cancelAnimationFrame(runtime.navigationSyncFrame);
+		}
+		runtime.navigationSyncFrame = window.requestAnimationFrame(() => {
+			runtime.navigationSyncFrame = null;
+			syncBanner();
+			if (animateIn) animateContextIn();
+		});
+	}
+
+	if (stage) {
+		syncBanner();
+		if (!window.__shironeBannerBound) {
+			window.__shironeBannerBound = true;
+			window.addEventListener(WALLPAPER_MODE_CHANGE_EVENT, () => syncBanner());
+			window.addEventListener(THEME_CHANGE_EVENT, () => syncBanner());
+			window.addEventListener("resize", () => {
+				if (currentViewport() === "desktop" && stage?.hidden === false) {
+					scheduleContextTitleFit();
+				}
+			});
+			window.matchMedia("(min-width: 1024px)").addEventListener("change", () => syncBanner());
+				window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", () => {
+					if (prefersReducedMotion()) {
+						stopLayerMotions();
+						showSubtitleImmediately();
+					}
+					syncBanner();
+				});
+			document.addEventListener("visibilitychange", () => {
+					if (document.hidden) {
+						pauseLayerMotions();
+					} else {
+						resumeLayerMotions();
+					}
+					syncBanner();
+				});
+			document.addEventListener("swup:visit:start", () => {
+				animateContextOut();
+			});
+			document.addEventListener("swup:content:replace", () => {
+				scheduleNavigationSync(true);
+			});
+			document.addEventListener("swup:page:view", () => {
+				scheduleNavigationSync(true);
+			});
+			document.fonts?.ready.then(scheduleContextTitleFit);
+		}
+	}
+</script>
+
+<style lang="stylus">
+		.banner-stage
+			position: absolute
+			inset: 0 0 auto
+			height: var(--banner-stage-height)
+			overflow: hidden
+			background: var(--surface-container-lowest)
+
+			&[hidden]
+				display: none
+
+		.banner-stage__media,
+		.banner-stage__scrim,
+		.banner-stage__copy
+			position: absolute
+			inset: 0
+
+		.banner-stage__image
+			position: absolute
+			inset: 0
+			width: 100%
+			height: 100%
+			object-fit: cover
+			opacity: 0
+			will-change: opacity, transform
+			transform-origin: center center
+
+		.banner-stage__image--fading
+			transition: opacity var(--banner-fade-duration, 1200ms) var(--m3e-easing-standard)
+
+		.banner-stage__image--active
+			opacity: 1
+
+		.banner-stage__scrim
+			z-index: 1
+			background: unquote("rgb(0 0 0 / calc(var(--banner-dim-opacity) * 0.55))")
+			pointer-events: none
+
+		:global(html.dark) .banner-stage__scrim
+			background: unquote("rgb(0 0 0 / var(--banner-dim-opacity))")
+
+		.banner-stage__copy
+			z-index: 2
+			display: none
+			flex-direction: column
+			align-items: center
+			justify-content: center
+			padding: 4rem 1.5rem 2rem
+			color: white
+			text-align: center
+			text-shadow: 0 2px 12px rgba(0, 0, 0, 0.48)
+			pointer-events: none
+
+		.banner-stage__copy h1,
+		.banner-stage__context-title
+			margin: 0
+			font: var(--m3e-type-headline-medium)
+			font-weight: 700
+			letter-spacing: 0
+			line-height: 1.1
+
+		.banner-stage__copy h1,
+		.banner-stage__context-title
+			font-size: clamp(2.5rem, 5rem, 5rem)
+
+		.banner-stage__copy p
+			margin-top: 0.75rem
+			font: var(--m3e-type-headline-small)
+
+			&[data-subtitle-state="typing"]::after
+				content: ""
+				display: inline-block
+				width: 0.08em
+				height: 1em
+				margin-inline-start: 0.12em
+				vertical-align: -0.12em
+				background: currentColor
+				animation: banner-subtitle-caret var(--m3e-duration-long) steps(1, end) infinite
+
+		.banner-stage__copy--context
+			inset: 50% auto auto 50%
+			width: min(calc(100% - var(--m3e-space-12)), 64rem)
+			min-height: calc(var(--m3e-space-12) * 2)
+			padding: var(--m3e-space-6) var(--m3e-space-8)
+			align-items: center
+			justify-content: center
+			text-align: center
+			transform: translate(-50%, -50%)
+
+		.banner-stage__context-title,
+		.banner-stage__context-details
+			max-width: 100%
+
+		.banner-stage__context-title
+			width: 100%
+			overflow-wrap: normal
+			white-space: nowrap
+
+			&[data-title-fit="wrapped"]
+				overflow-wrap: anywhere
+				white-space: normal
+				text-wrap: balance
+
+		.banner-stage__context-details
+			display: flex
+			flex-direction: column
+			align-items: center
+			width: min(100%, 48rem)
+			margin-top: var(--m3e-space-5)
+
+		.banner-stage__context-divider
+			width: var(--m3e-space-12)
+			height: 1px
+			background: rgba(255, 255, 255, 0.72)
+
+		.banner-stage__copy--context p
+			margin: var(--m3e-space-4) 0 0
+			font: var(--m3e-type-headline-small)
+			line-height: 1.5
+			opacity: 0.9
+			overflow-wrap: anywhere
+			text-wrap: pretty
+
+		.banner-stage__context-meta
+			display: flex
+			align-items: center
+			justify-content: center
+			gap: var(--m3e-space-2)
+			margin-top: var(--m3e-space-3)
+			font: var(--m3e-type-label-large)
+			font-variant-numeric: tabular-nums
+			opacity: 0.8
+
+			> :global(svg)
+				width: var(--m3e-space-5)
+				height: var(--m3e-space-5)
+
+		.banner-stage__copy--context [hidden]
+			display: none
+
+		.banner-stage[data-copy-mode="home"] .banner-stage__copy--home,
+		.banner-stage[data-copy-mode="context"] .banner-stage__copy--context
+			display: flex
+
+
+	:global(html[data-wallpaper-mode="none"]) .banner-stage
+		display: none
+
+	@media (max-width: 1023.98px)
+		:global(body:not([data-current-page="home"])) .banner-stage
+			display: none
+
+		.banner-stage
+			&__copy h1
+				font-size: 2.75rem
+
+			&__copy p
+				font-size: 1.125rem
+
+	@keyframes banner-subtitle-caret
+		0%,
+		49%
+			opacity: 1
+		50%,
+		100%
+			opacity: 0
+
+	:global(html.motion-reduced) .banner-stage__image,
+	:global(html.motion-reduced) .banner-stage__copy p[data-subtitle-state="typing"]::after
+		transition: none
+		animation: none
+
+	@media (prefers-reduced-motion: reduce)
+		.banner-stage__image,
+		.banner-stage__copy p[data-subtitle-state="typing"]::after
+			transition: none
+			animation: none
+</style>

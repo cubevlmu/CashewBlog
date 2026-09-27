@@ -1,0 +1,58 @@
+---
+/**
+ * M3E 博客原子 — TocList 目录列表（静态 SSR 版）。
+ * 数据驱动：headings 为 { depth, text, slug }[]；按相对层级缩进，
+ * 顶级编号徽标、子级小圆点。激活态由调用方叠加类（配合滚动高亮脚本）。
+ */
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+
+interface TocHeading {
+	depth: number;
+	text: string;
+	slug: string;
+}
+
+interface Props {
+	headings: TocHeading[];
+	/** 显示的最大层级数（相对最小 depth 计算） */
+	maxDepth?: number;
+	class?: string;
+}
+
+const { headings = [], maxDepth = 3, class: className } = Astro.props;
+
+const minDepth = headings.reduce(
+	(min, h) => Math.min(min, h.depth),
+	Number.POSITIVE_INFINITY,
+);
+const base = Number.isFinite(minDepth) ? minDepth : 1;
+const visible = headings.filter((h) => h.depth < base + maxDepth);
+let counter = 0;
+---
+
+<nav class:list={["m3-blog-toc", className]} aria-label={i18n(I18nKey.tableOfContents)}>
+	{visible.map((h) => {
+		const rel = h.depth - base;
+		const top = rel === 0;
+		return (
+			<a
+				class:list={["m3-blog-toc__item", { "m3-blog-toc__item--sub": !top }]}
+				href={`#${h.slug}`}
+				title={h.text}
+				data-toc-depth={h.depth}
+			>
+				<span class="m3-blog-toc__mark" aria-hidden="true">
+					{top ? (
+						++counter
+					) : (
+						<span class="m3-blog-toc__dot" />
+					)}
+				</span>
+				<span class="m3-blog-toc__text">{h.text}</span>
+			</a>
+		);
+	})}
+</nav>
+
+<!-- 样式统一维护于 src/styles/toc.css（经 main.css 全局导入），激活态由调用方叠加类 -->

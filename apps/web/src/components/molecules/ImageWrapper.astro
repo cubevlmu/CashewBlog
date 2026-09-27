@@ -1,0 +1,129 @@
+---
+import { Image, Picture } from "astro:assets";
+import path from "node:path";
+import { imageBloomConfig } from "@/config";
+import { getBloomInlineVars } from "../../utils/image-bloom";
+import { getProjectImageLoader } from "../../utils/project-images";
+import { url } from "../../utils/url-utils";
+
+interface Props {
+	id?: string;
+	src: string;
+	class?: string;
+	alt?: string;
+	position?: string;
+	basePath?: string;
+	aspectRatio?: string;
+	loading?: "lazy" | "eager";
+	fetchPriority?: "high" | "low" | "auto";
+	widths?: number[];
+	sizes?: string;
+	formats?: Array<"avif" | "webp">;
+	quality?: number;
+}
+
+const {
+	id,
+	src,
+	alt,
+	position = "center",
+	basePath = "/",
+	aspectRatio,
+	loading = "lazy",
+	fetchPriority,
+	widths,
+	sizes,
+	formats,
+	quality,
+} = Astro.props;
+const className = Astro.props.class;
+
+const isLocal = !(
+	src.startsWith("/") ||
+	src.startsWith("http") ||
+	src.startsWith("https") ||
+	src.startsWith("data:")
+);
+const isPublic = src.startsWith("/");
+
+// TODO temporary workaround for images dynamic import
+// https://github.com/withastro/astro/issues/3373
+let img: ImageMetadata | undefined;
+if (isLocal) {
+	const files = import.meta.glob<ImageMetadata>(
+		"../../**/*.{png,jpg,jpeg,webp,avif,svg,gif}",
+		{
+			import: "default",
+		},
+	);
+	const normalizedPath = path
+		.normalize(path.join("../../", basePath, src))
+		.replace(/\\/g, "/");
+	const file = files[normalizedPath] ?? getProjectImageLoader(src, basePath);
+	if (!file) {
+		console.error(
+			`\n[ERROR] Image file not found: ${normalizedPath.replace("../../", "src/")}`,
+		);
+	}
+	if (file) img = await file();
+}
+
+const bloomEnabled = imageBloomConfig.enable;
+const bloomVars = bloomEnabled ? getBloomInlineVars() : "";
+const imageClass = `w-full h-full object-cover ${bloomEnabled ? "image-bloom-img" : ""}`;
+const imageStyle = `object-position: ${position}`;
+const resolvedAspectRatio = aspectRatio ?? (!isLocal ? "16 / 9" : undefined);
+---
+<div
+	id={id}
+	class:list={[
+		className,
+		'overflow-hidden relative',
+		bloomEnabled && 'image-bloom-container'
+	]}
+	style={[resolvedAspectRatio ? `aspect-ratio: ${resolvedAspectRatio}` : "", bloomVars].filter(Boolean).join("; ")}
+>
+    {bloomEnabled && <div class="image-bloom-layer" aria-hidden="true"></div>}
+    <div class="transition absolute inset-0 dark:bg-black/10 bg-opacity-50 pointer-events-none z-2"></div>
+    {isLocal && img && formats && formats.length > 0 && (
+		<Picture
+			src={img}
+			formats={formats}
+			widths={widths}
+			sizes={sizes}
+			quality={quality}
+			alt={alt || ""}
+			class={imageClass}
+			style={imageStyle}
+			loading={loading}
+			fetchpriority={fetchPriority}
+			decoding="async"
+			onload={bloomEnabled ? "this.classList.add('image-bloom-img--loaded'); this.parentElement?.parentElement?.querySelector('.image-bloom-layer')?.classList.add('image-bloom-layer--loaded');" : undefined}
+		/>
+	)}
+    {isLocal && img && (!formats || formats.length === 0) && (
+		<Image
+			src={img}
+			widths={widths}
+			sizes={sizes}
+			quality={quality}
+			alt={alt || ""}
+			class={imageClass}
+			style={imageStyle}
+			loading={loading}
+			fetchpriority={fetchPriority}
+			onload={bloomEnabled ? "this.classList.add('image-bloom-img--loaded'); this.parentElement?.querySelector('.image-bloom-layer')?.classList.add('image-bloom-layer--loaded');" : undefined}
+		/>
+	)}
+    {!isLocal && (
+		<img
+			src={isPublic ? url(src) : src}
+			alt={alt || ""}
+			class={imageClass}
+			style={imageStyle}
+			loading={loading}
+			fetchpriority={fetchPriority}
+			onload={bloomEnabled ? "this.classList.add('image-bloom-img--loaded'); this.parentElement?.querySelector('.image-bloom-layer')?.classList.add('image-bloom-layer--loaded');" : undefined}
+		/>
+	)}
+</div>

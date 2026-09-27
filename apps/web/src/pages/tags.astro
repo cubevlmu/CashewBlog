@@ -1,0 +1,89 @@
+---
+import Chip from "@components/atoms/action/Chip.astro";
+/**
+ * 标签索引页：全部标签的总览入口。
+ * 纯 SSR 直出（无客户端岛）：tonal Chip 云（与侧栏 Tags widget 同一原子语言），
+ * 页面级密度放大——每个 chip 附带文章计数徽标；
+ * chip 点击进入归档页的对应标签过滤（/archive/?tag=x）。
+ */
+import Card from "@components/atoms/display/Card.svelte";
+import PageHeader from "@components/atoms/display/PageHeader.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { getTagList } from "@utils/content-utils";
+import { getTagUrl } from "@utils/url-utils";
+
+const tags = await getTagList();
+const totalPosts = tags.reduce((sum, tag) => sum + tag.count, 0);
+const tagSummary = `${tags.length} ${i18n(I18nKey.tagsCount)} · ${totalPosts} ${i18n(I18nKey.postsCount)}`;
+---
+
+<MainGridLayout title={i18n(I18nKey.tags)} description={tagSummary} page="tags">
+	<Card color="var(--card-bg)" radius="l" class="tag-index px-8 py-6">
+		<PageHeader
+			icon="material-symbols:tag-rounded"
+			title={i18n(I18nKey.tags)}
+				subtitle={tagSummary}
+		/>
+		{tags.length > 0 && (
+			<div class="tag-index__cloud">
+				{tags.map((tag) => (
+					<Chip
+						href={getTagUrl(tag.name)}
+						variant="tonal"
+						class="tag-index__chip"
+						label={`View all posts with the ${tag.name} tag`}
+					>
+						{tag.name}
+						<span class="tag-index__count">{tag.count}</span>
+					</Chip>
+				))}
+			</div>
+		)}
+		{tags.length === 0 && (
+			<div class="tag-index__empty">
+				<span>{i18n(I18nKey.noData)}</span>
+			</div>
+		)}
+	</Card>
+</MainGridLayout>
+
+<style lang="stylus">
+@import "../styles/breakpoints.styl"
+
+.tag-index
+	display: block
+
+	&__cloud
+		display: flex
+		flex-wrap: wrap
+		gap: var(--m3e-space-2) var(--m3e-space-3)
+
+	/* 计数徽标：chip 内部右侧的小号数字，与站内 badge 语言一致 */
+	&__count
+		display: inline-flex
+		align-items: center
+		justify-content: center
+		min-width: 1.375rem
+		height: 1.125rem
+		margin-left: var(--m3e-space-1)
+		padding: 0 var(--m3e-space-1)
+		border-radius: var(--shape-corner-full)
+		background: unquote("color-mix(in oklab, var(--primary) 12%, transparent)")
+		color: var(--on-surface)
+		font: var(--m3e-type-label-small)
+		font-weight: 600
+		font-variant-numeric: tabular-nums
+
+	&__empty
+		display: flex
+		align-items: center
+		justify-content: center
+		min-height: 11rem
+		color: var(--on-surface-variant)
+		font: var(--m3e-type-body-large)
+
+	@media (max-width: bp-sm - 1px)
+		padding: 1rem 0.75rem
+</style>

@@ -1,0 +1,18 @@
+---
+import { resolveTextureOptions, siteConfig } from "@/config";
+
+const textureOptions = resolveTextureOptions();
+---
+
+<div
+	id="config-carrier"
+	data-hue={siteConfig.themeColor.hue}
+	data-wallpaper-mode={siteConfig.wallpaperMode.defaultMode}
+	{...(textureOptions.enable
+		? {
+				"data-texture-preset": textureOptions.defaultPreset,
+				"data-texture-opacity": textureOptions.defaultOpacity,
+			}
+		: {})}
+>
+</div>

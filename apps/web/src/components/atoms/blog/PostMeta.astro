@@ -1,0 +1,147 @@
+---
+/**
+ * M3E 博客原子 — PostMeta 文章元信息行。
+ * 数据驱动：日期 / 更新日期 / 分类 / 字数 / 标签均为展示层 props（由调用方格式化）。
+ * 每个元信息项 = display/MetaIcon 图标徽标（32px tonal 圆角方块）+
+ * body-medium 文字；链接 hover 变 primary。
+ */
+import MetaIcon from "@components/atoms/display/MetaIcon.astro";
+
+export interface BlogMetaLink {
+	name: string;
+	href: string;
+}
+
+interface Props {
+	class?: string;
+	/** 发布日期（展示文本，如 "2026-08-13"） */
+	published?: string;
+	/** 更新日期（与 published 不同才渲染） */
+	updated?: string;
+	category?: BlogMetaLink | null;
+	tags?: BlogMetaLink[];
+	/** 字数展示文本（如 "1426 words"，渲染在分类右侧） */
+	wordCount?: string;
+	/** 隐藏标签段 */
+	hideTags?: boolean;
+	/** 隐藏更新日期 */
+	hideUpdate?: boolean;
+	/** 无分类时的占位文案 */
+	uncategorizedLabel?: string;
+	/** 无标签时的占位文案 */
+	noTagsLabel?: string;
+}
+
+const {
+	class: className,
+	published,
+	updated,
+	category,
+	tags = [],
+	wordCount,
+	hideTags = false,
+	hideUpdate = false,
+	uncategorizedLabel = "未分类",
+	noTagsLabel = "无标签",
+} = Astro.props;
+---
+
+<div class:list={["m3-blog-postmeta", className]}>
+	{published && (
+		<span class="m3-blog-postmeta__item">
+			<MetaIcon icon="material-symbols:calendar-today-outline-rounded" />
+			<span class="m3-blog-postmeta__text">{published}</span>
+		</span>
+	)}
+
+	{!hideUpdate && updated && updated !== published && (
+		<span class="m3-blog-postmeta__item">
+			<MetaIcon icon="material-symbols:edit-calendar-outline-rounded" />
+			<span class="m3-blog-postmeta__text">{updated}</span>
+		</span>
+	)}
+
+	<span class="m3-blog-postmeta__item">
+		<MetaIcon icon="material-symbols:book-2-outline-rounded" />
+		{category ? (
+			<a
+				class="m3-blog-postmeta__link"
+				href={category.href}
+				aria-label={`View all posts in the ${category.name} category`}
+			>{category.name}</a>
+		) : (
+			<span class="m3-blog-postmeta__text">{uncategorizedLabel}</span>
+		)}
+	</span>
+
+	{wordCount && (
+		<span class="m3-blog-postmeta__item">
+			<MetaIcon icon="material-symbols:article-outline-rounded" />
+			<span class="m3-blog-postmeta__text">{wordCount}</span>
+		</span>
+	)}
+
+	{!hideTags && (
+		<span class="m3-blog-postmeta__item">
+			<MetaIcon icon="material-symbols:tag-rounded" />
+			{tags.length > 0 ? (
+				<span class="m3-blog-postmeta__tags">
+					{tags.map((t, i) => (
+						<Fragment>
+							{i > 0 && <span class="m3-blog-postmeta__sep" aria-hidden="true">/</span>}
+							<a
+								class="m3-blog-postmeta__link"
+								href={t.href}
+								aria-label={`View all posts with the ${t.name} tag`}
+							>{t.name}</a>
+						</Fragment>
+					))}
+				</span>
+			) : (
+				<span class="m3-blog-postmeta__text">{noTagsLabel}</span>
+			)}
+		</span>
+	)}
+</div>
+
+<style lang="stylus">
+.m3-blog-postmeta
+	display: flex
+	flex-wrap: wrap
+	align-items: center
+	/* 行距 8px / 项距 12px：grid 窄卡（~430px）里三个徽标组不换行 */
+	gap: 0.5rem 0.75rem
+	color: var(--on-surface-variant)
+
+	&__item
+		display: inline-flex
+		align-items: center
+		/* 徽标与文字间距由消费方控制（原子不自带 margin） */
+		gap: 0.5rem
+		min-width: 0
+
+	&__text
+		font: var(--m3e-type-body-medium)
+		font-weight: 500
+		white-space: nowrap
+
+	&__link
+		font: var(--m3e-type-body-medium)
+		font-weight: 500
+		white-space: nowrap
+		text-decoration: none
+		color: var(--on-surface-variant)
+		transition: color var(--m3e-duration-short) var(--m3e-easing-standard)
+		&:hover
+			color: var(--primary)
+
+	&__tags
+		display: inline-flex
+		align-items: center
+		min-width: 0
+
+	&__sep
+		margin: 0 0.375rem
+		color: var(--outline-variant)
+		font-size: 0.875rem
+</style>

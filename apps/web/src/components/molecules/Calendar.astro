@@ -1,0 +1,44 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { getCalendarData } from "@utils/calendar-data";
+import { siteConfig } from "@/config/siteConfig";
+import type { CalendarWidget } from "@/types/sidebarConfig";
+/**
+ * 月度文章历侧栏 widget（数据驱动）。
+ * wrapper 只负责取数 + i18n 外壳；交互视图在 CalendarView.svelte
+ * （client:visible 惰性水合）。数据 SSR 直出——侧栏静态渲染在 Swup
+ * 容器外，不从 API 端点拉取；日期口径与文章卡片一致（date-utils）。
+ */
+import CalendarView from "./CalendarView.svelte";
+import WidgetLayout from "./WidgetLayout.astro";
+
+interface Props {
+	class?: string;
+	style?: string;
+	widget?: CalendarWidget;
+}
+
+const className = Astro.props.class;
+const style = Astro.props.style;
+
+const startOfWeek = Astro.props.widget?.startOfWeek ?? "mon";
+
+// siteConfig.lang 形如 zh_CN / en：替换为 BCP47 供 Intl 使用
+const locale = siteConfig.lang.replace("_", "-");
+
+const { postsByDate, activeMonths } = await getCalendarData();
+---
+
+<WidgetLayout name={i18n(I18nKey.calendar)} id="calendar" class={className} style={style}>
+	<CalendarView
+		client:visible
+		{locale}
+		{startOfWeek}
+		{postsByDate}
+		{activeMonths}
+		backTodayLabel={i18n(I18nKey.calendarBackToday)}
+		prevMonthLabel={i18n(I18nKey.calendarPrevMonth)}
+		nextMonthLabel={i18n(I18nKey.calendarNextMonth)}
+	/>
+</WidgetLayout>

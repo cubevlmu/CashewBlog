@@ -1,0 +1,68 @@
+---
+/**
+ * 页脚（消费 blog/FooterBar 原子）。
+ * 只负责配置数据：版权名称/年份、RSS/Atom/Sitemap 链接、Powered by、FooterConfig.html 文件注入。
+ */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import FooterBar from "@components/atoms/blog/FooterBar.astro";
+import { url } from "@utils/url-utils";
+import { footerConfig, profileConfig } from "@/config";
+import packageMetadata from "../../../package.json";
+
+const currentYear = new Date().getFullYear();
+const links = [
+	{ label: "RSS", href: url("rss/") },
+	{ label: "Atom", href: url("atom/") },
+	{ label: "Sitemap", href: url("sitemap-index.xml"), external: true },
+];
+const isShironesPackage = packageMetadata.name === "shirones";
+const poweredBy = [
+	{ label: "Astro", href: "https://astro.build", external: true },
+	{
+		label: "Shirone",
+		href: "https://github.com/LyraVoid/Shirone",
+		external: true,
+	},
+	...(isShironesPackage
+		? [
+				{
+					label: "shirones",
+					href: "https://github.com/yCENzh/shirones",
+					external: true,
+				},
+			]
+		: []),
+];
+
+let customFooterHtml = "";
+if (footerConfig.enable) {
+	try {
+		// Source mode keeps this next to the other config files in `src/config/`;
+		// as an npm package the user's copy lives in the content root instead.
+		const footerConfigPath = [
+			path.join(process.cwd(), "shirones", "config", "FooterConfig.html"),
+			path.join(process.cwd(), "src", "config", "FooterConfig.html"),
+		].find((candidate) => fs.existsSync(candidate));
+		if (footerConfigPath) {
+			const raw = fs.readFileSync(footerConfigPath, "utf-8");
+			const cleaned = raw.replace(/<!--[\s\S]*?-->/g, "").trim();
+			if (cleaned) {
+				customFooterHtml = cleaned;
+			}
+		}
+	} catch {
+		customFooterHtml = "";
+	}
+}
+---
+
+<FooterBar
+	name={profileConfig.name}
+	year={currentYear}
+	links={links}
+	poweredBy={poweredBy}
+	version={packageMetadata.version}
+	versionHref={isShironesPackage ? "https://www.npmjs.com/package/shirones" : "https://github.com/LyraVoid/Shirone"}
+	customHtml={customFooterHtml}
+/>

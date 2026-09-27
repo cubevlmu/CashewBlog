@@ -1,0 +1,35 @@
+/* Font roles are set by the build-time manifest in Layout.astro. */
+:root {
+    --font-body-fallback: ui-sans-serif, system-ui, sans-serif;
+    --font-cjk-fallback: system-ui, sans-serif;
+    --m3e-font-mono-fallback: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --m3e-font-sans: var(--font-body), var(--font-cjk), var(--font-body-fallback), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+    --font-sans: var(--m3e-font-sans);
+    /* Astro Fonts owns --font-mono when a custom mono role is enabled. Keep a
+       one-way alias here so the system-font fallback cannot form a cycle. */
+    --m3e-font-mono-family: var(--font-mono, var(--m3e-font-mono-fallback));
+}
+
+/* Code is a separate role and must never inherit the body or CJK family. */
+pre,
+code,
+kbd,
+samp,
+.expressive-code,
+.expressive-code *,
+.mermaid code {
+    font-family: var(--m3e-font-mono-family) !important;
+}
+/* KaTeX font-display swap override for non-blocking formula text rendering */
+@font-face { font-family: 'KaTeX_Main'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Math'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Size1'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Size2'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Size3'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Size4'; font-display: swap; }
+@font-face { font-family: 'KaTeX_AMS'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Caligraphic'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Fraktur'; font-display: swap; }
+@font-face { font-family: 'KaTeX_SansSerif'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Script'; font-display: swap; }
+@font-face { font-family: 'KaTeX_Typewriter'; font-display: swap; }

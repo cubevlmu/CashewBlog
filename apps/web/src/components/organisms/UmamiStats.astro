@@ -1,0 +1,84 @@
+---
+import MetaIcon from "@components/atoms/display/MetaIcon.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { Icon } from "astro-icon/components";
+import { resolveUmamiOptions, umamiConfig } from "@/config";
+
+interface Props {
+	variant?: "profile" | "meta";
+	path?: string;
+	class?: string;
+	style?: string;
+}
+
+const { variant = "meta", path, class: className, style } = Astro.props;
+const enabled = resolveUmamiOptions(umamiConfig) !== null;
+const pageViewsLabel = i18n(I18nKey.profileStatsPageViews);
+const visitsLabel = i18n(I18nKey.profileStatsVisits);
+const rootClass = [
+	"shirone-umami-stats",
+	`shirone-umami-stats--${variant}`,
+	className,
+]
+	.filter(Boolean)
+	.join(" ");
+---
+
+{enabled && (
+	<div
+		class={rootClass}
+		style={style}
+		data-shirone-umami
+		data-umami-path={path}
+	>
+		{variant === "profile" ? (
+			<>
+				<hr aria-hidden="true" />
+				<div>
+					<Icon
+						name="material-symbols:visibility-outline-rounded"
+						aria-hidden="true"
+						is:inline
+					/>
+					<span
+						data-shirone-umami-display
+						aria-live="polite"
+						aria-atomic="true"
+						aria-busy="true"
+					>
+						<span data-shirone-umami-metric>
+							{pageViewsLabel}
+							<span data-shirone-umami-pageviews data-shirone-umami-value>--</span>
+						</span>
+						<span class="shirone-umami-stats__separator" aria-hidden="true">·</span>
+						<span data-shirone-umami-metric>
+							{visitsLabel}
+							<span data-shirone-umami-visits data-shirone-umami-value>--</span>
+						</span>
+					</span>
+				</div>
+			</>
+		) : (
+			<>
+				<MetaIcon icon="material-symbols:visibility-outline-rounded" />
+				<span
+					data-shirone-umami-display
+					aria-live="polite"
+					aria-atomic="true"
+					aria-busy="true"
+				>
+					<span data-shirone-umami-metric>
+						{pageViewsLabel}
+						<span data-shirone-umami-pageviews data-shirone-umami-value>--</span>
+					</span>
+					<span class="shirone-umami-stats__separator" aria-hidden="true">·</span>
+					<span data-shirone-umami-metric>
+						{visitsLabel}
+						<span data-shirone-umami-visits data-shirone-umami-value>--</span>
+					</span>
+				</span>
+			</>
+		)}
+	</div>
+)}

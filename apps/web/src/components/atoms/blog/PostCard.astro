@@ -1,0 +1,479 @@
+---
+import AccentBar from "@components/atoms/display/AccentBar.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+/**
+ * M3E 博客原子 — PostCard 文章卡片。
+ * 数据驱动：标题 / 描述 / 封面 / 元信息（复用 blog/PostMeta）/ 阅读时长。
+ * 视觉对齐 display/Card 令牌：surface-container-high 基、corner-large、
+ * hover 抬升阴影 + 标题 primary + 箭头滑出；有封面时桌面端右侧 28% 图。
+ */
+import { Icon } from "astro-icon/components";
+import type { BlogMetaLink } from "./PostMeta.astro";
+import PostMeta from "./PostMeta.astro";
+import TagBadge from "./TagBadge.astro";
+
+interface Props {
+	href: string;
+	title: string;
+	description?: string;
+	/** 封面图地址（省略则无封面，右侧显示进入箭头按钮） */
+	image?: string;
+	imageSrcset?: string;
+	imageAvifSrcset?: string;
+	imageSizes?: string;
+	imageWidth?: number;
+	imageHeight?: number;
+	imageAlt?: string;
+	published?: string;
+	updated?: string;
+	pinned?: boolean;
+	encrypted?: boolean;
+	category?: BlogMetaLink | null;
+	tags?: BlogMetaLink[];
+	/** 字数展示文本（如 "1426 words"，渲染在分类右侧） */
+	wordCount?: string;
+	class?: string;
+	style?: string;
+}
+
+const {
+	href,
+	title,
+	description,
+	image,
+	imageSrcset,
+	imageAvifSrcset,
+	imageSizes,
+	imageWidth,
+	imageHeight,
+	imageAlt = "",
+	published,
+	updated,
+	pinned = false,
+	encrypted = false,
+	category = null,
+	tags = [],
+	wordCount,
+	class: className,
+	style,
+} = Astro.props;
+
+const hasCover = !!image;
+const pinnedLabel = i18n(I18nKey.pinned);
+const encryptedLabel = i18n(I18nKey.postEncryptedBadge);
+/* 置顶 + 加密并存时合入可访问名称，避免屏幕阅读器丢失任一状态 */
+const stateLabels = [
+	pinned ? pinnedLabel : "",
+	encrypted ? encryptedLabel : "",
+].filter(Boolean);
+const titleLabel =
+	stateLabels.length > 0 ? `${title}, ${stateLabels.join(", ")}` : title;
+---
+
+<article
+	class:list={["m3-blog-postcard", { "m3-blog-postcard--cover": hasCover }, className]}
+	style={style}
+>
+	<div class="m3-blog-postcard__body">
+		<a
+			class="m3-blog-postcard__title"
+			href={href}
+			aria-label={titleLabel}
+		>
+			<AccentBar size="medium" />
+			{pinned && (
+				<span
+					class:list={[
+						"m3-blog-postcard__pin",
+						{ "m3-blog-postcard__pin--locked": encrypted },
+					]}
+					aria-hidden="true"
+					title={encrypted ? `${pinnedLabel}, ${encryptedLabel}` : pinnedLabel}
+				>
+					<Icon name="material-symbols:keep-rounded" />
+					{encrypted && (
+						<span class="m3-blog-postcard__pin-lock">
+							<Icon name="material-symbols:lock-rounded" />
+						</span>
+					)}
+				</span>
+			)}
+			{encrypted && !pinned && (
+				<span class="m3-blog-postcard__encrypted" aria-hidden="true" title={encryptedLabel}>
+					<Icon name="material-symbols:lock-rounded" />
+				</span>
+			)}
+			{title}
+			<Icon class="m3-blog-postcard__arrow" name="material-symbols:chevron-right-rounded" />
+		</a>
+		{published && (
+			<PostMeta
+				class="m3-blog-postcard__meta"
+				{published}
+				{updated}
+				category={category}
+				tags={tags}
+				{wordCount}
+				hideUpdate
+				hideTags
+			/>
+		)}
+		{description && <p class="m3-blog-postcard__desc">{description}</p>}
+		{tags.length > 0 && (
+			<div class="m3-blog-postcard__tags">
+				{tags.map((t) => (
+					<TagBadge name={t.name} href={t.href} />
+				))}
+			</div>
+		)}
+	</div>
+	{hasCover ? (
+		<a class="m3-blog-postcard__cover" href={href} aria-label={title}>
+			<span class="m3-blog-postcard__cover-loading" aria-hidden="true"></span>
+			<picture>
+				{imageAvifSrcset && <source type="image/avif" srcset={imageAvifSrcset} sizes={imageSizes} />}
+				<img
+					src={image}
+					srcset={imageSrcset}
+					sizes={imageSizes}
+					width={imageWidth}
+					height={imageHeight}
+					alt={imageAlt}
+					loading="lazy"
+					decoding="async"
+					onload="this.parentElement?.previousElementSibling?.classList.add('m3-blog-postcard__cover-loading--done')"
+					onerror="this.parentElement?.previousElementSibling?.classList.add('m3-blog-postcard__cover-loading--done')"
+				/>
+			</picture>
+			<span class="m3-blog-postcard__cover-mask" aria-hidden="true"></span>
+			<span class="m3-blog-postcard__cover-arrow" aria-hidden="true">
+				<Icon name="material-symbols:chevron-right-rounded" />
+			</span>
+		</a>
+	) : (
+		<a class="m3-blog-postcard__enter" href={href} aria-label={title}>
+			<Icon name="material-symbols:chevron-right-rounded" />
+		</a>
+	)}
+</article>
+
+<style lang="stylus">
+@import "../../../styles/breakpoints.styl"
+.m3-blog-postcard
+	position: relative
+	display: flex
+	/* 移动端封面置顶（DOM：body → cover，column-reverse 反转为 cover 在前） */
+	flex-direction: column-reverse
+	box-sizing: border-box
+	width: 100%
+	overflow: hidden
+	border-radius: var(--shape-corner-l)
+	/* 站点卡片色（浅色 = surface-container-lowest 近白），与侧栏等其它卡片一致 */
+	background: var(--card-bg)
+	color: var(--on-surface)
+
+	&__body
+		flex: 1
+		min-width: 0
+		padding: 1.5rem 1.5rem 1.25rem
+
+	&__title
+		display: flex
+		align-items: center
+		gap: 0.5rem
+		margin: 0
+		font: var(--m3e-type-title-large)
+		font-weight: 600
+		line-height: 1.35
+		color: var(--on-surface)
+		text-decoration: none
+		border-radius: var(--shape-corner-xs)
+		transition: color var(--m3e-duration-short) var(--m3e-easing-standard)
+		&:focus-visible
+			outline: 2px solid var(--primary)
+			outline-offset: 2px
+		.m3-blog-postcard:hover &
+			color: var(--primary)
+
+	&__arrow
+		flex-shrink: 0
+		width: 1.5rem
+		height: 1.5rem
+		color: var(--primary)
+		transition: transform var(--m3e-duration-medium) var(--m3e-easing-emphasized-decelerate)
+		.m3-blog-postcard:hover &
+			transform: translateX(0.25rem)
+
+	&__pin
+		position: relative
+		display: inline-flex
+		align-items: center
+		justify-content: center
+		flex: 0 0 1.75rem
+		height: 1.75rem
+		border-radius: var(--shape-corner-m)
+		background: var(--primary-container)
+		color: var(--on-primary-container)
+		> :global(svg)
+			width: 1.125rem
+			height: 1.125rem
+
+	&__encrypted
+		display: inline-flex
+		align-items: center
+		justify-content: center
+		flex: 0 0 1.75rem
+		height: 1.75rem
+		border-radius: var(--shape-corner-m)
+		background: var(--tertiary-container)
+		color: var(--on-tertiary-container)
+		> :global(svg)
+			width: 1.125rem
+			height: 1.125rem
+
+	/* 置顶 + 加密角标：tertiary 小锁圆点叠加在 pin 徽标右上角（BadgedBox 语言），
+	   带卡片色描边与背景分离，整体宽度与单 pin 徽标一致 */
+	&__pin-lock
+		position: absolute
+		top: -0.375rem
+		right: -0.375rem
+		display: inline-flex
+		align-items: center
+		justify-content: center
+		width: 1rem
+		height: 1rem
+		border-radius: var(--shape-corner-full)
+		background: var(--tertiary-container)
+		color: var(--on-tertiary-container)
+		box-shadow: 0 0 0 2px var(--card-bg)
+		> :global(svg)
+			width: 0.625rem
+			height: 0.625rem
+
+	/* PostMeta 是 Astro 子组件，需用 global 命中其根节点 */
+	:global(.m3-blog-postcard__meta)
+		margin-top: var(--m3e-space-4)
+
+	&__desc
+		margin: var(--m3e-space-3) 0 0
+		font: var(--m3e-type-body-medium)
+		color: var(--on-surface-variant)
+		line-height: 1.6
+		display: -webkit-box
+		-webkit-line-clamp: 2
+		-webkit-box-orient: vertical
+		overflow: hidden
+
+	/* 底部标签行：描述之后的独立一层（TagBadge 文字型小标签） */
+	&__tags
+		display: flex
+		flex-wrap: wrap
+		gap: var(--m3e-space-2)
+		margin-top: var(--m3e-space-4)
+
+	&__cover
+		position: relative
+		flex-shrink: 0
+		display: block
+		overflow: hidden
+		text-decoration: none
+		> :global(.m3-blog-postcard__cover-loading)
+			position: absolute
+			inset: 0
+			display: flex
+			align-items: center
+			justify-content: center
+			background: var(--surface-container-low)
+			transition: opacity var(--m3e-duration-short) var(--m3e-easing-standard)
+		> :global(.m3-blog-postcard__cover-loading)::after
+			content: ""
+			width: 2rem
+			aspect-ratio: 1
+			border-radius: var(--shape-corner-full)
+			background: var(--primary-container)
+		> :global(.m3-blog-postcard__cover-loading--done)
+			opacity: 0
+			pointer-events: none
+		> picture,
+		> picture > img
+			display: block
+			width: 100%
+			height: 100%
+		> picture > img
+			object-fit: cover
+			position: relative
+
+		@media (min-width: bp-md)
+			position: absolute
+			top: 0.75rem
+			right: 0.75rem
+			bottom: 0.75rem
+			width: 28%
+			height: auto
+			border-radius: var(--shape-corner-s)
+			overflow: hidden
+
+	/* 封面触摸箭头：卡片 hover 时深色遮罩 + 白色大箭头（与原版封面一致） */
+	&__cover-mask
+		position: absolute
+		inset: 0
+		/* 触摸箭头（原版）：默认隐藏，hover/触摸时深色遮罩 + 白色大箭头 */
+		background: transparent
+		transition: background-color var(--m3e-duration-medium) var(--m3e-easing-standard)
+		/* 移动端不显示（触摸触发的瞬时 hover 也不出现，对齐原版） */
+		@media (max-width: bp-md - 1px)
+			display: none
+		.m3-blog-postcard:hover &
+			background: unquote("color-mix(in srgb, #000 30%, transparent)")
+
+	&__cover-arrow
+		position: absolute
+		inset: 0
+		display: flex
+		align-items: center
+		justify-content: center
+		opacity: 0
+		transform: scale(0.5)
+		@media (max-width: bp-md - 1px)
+			display: none
+		transition:
+			opacity var(--m3e-duration-medium) var(--m3e-easing-standard),
+			transform var(--m3e-duration-medium) var(--m3e-easing-emphasized-decelerate)
+		> :global(svg)
+			width: 3rem
+			height: 3rem
+			color: #fff
+		.m3-blog-postcard:hover &
+			opacity: 1
+			transform: scale(1)
+
+	&__enter
+		position: absolute
+		top: 0.75rem
+		right: 0.75rem
+		bottom: 0.75rem
+		display: flex
+		align-items: center
+		justify-content: center
+		width: 3.25rem
+		border-radius: var(--shape-corner-m)
+		background: var(--enter-btn-bg)
+		color: var(--primary)
+		text-decoration: none
+		transition: background-color var(--m3e-duration-short) var(--m3e-easing-standard)
+		&:focus-visible
+			outline: 2px solid var(--primary)
+			outline-offset: 2px
+		> :global(svg)
+			width: 2.25rem
+			height: 2.25rem
+		.m3-blog-postcard:hover &
+			background: var(--enter-btn-bg-hover)
+			color: var(--primary)
+		@media (max-width: bp-md - 1px)
+			display: none
+
+	/* 桌面端（≥md）正文变纵向：给右侧让位（断点用 stylus 编译期常量 bp-md，
+	   不能写 @media (--m3e-bp-md)：CSS 变量无法作 media 条件，该写法整块失效） */
+	@media (min-width: bp-md)
+		flex-direction: column
+		&--cover &__body
+			padding-right: calc(28% + 1.5rem)
+		/* 无封面时给右侧进入按钮（3.25rem + 0.75rem 边距）预留空间，描述提前换行 */
+		&:not(.m3-blog-postcard--cover) &__body
+			padding-right: 4.75rem
+
+	/* === 移动端：封面置顶布局优化（桌面端保持不动） === */
+	@media (max-width: bp-md - 1px)
+		/* 原始设计：标题竖线仅桌面显示 */
+		.m3-blog-postcard__title :global(.m3-accent-bar)
+			display: none
+
+		/* 封面内缩置顶：四周留 1rem、2:1 宽比、0.75rem 圆角 */
+		&__cover
+			width: auto
+			aspect-ratio: 2 / 1
+			margin: 1rem 1rem 0
+			border-radius: var(--shape-corner-m)
+			> picture,
+			> picture > img
+				width: 100%
+				height: 100%
+
+		/* 正文统一 1rem 内边距 */
+		&__body
+			padding: 1rem
+
+		/* 原始设计：标题尾部箭头 2rem */
+		&__arrow
+			width: 2rem
+			height: 2rem
+
+/* ============================================================
+   容器模式联动（PostPage 的命名容器 + #post-list 类钩子）
+   同一卡片按所在容器切换 token 形态，而非两套皮肤：
+   - m3e-post-list--grid     封面 16:9 通栏贴边（复用移动端封面置顶语言）
+   - m3e-post-list--cover-left  list 模式封面居左（桌面 ≥md 镜像布局）
+   注意：钩子选择器用单个 &（自身复合），禁止 `& &`（会编译成嵌套后代，
+   修饰符形式永不匹配）。
+   ============================================================ */
+.m3-blog-postcard
+	/* —— 网格（瀑布流）模式：仅在容器确实能形成至少两列时生效 ——
+	   封面内缩（与正文左右边缘对齐 --m3e-space-4，圆角 m、2:1）；
+	   无封面卡片沿用 list 的右上 enter 箭头区块（正文右缘自动让位）；
+	   卡片高度天然混合（有/无封面），由 PostPage 的 JS 最短列打包消除空洞 */
+	grid-card-layout(shell-selector)
+		:global({shell-selector} .m3e-post-list--grid) &
+			flex-direction: column-reverse
+
+		/* 封面和正文使用同一套内缩节奏，避免出现错位的内容边缘 */
+		:global({shell-selector} .m3e-post-list--grid) &__cover
+			position: relative
+			inset: auto
+			width: auto
+			height: auto
+			aspect-ratio: 16 / 9
+			margin: var(--m3e-space-4) var(--m3e-space-4) 0
+			border-radius: var(--shape-corner-m)
+
+		/* 显式加入卡片根类，提高优先级并覆写 list 的封面让位内边距。 */
+		:global({shell-selector} .m3e-post-list--grid .m3-blog-postcard) &__body
+			padding: var(--m3e-space-5)
+
+		/* 无封面卡继续为右上 enter 区块让位。 */
+		:global({shell-selector} .m3e-post-list--grid .m3-blog-postcard:not(.m3-blog-postcard--cover)) &__body
+			padding-right: 4.75rem
+
+		/* 右侧 enter 大箭头区块已在，隐藏冗余的标题内联箭头。 */
+		:global({shell-selector} .m3e-post-list--grid) &__arrow
+			display: none
+
+		/* grid 密度缩放：元信息徽标 32 → 24px、图标 20 → 16px。 */
+		:global({shell-selector} .m3e-post-list--grid) & :global(.m3-meta-icon)
+			width: 1.5rem
+			height: 1.5rem
+			> :global(svg)
+				width: 1rem
+				height: 1rem
+
+	@media (min-width: bp-md)
+		@container post-list-layout (min-width: 41rem)
+			grid-card-layout('.m3e-post-list-shell--compact')
+
+		@container post-list-layout (min-width: 49rem)
+			grid-card-layout('.m3e-post-list-shell--regular')
+
+		@container post-list-layout (min-width: 57rem)
+			grid-card-layout('.m3e-post-list-shell--relaxed')
+
+	/* —— 列表封面居左：仅桌面 ≥md，镜像右侧布局 —— */
+	@media (min-width: bp-md)
+		:global(.m3e-post-list--cover-left) &__cover
+			right: auto
+			left: 0.75rem
+
+		:global(.m3e-post-list--cover-left) &--cover &__body
+			padding-right: 1.5rem
+			padding-left: calc(28% + 1.5rem)
+</style>

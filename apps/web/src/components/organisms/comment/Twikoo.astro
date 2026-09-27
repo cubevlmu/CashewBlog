@@ -1,0 +1,616 @@
+---
+import LoadingIndicator from "@components/atoms/feedback/LoadingIndicator.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import stylus from "stylus";
+import type { CommentContext, TwikooConfig } from "@/types/commentConfig";
+
+interface Props {
+	context: CommentContext;
+	config: TwikooConfig;
+	lazy?: boolean;
+}
+
+const { context, config, lazy = true } = Astro.props;
+const resolvedLang = config.lang === "auto" ? context.language : config.lang;
+
+const twikooStylus = `/* ==========================================================================
+	   Twikoo 最小化补丁（Minimal Patch）
+	   令牌规范：100% 消费 Shirone M3E 语义令牌，天然支持明暗模式自适应
+	   ========================================================================== */
+
+	.shirone-twikoo-wrapper
+		/* 1. 基础变量映射到 M3E 令牌 */
+		--tk-color-primary: var(--primary)
+		--tk-color-text: var(--on-surface)
+		--tk-color-text-sub: var(--on-surface-variant)
+		--tk-color-border: var(--outline-variant)
+		--tk-color-bg: var(--surface-container-low)
+		--tk-color-bg-sub: var(--surface-container)
+
+		.twikoo-skeleton.hidden
+			display: none !important
+
+		.tk-comments-container
+			position: relative
+
+			> .twikoo-skeleton
+				position: absolute
+				inset: 0
+				display: none !important
+				min-height: 10rem
+				z-index: 1
+
+				> span:first-child
+					display: flex
+					line-height: 0
+
+				> span:last-child
+					position: absolute
+					width: 1px
+					height: 1px
+					padding: 0
+					margin: -1px
+					overflow: hidden
+					clip: rect(0, 0, 0, 0)
+					white-space: nowrap
+					border: 0
+
+			&:has(> .el-loading-mask:not([style*="none"])) > .twikoo-skeleton
+				display: flex !important
+
+		.tk-comments-container .el-loading-spinner
+			display: none !important
+
+	.shirone-twikoo-wrapper .tk-comments
+		color: var(--on-surface)
+
+	.shirone-twikoo-wrapper .tk-submit
+		margin-top: 0
+
+		.tk-avatar
+			display: none !important
+
+	/* 2. 编辑区：正文优先，身份字段紧随其后 */
+	.shirone-twikoo-wrapper .tk-submit > .tk-row
+		align-items: stretch
+
+	.shirone-twikoo-wrapper .tk-submit .tk-col
+		min-width: 0
+		flex-direction: column-reverse
+		gap: var(--m3e-space-3, 0.75rem)
+
+	.shirone-twikoo-wrapper .tk-submit .tk-input
+		flex: none
+
+		textarea
+			display: block
+			width: 100%
+			height: 7rem !important
+			min-height: 7rem !important
+			padding: 0.875rem 1rem 1.75rem !important
+			resize: vertical
+			border: 1px solid var(--outline-variant) !important
+			border-radius: var(--shape-corner-m) !important
+			background: var(--surface-container-low) !important
+			color: var(--on-surface) !important
+			font-family: inherit
+			font-size: 0.875rem
+			line-height: 1.5
+			transition: border-color var(--m3e-duration-short) var(--m3e-easing-standard),
+			            box-shadow var(--m3e-duration-short) var(--m3e-easing-standard)
+
+			&:focus
+				border-color: var(--primary) !important
+				box-shadow: 0 0 0 2px var(--primary-container) !important
+				outline: none !important
+
+			&::placeholder
+				color: var(--on-surface-variant) !important
+				opacity: 0.7
+
+		.el-input__count
+			right: 1rem
+			bottom: 0.5rem
+			background: transparent
+			color: var(--on-surface-variant)
+			font: var(--m3e-type-label-small)
+
+	/* 3. 身份输入组：显式网格覆盖 Element UI 的 table 布局 */
+	.shirone-twikoo-wrapper .tk-meta-input
+		display: grid !important
+		grid-template-columns: repeat(3, minmax(0, 1fr))
+		gap: var(--m3e-space-3, 0.75rem)
+		margin: 0 !important
+
+		> .el-input
+			display: grid !important
+			grid-template-columns: max-content minmax(0, 1fr)
+			width: 100% !important
+			height: 3rem
+			min-width: 0
+			overflow: hidden
+			border: 1px solid var(--outline-variant)
+			border-radius: var(--shape-corner-m)
+			background: var(--surface-container-low)
+			transition: border-color var(--m3e-duration-short) var(--m3e-easing-standard),
+			            box-shadow var(--m3e-duration-short) var(--m3e-easing-standard)
+
+			&:focus-within
+				border-color: var(--primary)
+				box-shadow: 0 0 0 2px var(--primary-container)
+
+			&:has(input:invalid)
+				border-color: var(--error)
+
+			+ .el-input
+				margin: 0 !important
+
+			.el-input-group__prepend
+				display: flex !important
+				align-items: center
+				width: auto
+				min-width: 0
+				min-height: 0
+				padding: 0 var(--m3e-space-3, 0.75rem) !important
+				border: none !important
+				border-right: 1px solid var(--outline-variant) !important
+				border-radius: 0 !important
+				background: var(--surface-container) !important
+				color: var(--on-surface-variant) !important
+				font: var(--m3e-type-label-medium)
+				white-space: nowrap
+
+			input
+				display: block !important
+				width: 100% !important
+				height: 100% !important
+				min-width: 0
+				min-height: 0
+				padding: 0 var(--m3e-space-3, 0.75rem) !important
+				border: none !important
+				border-radius: 0 !important
+				background: transparent !important
+				box-shadow: none !important
+				color: var(--on-surface) !important
+				font-family: inherit
+				font-size: 0.875rem
+
+				&:focus
+					outline: none !important
+
+				&::placeholder
+					color: var(--on-surface-variant) !important
+					opacity: 0.7
+
+	@media (max-width: 767px)
+		.shirone-twikoo-wrapper .tk-meta-input
+			grid-template-columns: minmax(0, 1fr)
+
+	/* 4. 操作按钮（发送/预览/取消） */
+	.shirone-twikoo-wrapper .tk-row.actions
+		width: 100%
+		margin-left: 0 !important
+		margin-top: var(--m3e-space-3, 0.75rem) !important
+		margin-bottom: var(--m3e-space-6, 1.5rem) !important
+
+		.__markdown
+			display: none !important
+
+		.tk-preview,
+		.tk-send,
+		.tk-cancel
+			border: none !important
+			border-radius: var(--shape-corner-m) !important
+			padding: 0 1rem !important
+			height: 2.75rem !important
+			min-width: 4rem
+			background: var(--surface-container-high) !important
+			color: var(--btn-content) !important
+			font-weight: 500 !important
+			font-size: 0.875rem !important
+			cursor: pointer
+			transition: opacity var(--m3e-duration-short) var(--m3e-easing-standard),
+			            background-color var(--m3e-duration-short) var(--m3e-easing-standard),
+			            color var(--m3e-duration-short) var(--m3e-easing-standard),
+			            transform var(--m3e-duration-short) var(--m3e-easing-emphasized-decelerate)
+			display: inline-flex
+			align-items: center
+			justify-content: center
+
+			&:hover
+				background: var(--primary) !important
+				color: var(--on-primary) !important
+				opacity: 0.9
+
+			&:disabled
+				background: var(--surface-container) !important
+				color: var(--on-surface-variant) !important
+				opacity: 0.38 !important
+				cursor: not-allowed
+
+		.tk-preview
+			background: var(--secondary-container) !important
+			color: var(--on-secondary-container) !important
+
+		.tk-send:not(:disabled)
+			background: var(--primary) !important
+			color: var(--on-primary) !important
+
+		.el-button + .el-button
+			margin-left: var(--m3e-space-2, 0.5rem)
+
+	.shirone-twikoo-wrapper .tk-submit:has(.tk-input textarea:placeholder-shown)
+		.tk-preview
+			display: none !important
+
+		.tk-send
+			margin-left: 0 !important
+
+		.tk-row-actions-start
+			gap: var(--m3e-space-1, 0.25rem)
+
+		.tk-submit-action-icon
+			display: inline-flex
+			align-items: center
+			justify-content: center
+			width: 2.75rem
+			height: 2.75rem
+			margin-right: 0
+			border-radius: var(--shape-corner-full)
+			color: var(--on-surface-variant)
+
+			> svg,
+			> .OwO-logo
+				width: 1.25rem
+				height: 1.25rem
+
+			&:hover
+				background: var(--btn-plain-bg-hover)
+				color: var(--primary)
+
+	/* 5. 评论区标题与动作图标 */
+	.shirone-twikoo-wrapper .tk-comments-title
+		min-height: 2.5rem
+		margin-bottom: 0 !important
+		padding-top: var(--m3e-space-4, 1rem)
+		border-top: 1px solid var(--outline-variant)
+		align-items: center
+
+		.__comments svg
+			fill: var(--primary) !important
+
+		span
+			color: var(--on-surface)
+
+		> span:last-child
+			display: flex
+			gap: var(--m3e-space-2, 0.5rem)
+			margin-left: auto
+
+	.shirone-twikoo-wrapper .tk-comments-no
+		min-height: 5rem
+		color: var(--on-surface-variant)
+
+	/* 6. 单条评论卡片与嵌套回复结构 */
+	.tk-comment
+		border: 1px solid var(--outline-variant) !important
+		padding: 1rem !important
+		border-radius: var(--shape-corner-l) !important
+		margin-bottom: 0.75rem !important
+		transition: box-shadow var(--m3e-duration-short) var(--m3e-easing-standard),
+		            border-color var(--m3e-duration-short) var(--m3e-easing-standard)
+
+		&:hover
+			box-shadow: var(--m3e-elevation-1)
+
+		.tk-action-icon svg
+			fill: var(--primary) !important
+
+	.tk-action
+		min-height: 24px
+		display: flex
+		align-items: center
+
+		.tk-action-count
+			color: var(--btn-content) !important
+
+	/* 7. 昵称、标签与博主徽章 */
+	.tk-nick
+		color: var(--on-surface) !important
+		font-weight: bold
+
+	.tk-time
+		color: var(--on-surface-variant) !important
+		font-size: 0.75rem
+
+	.tk-meta
+		.tk-tag
+			border: none !important
+			border-radius: var(--shape-corner-s) !important
+			color: var(--btn-content) !important
+
+		.tk-tag-green
+			background: var(--btn-regular-bg) !important
+			color: var(--btn-content) !important
+
+	html.dark .tk-meta .tk-tag-green
+		background: var(--primary) !important
+		color: var(--deep-text) !important
+
+	/* 8. 评论正文、引用与链接 */
+	.tk-content,
+	.tk-preview-container
+		color: var(--on-surface) !important
+		font-size: 0.875rem
+		line-height: 1.625
+
+		img
+			display: inline !important
+			vertical-align: bottom !important
+
+		a
+			text-decoration: underline
+			text-underline-offset: 3px
+			color: var(--primary) !important
+			font-weight: 500
+
+		.tk-ruser
+			text-decoration: none
+
+		:not(pre) > code
+			background: var(--inline-code-bg) !important
+			border-radius: var(--shape-corner-xs) !important
+			color: var(--inline-code-color) !important
+			padding: 0.125rem 0.375rem !important
+			font-weight: 600
+			font-size: 0.85em
+
+		li
+			&::before
+				content: "•"
+				color: var(--primary)
+				margin-right: 0.25rem
+
+	.tk-admin-comment .tk-content
+		color: inherit !important
+
+	/* 9. 嵌套回复 */
+	.tk-replies
+		.tk-comment
+			background: var(--page-bg) !important
+			border: 1px solid var(--outline-variant) !important
+			border-radius: var(--shape-corner-m) !important
+			padding: 0.75rem !important
+			margin-top: 0.5rem !important
+
+			.tk-content
+				> span:first-of-type
+					font-size: 0.75rem
+
+	/* 10. 代码块 */
+	.twikoo .code-block
+		pre
+			border-radius: var(--shape-corner-m) !important
+
+		pre:not([class])
+			background: var(--codeblock-bg) !important
+			overflow: auto
+			padding: 0.5rem
+			color: var(--on-surface) !important
+			border-radius: var(--shape-corner-m) !important
+			border: 1px solid var(--outline-variant) !important
+
+		.copy-btn-icon
+			width: inherit !important
+			height: inherit !important
+
+	/* 11. 折叠与展开 */
+	.tk-expand-wrap .tk-expand,
+	.tk-collapse-wrap .tk-expand
+		margin-top: 0.25rem
+		border-radius: var(--shape-corner-s)
+		padding: 0.25rem 0.5rem
+		transition: background var(--m3e-duration-short) var(--m3e-easing-standard)
+
+		&:hover
+			background: var(--btn-plain-bg-hover)
+
+	/* 12. OwO 表情选择器 */
+	.OwO-body
+		background: var(--surface-container-high) !important
+		border: 1px solid var(--outline-variant) !important
+		border-radius: var(--shape-corner-m) !important
+		box-shadow: var(--m3e-elevation-3) !important
+		color: var(--on-surface) !important
+		backdrop-filter: blur(12px)
+		z-index: 100
+
+		.OwO-bar
+			background: transparent !important
+			border-bottom: 1px solid var(--outline-variant) !important
+			color: var(--on-surface) !important
+
+		.OwO-items-item
+			background: var(--surface-container-low) !important
+			border-radius: var(--shape-corner-s) !important
+			transition: background var(--m3e-duration-short) var(--m3e-easing-standard)
+
+			&:hover
+				background: var(--surface-container-highest) !important
+
+		.OwO-header li
+			color: var(--on-surface-variant) !important
+
+			&:hover,
+			&.OwO-item-active
+				color: var(--primary) !important
+				background: var(--surface-container) !important
+
+	/* 13. 交互稳定性与管理面板 */
+	.shirone-twikoo-wrapper .tk-action-icon,
+	.shirone-twikoo-wrapper .tk-owo,
+	.shirone-twikoo-wrapper .tk-submit-action-icon,
+	.shirone-twikoo-wrapper .tk-cancel,
+	.shirone-twikoo-wrapper .tk-preview,
+	.shirone-twikoo-wrapper .tk-admin,
+	.shirone-twikoo-wrapper .tk-delete,
+	.shirone-twikoo-wrapper .tk-edit
+		cursor: pointer
+		transition: background-color var(--m3e-duration-short) var(--m3e-easing-standard),
+		            color var(--m3e-duration-short) var(--m3e-easing-standard),
+		            opacity var(--m3e-duration-short) var(--m3e-easing-standard)
+
+	.tk-submit-wrapper
+		position: relative
+
+	.tk-admin-panel
+		position: relative
+		z-index: 100`;
+
+const twikooStyles = await new Promise<string>((resolve, reject) => {
+	stylus.render(twikooStylus, (error, css) => {
+		if (error) reject(error);
+		else resolve(css);
+	});
+});
+---
+
+<div
+	class="shirone-twikoo-wrapper relative min-h-[160px] w-full"
+	data-twikoo-env-id={config.envId}
+	data-twikoo-script-url={config.scriptUrl}
+	data-twikoo-path={context.path}
+	data-twikoo-lang={resolvedLang}
+	data-twikoo-lazy={lazy ? "true" : "false"}
+	data-twikoo-placeholder={config.placeholder}
+>
+	<!-- 初始加载与 Twikoo 运行时加载共用同一个 M3E 指示器 -->
+	<div class="twikoo-skeleton flex min-h-40 w-full flex-col items-center justify-center gap-3 py-6 text-sm text-[var(--on-surface-variant)]" role="status">
+		<span aria-hidden="true">
+			<LoadingIndicator client:visible />
+		</span>
+		<span>{i18n(I18nKey.commentsLoading)}</span>
+	</div>
+
+	<!-- Twikoo 实际挂载 DOM -->
+	<div id="tcomment" class="twikoo-container hidden"></div>
+
+	<!-- 错误提示容器 -->
+	<div class="twikoo-error hidden p-4 rounded-[var(--shape-corner-m)] bg-[var(--error-container)] text-[var(--on-error-container)] text-sm text-center">
+		{i18n(I18nKey.commentsLoadFailed)}
+	</div>
+
+	<!-- 无 JavaScript 降级提示 -->
+	<noscript>
+		<div class="p-4 rounded-[var(--shape-corner-m)] bg-[var(--surface-container-high)] text-[var(--on-surface-variant)] text-sm text-center">
+			{i18n(I18nKey.commentsRequiresJavaScript)}
+		</div>
+	</noscript>
+</div>
+
+<script>
+	import { loadScriptOnce } from "@utils/script-loader";
+
+	interface TwikooSdk {
+		init: (options: {
+			envId: string;
+			el: HTMLElement | string;
+			path?: string;
+			lang?: string;
+		}) => Promise<void>;
+	}
+
+	declare global {
+		interface Window {
+			twikoo?: TwikooSdk;
+		}
+	}
+
+	function initTwikooInstance(wrapper: HTMLElement) {
+		if (wrapper.dataset.twikooMounted === "true") return;
+
+		const envId = wrapper.dataset.twikooEnvId;
+		const scriptUrl = wrapper.dataset.twikooScriptUrl;
+		const path = wrapper.dataset.twikooPath;
+		const lang = wrapper.dataset.twikooLang;
+		const isLazy = wrapper.dataset.twikooLazy === "true";
+		const placeholder = wrapper.dataset.twikooPlaceholder;
+
+		const skeleton = wrapper.querySelector<HTMLElement>(".twikoo-skeleton");
+		const container = wrapper.querySelector<HTMLElement>(".twikoo-container");
+		const errorBox = wrapper.querySelector<HTMLElement>(".twikoo-error");
+
+		if (!envId || !scriptUrl || !container) return;
+
+		const doInit = async () => {
+			try {
+				await loadScriptOnce(scriptUrl);
+				if (typeof window.twikoo?.init !== "function") {
+					throw new Error("Twikoo SDK not found on window");
+				}
+
+				wrapper.dataset.twikooMounted = "true";
+				container.classList.remove("hidden");
+
+				await window.twikoo.init({
+					envId,
+					el: container,
+					path: path || window.location.pathname,
+					lang: lang || "zh-CN",
+				});
+
+				const textarea = wrapper.querySelector<HTMLTextAreaElement>(
+					".tk-input textarea",
+				);
+				if (textarea && placeholder !== undefined) {
+					textarea.placeholder = placeholder;
+				}
+
+				const commentsContainer = wrapper.querySelector<HTMLElement>(
+					".tk-comments-container",
+				);
+				if (skeleton && commentsContainer) {
+					commentsContainer.append(skeleton);
+				} else {
+					skeleton?.classList.add("hidden");
+				}
+			} catch (err) {
+				console.error("[Shirone Comments] Twikoo initialization failed:", err);
+				skeleton?.classList.add("hidden");
+				errorBox?.classList.remove("hidden");
+			}
+		};
+
+		if (isLazy && "IntersectionObserver" in window) {
+			const observer = new IntersectionObserver(
+				(entries, obs) => {
+					if (entries[0].isIntersecting) {
+						obs.disconnect();
+						doInit();
+					}
+				},
+				{ rootMargin: "200px" },
+			);
+			observer.observe(wrapper);
+		} else {
+			doInit();
+		}
+	}
+
+	function setupAllTwikoo() {
+		const wrappers = document.querySelectorAll<HTMLElement>(
+			".shirone-twikoo-wrapper",
+		);
+		wrappers.forEach(initTwikooInstance);
+	}
+
+	// 首次页面直达加载
+	setupAllTwikoo();
+
+	// 响应 Swup 页面替换生命周期
+	document.addEventListener("swup:content:replace", setupAllTwikoo);
+	document.addEventListener("swup:page:view", setupAllTwikoo);
+</script>
+
+<style is:inline set:html={twikooStyles}></style>

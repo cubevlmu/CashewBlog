@@ -1,0 +1,4 @@
+Repository: https://github.com/LyraVoid/Shirone
+Inspected branch: main
+Inspected commit/tree snapshot: 616cbdfadd43bf11711f993fdb0b499196cd83bd
+Product fork name: CashewBlog

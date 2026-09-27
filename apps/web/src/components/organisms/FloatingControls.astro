@@ -1,0 +1,171 @@
+---
+import FloatingActionButton from "@components/molecules/FloatingActionButton.astro";
+import FloatingTOCPanel from "@components/molecules/FloatingTOCPanel.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { resolveDeviceClasses } from "@utils/fab-responsive";
+import { isWidgetVisibleOnPage } from "@utils/sidebar-page";
+import type { MarkdownHeading } from "astro";
+import { Icon } from "astro-icon/components";
+/**
+ * FloatingControls.astro
+ * 右下角悬浮控制流有机体：统领全站 FAB 导航项、响应式设备适配与 Swup 生命周期。
+ * 严格遵循【零额外负担】原则：评论系统未启用或当前文章禁用评论时，不输出评论按钮。
+ */
+import { commentConfig, fabConfig, resolveCommentOptions } from "@/config";
+import { BANNER_HEIGHT } from "@/constants/constants";
+import type { SidebarPage } from "@/types/sidebarConfig";
+
+interface Props {
+	headings?: MarkdownHeading[];
+	page?: SidebarPage;
+	hasComments?: boolean;
+}
+
+const { headings = [], page, hasComments } = Astro.props;
+
+if (!fabConfig.enable) {
+	return null;
+}
+
+const enabledItems = fabConfig.items.filter((item) => item.enable);
+const tocItem = enabledItems.find((i) => i.type === "toc");
+const commentItem = enabledItems.find((i) => i.type === "comment");
+const homeItem = enabledItems.find((i) => i.type === "home");
+const topItem = enabledItems.find((i) => i.type === "top");
+
+// 零额外负担：全局评论系统未启用或未配置时，不渲染评论 FAB 按钮
+const isCommentSystemEnabled = Boolean(resolveCommentOptions(commentConfig));
+const isCommentActiveOnPage = isCommentSystemEnabled && (hasComments ?? false);
+const isHomeItemVisible = homeItem
+	? isWidgetVisibleOnPage(homeItem.pages, page) &&
+		(!homeItem.onlySubPages || page !== "home")
+	: false;
+---
+
+<aside
+	id="floating-controls"
+	aria-label={i18n(I18nKey.more)}
+	class:list={[
+		"m3-floating-controls-container",
+		{ "m3-floating-controls-container--start": fabConfig.align === "start" },
+	]}
+	data-banner-height={BANNER_HEIGHT}
+	style={`--fab-bottom: ${fabConfig.offset?.bottom ?? "var(--m3e-space-8)"}; --fab-inline-offset: ${fabConfig.offset?.right ?? "var(--m3e-space-6)"}`}
+>
+	<!-- 1. TOC 悬浮目录项与弹窗 -->
+	{tocItem && (
+		<div
+			data-fab-slot
+			class:list={[
+				"relative",
+				resolveDeviceClasses(tocItem.devices),
+				{ "is-page-hidden": !isWidgetVisibleOnPage(tocItem.pages, page) },
+			]}
+		>
+			<FloatingTOCPanel
+				headings={headings}
+				maxDepth={tocItem.depth}
+				closeOnSelect={tocItem.closeOnSelect}
+			/>
+			<FloatingActionButton
+				id="fab-toc-btn"
+				type="toc"
+				ariaLabel={i18n(I18nKey.tableOfContents)}
+				devices={tocItem.devices}
+				pages={tocItem.pages ?? ["post"]}
+				size={fabConfig.size}
+				class={!isWidgetVisibleOnPage(tocItem.pages, page) ? "is-page-hidden" : ""}
+			>
+				<Icon name="material-symbols:format-list-bulleted-rounded" class="text-xl" />
+			</FloatingActionButton>
+		</div>
+	)}
+
+	<!-- 2. 直达评论区：仅当站点已启用评论系统时渲染 -->
+	{commentItem && isCommentSystemEnabled && (
+		<FloatingActionButton
+			id="fab-comment-btn"
+			type="comment"
+			ariaLabel={i18n(I18nKey.backToComment)}
+			devices={commentItem.devices}
+			pages={commentItem.pages ?? ["post"]}
+			size={fabConfig.size}
+			targetSelector={commentItem.targetSelector}
+			class={(!isWidgetVisibleOnPage(commentItem.pages, page) || !isCommentActiveOnPage) ? "is-page-hidden" : ""}
+			onclick="window.__shironeFab?.scrollToComment()"
+		>
+			<Icon name="material-symbols:chat-bubble-outline-rounded" class="text-xl" />
+		</FloatingActionButton>
+	)}
+
+	<!-- 3. 返回首页 -->
+	{homeItem && (
+		<FloatingActionButton
+			id="fab-home-btn"
+			type="home"
+			ariaLabel={i18n(I18nKey.backToHome)}
+			devices={homeItem.devices}
+			pages={homeItem.pages}
+			size={fabConfig.size}
+			onlySubPages={homeItem.onlySubPages}
+			class={!isHomeItemVisible ? "is-page-hidden" : ""}
+			onclick="window.__shironeFab?.navigateToHome()"
+		>
+			<Icon name="material-symbols:home-outline-rounded" class="text-xl" />
+		</FloatingActionButton>
+	)}
+
+	<!-- 4. 返回顶部（默认带滚动阈值隐藏） -->
+	{topItem && (
+		<FloatingActionButton
+			id="fab-top-btn"
+			type="top"
+			ariaLabel={i18n(I18nKey.backToTop)}
+			devices={topItem.devices}
+			pages={topItem.pages}
+			size={fabConfig.size}
+			thresholdRatio={topItem.scrollThresholdRatio}
+			class:list={["is-hidden", { "is-page-hidden": !isWidgetVisibleOnPage(topItem.pages, page) }]}
+			onclick="window.__shironeFab?.scrollToTop()"
+		>
+			<Icon name="material-symbols:keyboard-arrow-up-rounded" class="text-2xl" />
+		</FloatingActionButton>
+	)}
+</aside>
+
+<style lang="stylus">
+.m3-floating-controls-container
+	position: fixed
+	right: var(--fab-inline-offset)
+	bottom: var(--fab-bottom)
+	z-index: 45
+	display: flex
+	flex-direction: column
+	align-items: flex-end
+	gap: var(--m3e-space-2)
+	pointer-events: none
+	transition: opacity var(--m3e-duration-short) var(--m3e-easing-standard), transform var(--m3e-duration-medium) var(--m3e-easing-standard)
+
+	&.fab-scroll-hidden
+		opacity: 0
+		transform: translateY(var(--m3e-space-3))
+		pointer-events: none
+
+	&--start
+		right: auto
+		left: var(--fab-inline-offset)
+
+@media (prefers-reduced-motion: reduce)
+	.m3-floating-controls-container
+		transition: none
+</style>
+
+<script>
+	import { initFabController } from "@utils/fab-controller";
+
+	// 初始化 FAB 运行时状态机，支持直接加载与 Swup 导航
+	if (typeof window !== "undefined") {
+		initFabController();
+	}
+</script>

@@ -1,0 +1,22 @@
+# Handoff archives (extracted into docs/ and tools/)
+*.zip
+
+# Node
+node_modules/
+.pnpm-store/
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Runtime state
+/data/
+/uploads/
+
+# Tooling
+.codegraph/
+.idea/
+.DS_Store

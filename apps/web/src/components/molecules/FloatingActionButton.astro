@@ -1,0 +1,93 @@
+---
+/**
+ * FloatingActionButton.astro
+ * 悬浮按钮分子项包装层：负责 SSR 注入设备类、页面过滤属性与平滑过渡。
+ */
+import FAB from "@components/atoms/action/FAB.svelte";
+import { resolveDeviceClasses } from "@utils/fab-responsive";
+import { pagesToAttribute } from "@utils/sidebar-page";
+import type { FabDeviceTarget } from "@/types/fabConfig";
+import type { SidebarPage } from "@/types/sidebarConfig";
+
+interface Props {
+	id?: string;
+	type: string;
+	ariaLabel: string;
+	icon?: string;
+	variant?: "primary" | "secondary" | "tertiary" | "surface";
+	devices?: FabDeviceTarget[];
+	pages?: SidebarPage[];
+	size?: "small" | "regular";
+	thresholdRatio?: number;
+	onlySubPages?: boolean;
+	targetSelector?: string;
+	class?: string;
+	onclick?: string;
+}
+
+const {
+	id,
+	type,
+	ariaLabel,
+	variant = "primary",
+	devices,
+	pages,
+	size = "regular",
+	thresholdRatio,
+	onlySubPages = false,
+	targetSelector,
+	class: className = "",
+	onclick,
+} = Astro.props;
+
+const deviceClasses = resolveDeviceClasses(devices);
+const pagesAttr = pagesToAttribute(pages);
+---
+
+<div
+	id={id}
+	data-fab-item
+	data-fab-slot
+	data-fab-type={type}
+	data-fab-pages={pagesAttr}
+	data-fab-threshold={thresholdRatio}
+	data-fab-only-sub-pages={onlySubPages ? "true" : undefined}
+	data-fab-target-selector={targetSelector}
+	class:list={[
+		"m3-fab-item items-center justify-center",
+		deviceClasses,
+		className,
+	]}
+	onclick={onclick}
+>
+	<FAB
+		client:load
+		variant={variant}
+		size={size}
+		ariaLabel={ariaLabel}
+		lowered={true}
+	>
+		<slot />
+	</FAB>
+</div>
+
+<style lang="stylus">
+.m3-fab-item
+	pointer-events: auto
+	position: relative
+	transform-origin: center bottom
+	opacity: 1
+	transform: translateY(0) scale(1)
+	transition:
+		transform var(--m3e-duration-medium) var(--m3e-easing-emphasized-decelerate),
+		opacity var(--m3e-duration-short) var(--m3e-easing-standard),
+		max-height var(--m3e-duration-medium) var(--m3e-easing-standard),
+		margin var(--m3e-duration-medium) var(--m3e-easing-standard)
+
+	&.is-hidden,
+	&.is-page-hidden
+		opacity: 0
+		transform: translateY(var(--m3e-space-3)) scale(0.85)
+		pointer-events: none
+		visibility: hidden
+</style>

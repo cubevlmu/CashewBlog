@@ -1,0 +1,135 @@
+---
+/**
+ * M3E 博客原子 — FooterBar 页脚栏。
+ * 数据驱动：copyright（名称/年份）+ 链接组 + 归属行；链接 primary 强调。
+ */
+interface FooterLink {
+	label: string;
+	href: string;
+	external?: boolean;
+}
+
+interface Props {
+	/** 站点 / 作者名 */
+	name: string;
+	/** 版权年份（默认当前年） */
+	year?: number;
+	links?: FooterLink[];
+	poweredBy?: FooterLink[];
+	version?: string;
+	versionHref?: string;
+	/** 自定义注入的页脚 HTML（来自 FooterConfig.html） */
+	customHtml?: string;
+	class?: string;
+}
+
+const {
+	name,
+	year = new Date().getFullYear(),
+	links = [],
+	poweredBy = [],
+	version = "",
+	versionHref = "",
+	customHtml = "",
+	class: className,
+} = Astro.props;
+---
+
+<footer class:list={["m3-blog-footer", className]}>
+	<div class="m3-blog-footer__divider" aria-hidden="true" />
+	<div class="m3-blog-footer__inner">
+		{customHtml && <div class="m3-blog-footer__custom" set:html={customHtml} />}
+		<p class="m3-blog-footer__text">
+			&copy; {year} {name}. All Rights Reserved.
+			{links.map((l) => (
+				<Fragment>
+					<span class="m3-blog-footer__sep" aria-hidden="true">/</span>
+					<a
+						class="m3-blog-footer__link"
+						href={l.href}
+						target={l.external ? "_blank" : undefined}
+						rel={l.external ? "noopener noreferrer" : undefined}
+					>{l.label}</a>
+				</Fragment>
+			))}
+		</p>
+		{poweredBy.length > 0 && (
+			<p class="m3-blog-footer__text">
+				Powered by{" "}
+				{poweredBy.map((l, i) => (
+					<Fragment>
+						{i > 0 && <span class="m3-blog-footer__sep" aria-hidden="true">&amp;</span>}
+						<a
+							class="m3-blog-footer__link"
+							href={l.href}
+							target={l.external ? "_blank" : undefined}
+							rel={l.external ? "noopener noreferrer" : undefined}
+						>{l.label}</a>
+					</Fragment>
+				))}
+				{version && (
+					<Fragment>
+						<span class="m3-blog-footer__sep" aria-hidden="true">/</span>
+						<span class="m3-blog-footer__version">
+							<span>Version</span>
+							{versionHref ? (
+								<a
+									class="m3-blog-footer__link"
+									href={versionHref}
+									target="_blank"
+									rel="noopener noreferrer"
+								>{version}</a>
+							) : version}
+						</span>
+					</Fragment>
+				)}
+			</p>
+		)}
+	</div>
+</footer>
+
+<style lang="stylus">
+.m3-blog-footer
+	&__divider
+		border-top: 1px dashed var(--outline-variant)
+		margin: 2.5rem 2rem 1.5rem
+
+	&__inner
+		display: flex
+		flex-direction: column
+		align-items: center
+		gap: 0.375rem
+		margin: 0 auto 3rem
+		padding: 0 1.5rem
+		text-align: center
+
+	&__text,
+	&__custom
+		font: var(--m3e-type-body-small)
+		color: var(--on-surface-variant)
+		line-height: 1.7
+		a
+			font-weight: 500
+			color: var(--primary)
+			text-decoration: none
+			transition: opacity var(--m3e-duration-short) var(--m3e-easing-standard)
+			&:hover
+				opacity: 0.8
+
+	&__link
+		font-weight: 500
+		color: var(--primary)
+		text-decoration: none
+		transition: opacity var(--m3e-duration-short) var(--m3e-easing-standard)
+		&:hover
+			opacity: 0.8
+
+	&__sep
+		margin: 0 0.5rem
+		color: var(--outline-variant)
+
+	&__version
+		display: inline-flex
+		align-items: baseline
+		gap: 0.375rem
+</style>

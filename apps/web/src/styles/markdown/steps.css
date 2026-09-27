@@ -1,0 +1,113 @@
+/* Unframed editorial step flow. Code blocks retain their own presentation. */
+.custom-md .m3-steps {
+	--steps-marker-size: var(--m3e-space-8);
+	margin: var(--m3e-space-6) 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--on-surface);
+	overflow: visible;
+}
+
+.custom-md .m3-steps__title {
+	margin: 0 0 var(--m3e-space-4);
+	color: var(--on-surface);
+	font: var(--m3e-type-title-medium);
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.custom-md .m3-steps__list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.custom-md .m3-steps__item {
+	position: relative;
+	display: grid;
+	grid-template-columns: var(--steps-marker-size) minmax(0, 1fr);
+	column-gap: var(--m3e-space-3);
+	margin: 0;
+	padding: 0 0 var(--m3e-space-6);
+	list-style: none;
+}
+
+.custom-md .m3-steps__item:not(:last-child)::before {
+	position: absolute;
+	top: calc(var(--steps-marker-size) + var(--m3e-space-1));
+	bottom: var(--m3e-space-1);
+	left: calc((var(--steps-marker-size) - var(--m3e-space-1) / 2) / 2);
+	width: calc(var(--m3e-space-1) / 2);
+	border-radius: var(--shape-corner-xs);
+	background: var(--outline-variant);
+	content: "";
+}
+
+.custom-md .m3-steps__item:last-child {
+	padding-bottom: 0;
+}
+
+.custom-md .m3-steps__index {
+	position: relative;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--steps-marker-size);
+	height: var(--steps-marker-size);
+	border: 1px solid color-mix(in oklab, var(--secondary) 32%, transparent);
+	border-radius: var(--shape-corner-full);
+	background: var(--secondary-container);
+	color: var(--on-secondary-container);
+	font: var(--m3e-type-label-medium);
+	font-weight: 700;
+	user-select: none;
+}
+
+.custom-md .m3-steps__content {
+	min-width: 0;
+	padding-top: calc(var(--m3e-space-1) / 2);
+	color: var(--on-surface-variant);
+	font: var(--m3e-type-body-large);
+	overflow-wrap: anywhere;
+}
+
+.custom-md .m3-steps__content > :first-child {
+	margin-top: 0;
+}
+
+.custom-md .m3-steps__content > :last-child {
+	margin-bottom: 0;
+}
+
+.custom-md .m3-steps__content :is(h1, h2, h3, h4, h5, h6) {
+	margin: 0 0 var(--m3e-space-2);
+	color: var(--on-surface);
+	font: var(--m3e-type-title-medium);
+	font-weight: 600;
+}
+
+.custom-md .m3-steps__content p {
+	margin: 0 0 var(--m3e-space-3);
+}
+
+.custom-md .m3-steps__content :is(ul, ol) {
+	margin: var(--m3e-space-2) 0 var(--m3e-space-3);
+	padding-inline-start: var(--m3e-space-6);
+}
+
+.custom-md .m3-steps__content li {
+	margin-block: var(--m3e-space-1);
+}
+
+.custom-md .m3-steps__content .expressive-code {
+	margin: var(--m3e-space-3) 0 var(--m3e-space-4);
+}
+
+@media (max-width: 39.99rem) {
+	.custom-md .m3-steps__item {
+		column-gap: var(--m3e-space-2);
+		padding-bottom: var(--m3e-space-5);
+	}
+}

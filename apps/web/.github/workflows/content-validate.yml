@@ -1,0 +1,119 @@
+# 可复用的内容校验流程：由内容仓在 PR / push 时调用，让内容问题在合并前就暴露，
+# 而不是等部署构建失败。
+#
+# 本文件只有 workflow_call 触发器，不会自行运行。
+#
+# 内容仓调用示例（.github/workflows/validate.yml）：
+#
+#   name: Validate content
+#   on:
+#     pull_request:
+#     push:
+#       branches: [main]
+#   jobs:
+#     validate:
+#       uses: OWNER/REPO/.github/workflows/content-validate.yml@main
+#       with:
+#         theme_repository: OWNER/REPO
+#       # 主题仓私有时才需要：
+#       # secrets:
+#       #   theme_token: ${{ secrets.THEME_REPO_TOKEN }}
+
+name: Validate content
+
+on:
+  workflow_call:
+    inputs:
+      theme_repository:
+        description: "主题（代码）仓，形如 OWNER/REPO"
+        type: string
+        required: true
+      theme_ref:
+        description: "主题仓的 ref"
+        type: string
+        required: false
+        default: main
+    secrets:
+      theme_token:
+        description: "主题仓私有时用于 checkout 的 token"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Schema and structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: true
+
+    steps:
+      # 无 repository 参数时 checkout 的是调用方，也就是内容仓本身。
+      - name: Checkout content
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: content
+
+      - name: Checkout theme
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: ${{ inputs.theme_repository }}
+          ref: ${{ inputs.theme_ref }}
+          path: theme
+          token: ${{ secrets.theme_token || github.token }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 9.14.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: theme/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: theme
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      # 第一关：目录结构、keep 冲突、写入构建期生成物路径等契约问题，
+      # 外加 config/*.yaml 的类型校验（拼错的键、越界的枚举都会在这里失败）。
+      - name: Validate content structure and config
+        working-directory: theme
+        env:
+          CONTENT_DIR: ${{ github.workspace }}/content
+        run: pnpm content:validate
+
+      # 第二关：物化后用 Astro 自己的 collection schema 校验 frontmatter。
+      - name: Validate frontmatter schemas
+        working-directory: theme
+        env:
+          CONTENT_DIR: ${{ github.workspace }}/content
+        run: |
+          set -euo pipefail
+          pnpm content:sync
+          node scripts/icons/generate-local-icons.mjs
+          pnpm exec astro sync
+
+      - name: Summarize
+        if: always()
+        working-directory: theme
+        run: |
+          set -euo pipefail
+          {
+            echo "### Content validation"
+            echo ""
+            echo "- 主题仓：\`${{ inputs.theme_repository }}@${{ inputs.theme_ref }}\`"
+            if [ -f content.lock.json ]; then
+              echo ""
+              echo '```json'
+              cat content.lock.json
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

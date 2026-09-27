@@ -1,0 +1,52 @@
+/* ============================================================
+   Tonal Bloom (M3E 色调辉光占位系统)
+   预设容器几何尺寸避免布局偏移（CLS），配合主题色辉光底色实现平滑图片渐显
+   ============================================================ */
+
+.image-bloom-container {
+	position: relative;
+	overflow: hidden;
+	background-color: var(--surface-container-high);
+}
+
+.image-bloom-layer {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	background: radial-gradient(
+		circle at center,
+		color-mix(in oklab, var(--primary) 20%, var(--surface-container-high)) 0%,
+		var(--surface-container-high) 70%
+	);
+	filter: blur(var(--image-bloom-blur, 20px));
+	opacity: var(--image-bloom-opacity, 0.7);
+	transition: opacity var(--image-bloom-duration, var(--m3e-duration-medium)) var(--m3e-easing-standard);
+}
+
+.image-bloom-layer--loaded {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.image-bloom-img {
+	opacity: 0;
+	transition: opacity var(--image-bloom-duration, var(--m3e-duration-medium)) var(--m3e-easing-standard);
+}
+
+.image-bloom-img--loaded {
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.image-bloom-layer,
+	.image-bloom-img {
+		transition: none !important;
+	}
+	.image-bloom-img {
+		opacity: 1 !important;
+	}
+	.image-bloom-layer {
+		display: none !important;
+	}
+}

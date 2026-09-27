@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/* Tailwind v4 discovers utility classes by scanning the project, and it always
+   skips `node_modules`. That is exactly where the theme lives once it is
+   installed as an npm package, so without this the utilities used by the
+   theme's own components (`w-full`, `inline-flex`, `mx-auto`, …) are never
+   generated and the site renders unstyled. Sources are resolved relative to
+   this file, so `../` is the theme's `src/`, in both source and package mode.
+   Only code files are scanned — fonts and images stay out of the crawl. */
+@source "../**/*.{astro,svelte,ts,tsx,js,jsx,mjs,cjs,md,mdx,html}";
+@plugin "@tailwindcss/typography";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: var(--m3e-font-sans);
+    /* Tailwind's baseline must stay literal; Astro Fonts may override
+       --font-mono with the registered hashed family in custom mode. */
+    --font-mono: var(--m3e-font-mono-fallback);
+}
+
+@import "./transition.css" layer(components);
+@import "./scrollbar.css" layer(components);
+@import "./markdown.css" layer(components);
+/* Typography emits prose heading metrics in the utilities layer. Keep this
+   narrowly scoped bridge there so Markdown owns the final heading rhythm. */
+@import "./markdown-typography.css" layer(utilities);
+/* Expressive Code ships unlayered reset styles, so its scoped overrides must
+   also remain unlayered to participate in the same cascade. */
+@import "./toc.css" layer(components);
+@import "./image-bloom.css" layer(components);
+
+@layer base {
+    /* 常驻预留经典滚动条槽位。文档级布局宽度（`#main-layout` 是 `w-full` 的
+       绝对定位容器，宽度 = 初始包含块宽度）会随滚动条出现/消失相差一个滚动条
+       宽度（Windows Chrome 15px）。Banner 模式因文档恒高于视口而滚动条常驻，
+       所以看不出问题；纯色背景模式下短页（categories/tags/文章页）本来没有
+       滚动条，Swup 切页时的 `#page-height-extend` 又会在切页两端临时开关
+       滚动条，于是每次导航都横移半个滚动条宽度。
+       `scrollbar-gutter` 语义正确：有内容可滚动时滚动条照常出现（Banner 模式
+       与所有长页与今天逐像素一致），没有内容时不显示，而槽位始终预留，因此
+       布局宽度与滚动条状态彻底解耦。
+       不用 `overflow-y: scroll`（滚动条常显）：短页会多出一条无意义的滚动条，
+       实测其轨道色与页面底色差 (2,11,3)。预留槽位方案下顶栏右上角 15×64px 的
+       空槽位显示页面底色，与该处原本的滚动条轨道也只差这一量级（暗色模式下
+       实测 Δ≤0.5，无可见差异）。
+       不支持 `scrollbar-gutter` 的旧版 Safari（< 18.2）忽略该声明，退回原行为；
+       macOS 默认使用覆盖式滚动条，本来就不影响布局宽度。 */
+    html {
+        scrollbar-gutter: stable;
+    }
+
+    /* 全局正文色走主题变量：裸内容（未显式设色的文字/按钮）明暗自适应，
+       否则默认黑色在暗色模式下不可见 */
+    body {
+        color: var(--on-surface);
+    }
+}
+
+@layer components {
+    h1, h2, h3, h4, h5, h6, p, a, span, li, ul, ol, blockquote, code, pre, table, th, td, strong {
+        @apply transition;
+    }
+    .link {
+        @apply relative before:ease-out before:transition active:bg-none hover:before:bg-[var(--btn-plain-bg-hover)] active:before:bg-[var(--btn-plain-bg-active)] z-0
+        before:absolute before:rounded-[inherit] before:inset-0 before:scale-[0.85] hover:before:scale-100 before:-z-10
+    }
+    .link {
+        @apply transition rounded-md p-1 -m-1;
+    }
+    .float-panel {
+        @apply top-[5.25rem] rounded-[var(--radius-large)] overflow-hidden bg-[var(--float-panel-bg)] transition shadow-xl dark:shadow-none
+    }
+    .float-panel-closed {
+        @apply -translate-y-1 opacity-0 pointer-events-none
+    }
+    .float-control {
+        @apply text-[var(--on-surface)] bg-[var(--float-control-bg)]
+        hover:bg-[var(--float-control-bg-hover)] active:bg-[var(--float-control-bg-active)];
+    }
+
+    .toc-hide,
+    .toc-not-ready {
+        @apply opacity-0 pointer-events-none
+    }
+
+    .hide-scrollbar {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .text-90 {
+        color: color-mix(in oklab, var(--on-surface) 92%, transparent);
+    }
+    .text-75 {
+        color: color-mix(in oklab, var(--on-surface) 78%, transparent);
+    }
+    .text-50 {
+        color: color-mix(in oklab, var(--on-surface-variant) 92%, transparent);
+    }
+    .text-30 {
+        color: color-mix(in oklab, var(--on-surface-variant) 72%, transparent);
+    }
+    .text-25 {
+        color: color-mix(in oklab, var(--on-surface-variant) 58%, transparent);
+    }
+
+    /* ============================================================
+       M3 状态层（state layer）原子工具类
+       叠加色用 --m3e-state-color（默认 on-surface），透明度遵循
+       M3 规范：hover 8% / focus 10% / pressed 12%。配合
+       isolation: isolate 使 ::before 盖在容器底色之上、内容之下。
+       ============================================================ */
+    .m3-state-layer {
+        @apply relative isolate transition;
+        -webkit-tap-highlight-color: transparent;
+        transition-property: background-color, color, border-color, box-shadow, opacity, transform;
+        transition-duration: var(--m3e-duration-short);
+        transition-timing-function: var(--m3e-easing-standard);
+    }
+    .m3-state-layer::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        background: color-mix(in oklab, var(--m3e-state-color, var(--on-surface)) var(--m3e-state-hover-alpha, 8%), transparent);
+        opacity: 0;
+        transition: opacity var(--m3e-duration-short) var(--m3e-easing-standard);
+        pointer-events: none;
+    }
+    .m3-state-layer:hover::before {
+        opacity: 1;
+    }
+    .m3-state-layer:focus-within::before {
+        opacity: 1;
+        background: color-mix(in oklab, var(--m3e-state-color, var(--on-surface)) var(--m3e-state-focus-alpha, 10%), transparent);
+    }
+    .m3-state-layer:focus-visible::before {
+        opacity: 1;
+        background: color-mix(in oklab, var(--m3e-state-color, var(--on-surface)) var(--m3e-state-focus-alpha, 10%), transparent);
+    }
+    .m3-state-layer:active::before {
+        opacity: 1;
+        background: color-mix(in oklab, var(--m3e-state-color, var(--on-surface)) var(--m3e-state-pressed-alpha, 12%), transparent);
+    }
+    .m3-state-layer:focus-visible {
+        outline: 2px solid var(--m3e-focus-outline, var(--primary));
+        outline-offset: 2px;
+    }
+    .m3-state-layer[disabled] {
+        pointer-events: none;
+        opacity: 0.38;
+    }
+}
+
+.custom-md img, #post-cover img {
+    @apply cursor-zoom-in
+}
+
+::selection {
+    background-color: var(--selection-bg)
+}
+
+.collapsed {
+    height: var(--collapsedHeight);
+}
+
+/* 减少动态效果：手动开关（html.motion-reduced）或系统偏好（prefers-reduced-motion）
+   统一将 transition/animation 时长压至 0.01ms，保留状态结果、去掉过程动效；
+   stagger 的 delay 一并归零，避免元素在延迟期间保持起始态不可见 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+        animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+html.motion-reduced *,
+html.motion-reduced *::before,
+html.motion-reduced *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+}

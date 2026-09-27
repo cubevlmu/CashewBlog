@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shirone Content Configuration"
+  short_description: "Configure content sources and YAML overlays for Shirone."
+  default_prompt: "Use $shirone-content-config to configure my Shirone content repository and validate its YAML overlays."

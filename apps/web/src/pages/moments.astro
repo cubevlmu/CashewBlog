@@ -1,0 +1,56 @@
+---
+import { getImage } from "astro:assets";
+import MomentSection from "@components/organisms/MomentSection.svelte";
+import I18nKey from "@i18n/i18nKey";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { resolveImageAsset } from "@utils/asset-utils";
+import { getSortedMoments } from "@utils/content-utils";
+import { url } from "@utils/url-utils";
+import { momentsConfig, profileConfig } from "@/config";
+import { resolveI18nText } from "@utils/i18n-utils";
+
+if (!momentsConfig.enable) {
+	return Astro.redirect("/404/");
+}
+
+const pageTitle = resolveI18nText(momentsConfig.title, I18nKey.moments);
+const pageDescription = resolveI18nText(momentsConfig.description, I18nKey.momentsBanner);
+
+const moments = await getSortedMoments();
+const avatarAsset = await resolveImageAsset(profileConfig.avatar ?? "");
+let avatar = typeof avatarAsset === "string" ? avatarAsset : avatarAsset.src;
+let avatarSrcset: string | undefined;
+let avatarWidth: number | undefined;
+let avatarHeight: number | undefined;
+if (typeof avatarAsset !== "string") {
+	const candidates = await Promise.all(
+		[64, 96].map(async (width) => ({
+			width,
+			image: await getImage({
+				src: avatarAsset,
+				width,
+				format: "webp",
+				quality: 72,
+			}),
+		})),
+	);
+	avatar = candidates[0].image.src;
+	avatarSrcset = candidates
+		.map(({ image, width }) => `${image.src} ${width}w`)
+		.join(", ");
+	avatarWidth = avatarAsset.width;
+	avatarHeight = avatarAsset.height;
+}
+const author = {
+	name: profileConfig.name,
+	avatar,
+	avatarSrcset,
+	avatarWidth,
+	avatarHeight,
+	url: url("/about/"),
+};
+---
+
+<MainGridLayout title={pageTitle} description={pageDescription} page="moments">
+    <MomentSection {moments} {author} title={pageTitle} subtitle={pageDescription} client:visible></MomentSection>
+</MainGridLayout>
