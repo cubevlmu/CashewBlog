@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CashewBlog.Api/CashewBlog.Api.csproj" />
+    <Project Path="src/CashewBlog.Application/CashewBlog.Application.csproj" />
+    <Project Path="src/CashewBlog.Domain/CashewBlog.Domain.csproj" />
+    <Project Path="src/CashewBlog.Infrastructure/CashewBlog.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CashewBlog.IntegrationTests/CashewBlog.IntegrationTests.csproj" />
+    <Project Path="tests/CashewBlog.UnitTests/CashewBlog.UnitTests.csproj" />
+  </Folder>
+</Solution>

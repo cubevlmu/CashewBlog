@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>CashewBlog.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CashewBlog.Domain\CashewBlog.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- IApplicationDbContext exposes DbSets; provider-specific code stays in Infrastructure. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="CashewBlog.UnitTests" />
+  </ItemGroup>
+</Project>

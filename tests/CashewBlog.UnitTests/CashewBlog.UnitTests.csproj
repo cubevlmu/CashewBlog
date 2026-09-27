@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!-- Passing TestContext cancellation tokens everywhere adds noise without value here. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CashewBlog.Domain\CashewBlog.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CashewBlog.Application\CashewBlog.Application.csproj" />
+    <ProjectReference Include="..\..\src\CashewBlog.Infrastructure\CashewBlog.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

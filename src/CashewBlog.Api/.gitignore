@@ -1,0 +1,4 @@
+data/
+uploads/
+# Admin SPA build output (copied in by the Docker build)
+wwwroot/admin/

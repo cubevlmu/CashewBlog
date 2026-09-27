@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>CashewBlog.Api</RootNamespace>
+    <AssemblyName>CashewBlog.Api</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CashewBlog.Application\CashewBlog.Application.csproj" />
+    <ProjectReference Include="..\CashewBlog.Infrastructure\CashewBlog.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Yarp.ReverseProxy" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="CashewBlog.IntegrationTests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,37 @@
+{
+  "name": "@cashewblog/admin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CashewBlog administrator SPA (Vue 3 + PrimeVue)",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@milkdown/crepe": "^7.22.2",
+    "@milkdown/kit": "^7.22.2",
+    "@primeuix/themes": "^2.0.3",
+    "chart.js": "^4.5.1",
+    "grid-layout-plus": "^1.1.1",
+    "monaco-editor": "^0.57.0",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.5.5",
+    "vue": "^3.5.43",
+    "vue-draggable-plus": "^0.6.1",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "@vue/tsconfig": "^0.9.1",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.1",
+    "vitest": "^4.1.11",
+    "vue-tsc": "^3.3.11"
+  }
+}

@@ -1,0 +1,26 @@
+# Example deployment. CashewBlog does not require PostgreSQL to be colocated; the
+# bundled `postgres` service is only a convenience. On first start open
+# http://localhost:8080/setup and enter the database connection
+# (host `postgres`, database/user/password below — the database must exist).
+services:
+  cashewblog:
+    image: cashewblog:latest
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+      - ./uploads:/uploads
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: cashewblog
+      POSTGRES_USER: cashewblog
+      POSTGRES_PASSWORD: change-me
+    volumes:
+      - ./postgres:/var/lib/postgresql
+    restart: unless-stopped

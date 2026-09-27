@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/.astro
+**/bin
+**/obj
+**/TestResults
+.git
+.codegraph
+.claude
+data
+uploads
+*.zip
+tests
+docs
+tools
+apps/web/seed
+apps/web/tests
