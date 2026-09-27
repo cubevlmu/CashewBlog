@@ -174,7 +174,7 @@ svelte({
 - 原子不得 import 任何组件，只消费 token；
 - 分子禁止 import 有机体；有机体间禁止平铺互相引用；
 - 跨目录引用一律 `@components/<层>/<文件>`，禁止 `../../` 相对链；
-- 数据获取（pagefind、`getSortedPosts`）、持久化（localStorage）属于有机体；原子/分子不做。
+- 数据获取（`Astro.locals.api`、`/api/search`）、持久化（localStorage）属于有机体；原子/分子不做。
 
 详见 `docs/atomic-structure.md`。
 

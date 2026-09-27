@@ -212,7 +212,7 @@ variables.styl  --mc-* → 语义令牌（--primary、--surface-container-low…
 | Badge | `display/Badge.svelte` | `content`（有内容显示 label-small 文字，否则 6px 圆点）、`disabled`；配 `BadgedBox.svelte` 锚定到右上角；**dot↔数字切换尺寸过渡 + label scale/fade 动画**（恒渲染由 show class 驱动） | error / on-error | 移植 |
 | BadgedBox | `display/BadgedBox.svelte` | 徽标锚定容器（Compose BadgedBox 移植）：默认插槽为锚定内容、`badge` 命名插槽放徽标（配合 `Badge.svelte`），自动定位右上角（translate 50%/-50%） | — | 移植 |
 | Divider | `display/Divider.svelte` | `vertical`、`thickness`、`color`；默认 1px | outline-variant | 移植 |
-| AccentBar | `display/AccentBar.svelte` | 标题左侧竖线装饰原子（Svelte，纯装饰 aria-hidden）：`size`（small 16 / medium 20 / large 24）、`color`（默认 `--primary`，可覆盖 token/色值）、`radius`（默认 6px）；定位由调用方负责（absolute / flex 首项）；已封装进 WidgetLayout / DisplaySettings / 文章页标题 / blog/PostCard 卡片标题 | `--primary` | 原创 |
+| AccentBar | `display/AccentBar.svelte` | 标题左侧竖线装饰原子（Svelte，纯装饰 aria-hidden）：`size`（small 16 / medium 20 / large 24）、`color`（默认 `--primary`，可覆盖 token/色值）、`radius`（默认 6px）；定位由调用方负责（absolute / flex 首项）；已封装进 WidgetLayout / 文章页标题 / blog/PostCard 卡片标题 | `--primary` | 原创 |
 | MetaIcon | `display/MetaIcon.astro` | 图标徽标（单图标徽标语言）：32px tonal 圆角方块容器（btn-regular-bg 跟随明暗）+ 20px 图标，纯装饰 aria-hidden；消费方与文字搭配（PostMeta 的日期/分类/标签） | btn-regular-bg / btn-content | 原创 |
 | Avatar | `display/Avatar.svelte` | 通用头像（原创）：`src`/`alt`、`size`（直径 px，默认 40）、`shape`（circle 圆 / rounded 圆角 / square 方形）、`fallback`（无图或加载失败时的文字，默认取 alt 首字符）；容器 surface-container-high 底 + on-surface-variant 回退字 | `--surface-container-high` | 原创 |
 | Skeleton | `display/Skeleton.svelte` | 加载占位（原创）：`variant`（text 一行 / circle 圆形 / rect 矩形块，默认）、`width`/`height`/`radius` 可覆盖；surface-container-high 底 + shimmer 高光扫过动画 | `--surface-container-high` | 原创 |
@@ -241,7 +241,7 @@ variables.styl  --mc-* → 语义令牌（--primary、--surface-container-low…
 | TocList | `blog/TocList.astro` | 目录列表（静态 SSR 版）：`headings`（`{depth,text,slug}[]`）、`maxDepth`（默认 3）；顶级编号徽标（secondary-container）+ 子级小圆点按层级缩进，hover 状态层，锚点链接；激活态由调用方叠加 | secondary-container / on-secondary-container / on-surface-variant | 原创 |
 | PagePagination | `blog/PagePagination.astro` | 分页器（数据驱动）：`currentPage`/`totalPages`/`buildUrl(page)`/`adjacent`（默认 2）；页码窗口 + 首尾省略号折叠，激活页 primary 实底 + `aria-current`，前后箭头（首/尾页渲染为 `aria-hidden` span 禁用，避免无 href 的 a） | primary / on-primary / surface-container-low | 原创 |
 | ArchiveList | `blog/ArchiveList.svelte` | 归档列表：`groups`（`{year, items:{title,href,date,tags?}}[]`）按年份分组；年份头 + primary 节点环 + 时间轴小圆点，条目 hover 标题变 primary 并右移；tags 桌面端显示 | primary / on-surface / on-surface-variant | 原创 |
-| SearchPanel | `blog/SearchPanel.svelte` | 搜索结果面板（Svelte，数据驱动）：`results`（{url,title,excerpt}[]，excerpt 可含 `<mark>` 高亮）、`query`（$bindable）、`placeholder`（传则渲染面板内胶囊搜索输入，`hideInputOnDesktop` 时 lg+ 隐藏）、`id`/`class` 透传；面板 float-panel 视觉（bg/圆角/阴影/滚动），开合由调用方 classList 控制（`float-panel-closed`，与 DisplaySettings 同款，Layout 点击外部关闭可复用）；结果项标题 hover primary + 箭头、摘要 on-surface-variant | `--float-panel-bg` / primary | 原创 |
+| SearchPanel | `blog/SearchPanel.svelte` | 搜索结果面板（Svelte，数据驱动）：`results`（{url,title,excerpt}[]，excerpt 可含 `<mark>` 高亮）、`query`（$bindable）、`placeholder`（传则渲染面板内胶囊搜索输入，`hideInputOnDesktop` 时 lg+ 隐藏）、`id`/`class` 透传；面板 float-panel 视觉（bg/圆角/阴影/滚动），开合由调用方 classList 控制（`float-panel-closed`，Layout 点击外部关闭可复用）；结果项标题 hover primary + 箭头、摘要 on-surface-variant | `--float-panel-bg` / primary | 原创 |
 | FooterBar | `blog/FooterBar.astro` | 页脚栏：`name`/`year`/`links`/`poweredBy`；顶部虚线分隔 + 居中文本（on-surface-variant），链接 primary；`external` 链接自动补 `target=_blank` + rel | on-surface-variant / primary | 原创 |
 
 约定：
@@ -316,7 +316,6 @@ variables.styl  --mc-* → 语义令牌（--primary、--surface-container-low…
 | `src/styles/main.css` | Tailwind 层序、状态层、组件类 |
 | `src/components/atoms/*` | 63 个原子组件（清单单一真源见 `manifest.json`） |
 | `src/components/atoms/manifest.json` | 原子清单单一真源（tier / source / landed），由 `pnpm check:manifest` 校验 |
-| `src/components/organisms/DisplaySettings.svelte` | 色相/风格/规范控制面板 |
 | `src/components/molecules/PageHeader.svelte` | 页面级标题（图标 + 标题 + 副标题），见 `docs/common-components.md` |
 | `src/components/molecules/SectionTitle.svelte` | 区块级标题（可选图标 + 标题 + 副标题），见 `docs/common-components.md` |
 | `src/components/molecules/MomentCard.svelte` | 动态卡片（正文 + 画廊挂载点），见 `docs/common-components.md` |

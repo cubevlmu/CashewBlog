@@ -25,7 +25,7 @@ The enhancement is rendered only when `contextMenuConfig.enable` is true. Consum
 | Menu organism and event lifecycle | `src/components/organisms/ContextMenu.svelte` |
 | Layout mounting and `client:load` boundary | `src/layouts/MainGridLayout.astro` |
 | Shared page-link copy behavior | `src/utils/copy-page-link.ts` |
-| User-facing labels | `src/i18n/i18nKey.ts` and all ten locale modules |
+| User-facing labels | `src/i18n/i18nKey.ts` and the `zh_CN` dictionary |
 | Markdown feature registry | `src/plugins/markdown/manifest.json` |
 | Markdown runtime loading | `docs/markdown-on-demand-loading.md` |
 
@@ -35,7 +35,7 @@ Add an action in this order:
 
 1. Extend `ContextMenuAction` in `src/types/contextMenuConfig.ts`.
 2. Add the default id to `contextMenuConfig.actions` only when the action is part of the product default. Keep the array as the user-controlled display order.
-3. Add one i18n key and translations in all ten locale modules. The menu must never contain literal UI copy.
+3. Add one i18n key and its `zh_CN` text. The menu must never contain literal UI copy.
 4. Add the icon to the `icons` map in `ContextMenu.svelte`. Use a local icon name already covered by `src/generated/local-icon-collections.ts`; run `pnpm.cmd icons:generate` when introducing a new icon name.
 5. Add the action's eligibility rule to `availableActions()`. An action that has no valid target must not render a disabled-looking row.
 6. Add the smallest handler branch in `run()`. Keep route state, browser APIs, and Swup lifecycle work in the organism or an explicitly named utility.
@@ -81,7 +81,6 @@ Keyboard rules are part of the action contract: the first item receives focus, `
 - `enable: false` means no menu DOM, listener, hydration, or action-specific resource.
 - A Markdown syntax that is not present must not add an action-specific script, stylesheet, network request, or polling loop.
 - Third-party code is never imported into the base context-menu organism. Use on-demand loading owned by the Markdown feature when the manifest requires it.
-- Keep source-checkout and `shirones` package mode behavior aligned. New utilities and DOM contracts must use repository paths that survive the integration overlay.
 
 ## Verification Checklist
 

@@ -39,7 +39,7 @@
 |---|---|---|---|
 | **原子** | `atoms/` | 单一职责的 UI 元素（64 个，清单单一真源见 `atoms/manifest.json`） | 仅设计令牌（`--mc-*`、`--m3e-*`、语义别名）与 `.m3-state-layer`，**不得 import 任何组件** |
 | **分子** | `molecules/` | 原子的固定组合：PageHeader、SectionTitle、ButtonLink、ButtonTag、Tags、Categories、Series、SeriesCard、PostMeta、SearchBar、SidebarTOC、FloatingActionButton、FloatingTOCPanel、WidgetLayout、ImageWrapper、License、Pagination、ArticleDiscoveryItem 等 | atoms + 同层分子（须同层方向合理） |
-| **有机体** | `organisms/` | 独立业务区块：TopAppBar、SideBar、Footer、Search、PostCard、PostPage、FloatingControls、ArchivePanel、DisplaySettings、Profile、LightDarkSwitch、SiteNavigationDrawer、RouteProgress、CategoryBar、BackToTop、BannerStage、MusicSidebar 等 | atoms + molecules + 被组合的**更小** organism |
+| **有机体** | `organisms/` | 独立业务区块：TopAppBar、SideBar、Footer、Search、PostCard、PostPage、FloatingControls、ArchivePanel、Profile、LightDarkSwitch、SiteNavigationDrawer、RouteProgress、CategoryBar、BackToTop、BannerStage、HomeFeed 等 | atoms + molecules + 被组合的**更小** organism |
 | **模板** | `layouts/` | 页面骨架与网格布局：Layout、MainGridLayout | organisms + molecules + system |
 | **页面** | `pages/` | 路由级编排：`[...page].astro`、`about.astro`、`archive.astro`、`posts/[...slug].astro` | layouts + organisms + molecules + content |
 | **系统** | `system/` | 全局基础设施 | 仅令牌与 utils |
@@ -76,13 +76,13 @@
 
 9. **禁止硬编码色值、圆角、阴影、动效时长**——一律引用 `--mc-*`、语义令牌（`--primary`、`--surface-container-high`…）与 `--m3e-*`；例外仅限站点固有内容色（如广告牌语义色，见 m3e-standard.md §3.1）。
 10. **禁止散落的非令牌动效**——如 `transition: all 0.3s`、`animation: xxx 1s linear`；统一用 `--m3e-duration-*` + `--m3e-easing-*`。
-11. **禁止硬编码用户可见文本**——UI 文案必须走 `i18nKey.ts` 与 10 种语言映射（见 project-rules.md §4）。
+11. **禁止硬编码用户可见文本**——UI 文案必须走 `i18nKey.ts` 与单一 `zh_CN` 词典（见 project-rules.md §4）。
 12. **禁止在组件内写死暗色模式覆写**——暗色适配应通过 CSS 变量在主题切换时自动切换，而不是在组件内写 `.dark & { ... }` 覆写颜色逻辑。
 13. **禁止跨层 relative import**——`../../`、`../misc/` 等一律替换为 `@components/<层>/<文件>`。
 
 ### 4.4 职责边界
 
-14. **禁止在原子 / 分子中引入业务副作用**——数据获取（pagefind、`getSortedPosts`）、持久化（localStorage）、路由跳转属于有机体；交互副作用（事件监听、焦点管理，如 SearchBar 的窗口焦点保护）允许留在分子。
+14. **禁止在原子 / 分子中引入业务副作用**——数据获取（`Astro.locals.api`、`/api/search`）、持久化（localStorage）、路由跳转属于有机体；交互副作用（事件监听、焦点管理，如 SearchBar 的窗口焦点保护）允许留在分子。
 15. **禁止在分子中编排页面级布局**——网格列数、固定定位、`hidden lg:block` 之类的响应式骨架属于模板（MainGridLayout）与有机体；分子只承载自身尺寸。
 16. **禁止原子 / 分子直接查询站点内容集合**——`posts` / `categories` / `tags` 的集合访问在 molecules（Tags、Categories）及以上层。
 17. **禁止在分子中渲染 Markdown 正文**——正文渲染唯一入口是 `content/Markdown.astro`，由 pages 调用。
@@ -116,7 +116,7 @@
 |---|---|
 | atoms/ | 63 个原子组件（Button、Chip、IconButton、FAB、FABMenu、Slider、SegmentedButton、TextField、Switch、Checkbox、RadioButton、Dialog、Menu、Badge、Divider、Snackbar、Tabs、Select、DataTable、SearchView、Autocomplete、SheetSide、Carousel、PullToRefresh、DatePicker、TimePicker、Chips、Banner、Tooltip、Card、AppBar、NavigationBar/Rail/Drawer、ExposedDropdownMenu、ListItem、LoadingIndicator、ProgressIndicator、AlertDialog、BadgedBox、SplitButton、ToggleButton、ButtonGroup、SearchBar、DateInput、FloatingToolbar、BottomSheet 等；完整清单与 tier 见 `atoms/manifest.json`） |
 | molecules/ | PageHeader、SectionTitle、ButtonLink、ButtonTag、Tags、Categories、Series、Announcement、SiteStats、Calendar、CalendarView、AnimeCard、CompassTile、PostMeta、SeriesCard、SearchBar、SidebarTOC、FloatingActionButton、FloatingTOCPanel、WidgetLayout、ImageWrapper、License、Pagination、FriendCard、MomentCard、MomentGallery、AlbumCard、LastUpdatedNotice、ArticleDiscoveryItem、SkillCard、ProjectCard、TimelineCard、GameCard、BannerWaves、MermaidDiagramViewer |
-| organisms/ | TopAppBar、SideBar、Footer、Search、PostCard、PostPage、FloatingControls、ArchivePanel、DisplaySettings、Profile、LightDarkSwitch、SiteNavigationDrawer、RouteProgress、CategoryBar、BackToTop、BannerStage、FriendSection、MomentSection、AnimeSection、CompassSection、AlbumSection、AlbumGallery、PasswordGate、ProtectedAlbum、EncryptedContent、ProtectedPost、ArticleDiscovery、ArticleShare、SkillSection、ProjectSection、TimelineSection、GamesSection、MusicSidebar |
+| organisms/ | TopAppBar、SideBar、Footer、Search、PostCard、PostPage、FloatingControls、ArchivePanel、Profile、LightDarkSwitch、SiteNavigationDrawer、RouteProgress、CategoryBar、BackToTop、BannerStage、FriendSection、MomentSection、AnimeSection、CompassSection、AlbumSection、AlbumGallery、PasswordGate、ProtectedAlbum、EncryptedContent、ProtectedPost、ArticleDiscovery、ArticleShare、SkillSection、ProjectSection、TimelineSection、GamesSection、MusicSidebar |
 | system/ | ConfigCarrier、GlobalStyles |
 | content/ | Markdown |
 | layouts/ | Layout、MainGridLayout |

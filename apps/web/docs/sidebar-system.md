@@ -15,7 +15,7 @@
 - 分停靠位：栏内再按 `slot` 分 top（固定顶部）/ sticky（跟随滚动）；
 - 渲染：经中央注册表 `componentMap` 把 widget 配置整份透传。
 
-所有行为由 `src/config/sidebarConfig.ts` 驱动，类型定义在 `src/types/sidebarConfig.ts`。
+所有行为由管理员侧栏设置（bootstrap `settings.sidebar`，经 `Astro.locals.site.sidebarConfig`）驱动，类型定义在 `src/types/sidebarConfig.ts`。
 
 ## 2. 编排模型
 
@@ -96,23 +96,10 @@ widget 的专属配置（如分类的折叠阈值 `collapseAfter`）只存在于
 > 新增页面时务必在 `SidebarPage` 联合中加分支并传 `page` prop——漏传的页面
 > 上，带 `pages` 限制的 widget 一律不显示（宁可少显示，不显示到错误页面）。
 
-### 2.5 音乐 widget 的启用与加载
+### 2.5 持久侧栏运行时
 
-音乐是默认关闭的可选 widget，使用独立的全局配置与侧栏条目双重控制。只有
-`musicConfig.enable: true`、`musicConfig.tracks` 至少有一首有效曲目，且
-`sidebarConfig.components` 中 `type: "music"` 的条目也为 `enable: true` 时，
-才允许动态加载并渲染 `MusicSidebar`。music 默认条目必须保持 `enable: false`。
-
-任一条件不满足时必须在导入与渲染前短路：零播放器 DOM / 布局偏移、零音频或封面网络请求、
-零主 bundle 代码/依赖、零共享或提升 CSS。不能静态导入后仅用 CSS 隐藏；动态加载与样式隔离
-遵循 `on-demand-loading.md` 的零额外负担约定。
-
-### 2.6 持久侧栏运行时
-
-侧栏位于 `#swup-container` 外，是持久 shell。启用后的 `MusicSidebar` 作为交互岛只挂载一次，
-当前曲目、播放/暂停状态、播放位置、音量和播放模式均由该持久运行时持有。Swup 导航只替换
-主内容并同步页面过滤，不得在 `content:replace` / `page:view` 时重建音频实例或把播放器重置为
-`musicConfig.defaultVolume` / `musicConfig.defaultMode`；直接加载页面时则正常初始化一次。
+侧栏位于 `#swup-container` 外，是持久 shell。Swup 导航只替换主内容并按新页面同步 widget
+的页面过滤；侧栏内的交互状态（如目录高亮）由各自的 Swup 钩子维护，不随导航重建。
 
 ## 3. 响应式行为
 
@@ -137,14 +124,14 @@ widget 的专属配置（如分类的折叠阈值 `collapseAfter`）只存在于
 **单栏（默认）**：
 
 ```ts
-export const sidebarConfig: SidebarConfig = {
+// 管理员侧栏设置映射后的 SidebarConfig（Astro.locals.site.sidebarConfig）
+const sidebarConfig: SidebarConfig = {
 	enable: true,
 	arrangement: "single",
 	side: "left",
 	components: [
 		{ type: "profile", enable: true, slot: "top" },
 		{ type: "announcement", enable: false, slot: "top" },
-		{ type: "music", enable: false, slot: "top" },
 		{ type: "categories", enable: true, slot: "sticky" },
 		{ type: "tags", enable: true, slot: "sticky" },
 	],
@@ -175,21 +162,20 @@ export const sidebarConfig: SidebarConfig = {
 1. `src/types/sidebarConfig.ts` 扩展 `SidebarWidget` 联合分支（专属配置放分支内）；
 2. 实现组件（molecules 优先；带取数/业务放 organisms），接收 `widget` prop；
 3. `SideBar.astro` 的 `componentMap` 注册——`satisfies Record<SidebarWidget["type"], unknown>` 保证漏注册时编译期报错；
-4. `sidebarConfig.components` 加默认条目（**新 widget 默认 `enable: false`**，保证存量站点零变化）；
+4. 后端 `SiteSettings` 默认侧栏与 `src/lib/site/settings.ts`（类型 + `DEFAULT_SETTINGS`）加条目（**新 widget 默认 `enable: false`**），管理后台侧栏设置加入该类型；
 5. 本文件 §7 的 widget 总览表 + `sidebar-widgets.md` 补组件文档。
 
 ## 7. 内置 widget 总览
 
 | type | 组件 | 数据源 | 标题外壳 | 专属配置 |
 |---|---|---|---|---|
-| `profile` | `Profile`（organisms） | `profileConfig` | 无（自带头像卡） | — |
-| `categories` | `Categories` | `getCategoryList` | `WidgetLayout` | `collapseAfter?`（默认 5） |
-| `tags` | `Tags` | `getTagList` | `WidgetLayout` | `collapseAfter?`（默认 20） |
-| `series` | `Series` | `getSeriesCatalog` + `getSortedPostsList` | `WidgetLayout` | `collapseAfter?`（默认 5）；受 `seriesConfig.enable` 控制，无系列实体时不渲染 |
-| `announcement` | `Announcement` | `announcementConfig` | 无（Banner round） | — |
-| `stats` | `SiteStats` | `getSiteStats` | `WidgetLayout` | — |
-| `calendar` | `Calendar` | `getCalendarData` | `WidgetLayout` | `startOfWeek?`（默认 `"mon"`） |
-| `music` | `MusicSidebar`（organisms） | `musicConfig` | `WidgetLayout` | —（内容与初始状态来自全局配置） |
+| `profile` | `Profile`（organisms） | 资料设置 | 无（自带头像卡） | — |
+| `categories` | `Categories` | bootstrap `categories` | `WidgetLayout` | `collapseAfter?`（默认 5） |
+| `tags` | `Tags` | bootstrap `tags` | `WidgetLayout` | `collapseAfter?`（默认 20） |
+| `series` | `Series` | bootstrap `series` | `WidgetLayout` | `collapseAfter?`（默认 5）；无含公开文章的系列时不渲染 |
+| `recentPosts` | `RecentPosts` | bootstrap `recentPosts` | `WidgetLayout` | `collapseAfter?`（默认 5） |
+| `announcement` | `Announcement` | 公告设置 | 无（Banner round） | — |
+| `stats` | `SiteStats` | bootstrap `stats` | `WidgetLayout` | — |
 | `toc` | `SidebarTOC` | 当前文章 headings | `WidgetLayout` | —（通常限定 `pages: ["post"]`） |
 
 逐个文档见 `sidebar-widgets.md`。

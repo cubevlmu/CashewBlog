@@ -18,12 +18,10 @@ Shirone 作为偏二次元现代风格的 **M3E（Material 3 Expressive 2025）*
 2. **零额外负担与 CSS-First SSR 直出（Zero Extra Burden & CSS-First Zero-Flicker）**：
    - 绝不依赖客户端 JS（如 `window.innerWidth`）进行首次显隐计算，彻底杜绝首屏闪烁（FOUC）与累计布局偏移（CLS = 0）；
    - 在 SSR 构建期通过纯函数生成确定的 Tailwind 响应式类名（如 `flex lg:hidden`、`hidden lg:flex`）；
-   - 当特性关闭（如未开启评论或文章禁用评论）时，输出 **0 DOM 节点、0 外部请求、0 样式开销**。
+   - 当特性关闭时，输出 **0 DOM 节点、0 外部请求、0 样式开销**。
 3. **严格原子化解耦（Strict Atomic Hierarchy）**：
    - 遵循 `atoms` → `molecules` → `organisms` → `layouts` 单向依赖规范；
    - 单一 TOC 架构：旧版冗余的 `TOC.astro` 予以移除，侧栏目录直接封装于 `SidebarTOC.astro`，移动端目录由 `FloatingTOCPanel.astro` 独立承载。
-4. **架构纯粹与单一职责（No Music in FAB）**：
-   - FAB 控制流不集成音乐播放器，音乐播放能力由专属的持久侧栏组件（`MusicSidebar`）独立管理，保持 FAB 结构轻量与纯粹。
 
 ---
 
