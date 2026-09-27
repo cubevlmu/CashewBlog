@@ -11,7 +11,6 @@
  * data-current-page（#swup-container，Swup 同步属性）重新过滤。
  */
 import Announcement from "@components/molecules/Announcement.astro";
-import Calendar from "@components/molecules/Calendar.astro";
 import Categories from "@components/molecules/Categories.astro";
 import Series from "@components/molecules/Series.astro";
 import SidebarTOC from "@components/molecules/SidebarTOC.astro";
@@ -20,7 +19,6 @@ import Tags from "@components/molecules/Tags.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { isWidgetVisibleOnPage, pagesToAttribute } from "@utils/sidebar-page";
-import { musicConfig, resolveMusicOptions } from "@/config/musicConfig";
 import { sidebarConfig } from "@/config/sidebarConfig";
 import type {
 	SidebarColumn,
@@ -55,16 +53,6 @@ const ariaLabel =
 		? i18n(I18nKey.sidebarSecondary)
 		: i18n(I18nKey.sidebar);
 
-const musicOptions = resolveMusicOptions(musicConfig);
-const hasEnabledMusicWidget =
-	sidebarConfig.enable &&
-	sidebarConfig.components.some(
-		(widget) => widget.type === "music" && widget.enable,
-	);
-const MusicSidebar =
-	musicOptions && hasEnabledMusicWidget
-		? (await import("virtual:shirone-music-sidebar")).default
-		: null;
 
 // widget 类型 → 组件（键必须覆盖 SidebarWidget 的全部 type）
 const componentMap = {
@@ -74,9 +62,7 @@ const componentMap = {
 	series: Series,
 	announcement: Announcement,
 	stats: SiteStats,
-	calendar: Calendar,
 	toc: SidebarTOC,
-	music: MusicSidebar,
 } satisfies Record<SidebarWidget["type"], unknown>;
 
 type WidgetRenderer = (props: Record<string, unknown>) => unknown;
@@ -87,8 +73,7 @@ const widgets = sidebarConfig.enable
 	? sidebarConfig.components.filter(
 			(widget) =>
 				widget.enable &&
-				(widget.column ?? "primary") === column &&
-				(widget.type !== "music" || MusicSidebar !== null),
+				(widget.column ?? "primary") === column,
 		)
 	: [];
 const topWidgets = widgets.filter((widget) => widget.slot === "top");

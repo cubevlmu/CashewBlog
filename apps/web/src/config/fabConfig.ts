@@ -12,7 +12,6 @@ import { withUserConfig } from "../utils/config-overlay.ts";
  * - items：操作按钮清单（按数组顺序渲染）：
  *   - type: "top" —— 平滑返回顶部按钮（滚过横幅后自动浮现）；
  *   - type: "toc" —— 悬浮文章目录面板（桌面端已有侧栏粘性 TOC，默认仅在 mobile/tablet 显示）；
- *   - type: "comment" —— 直达评论区按钮（评论系统关闭或文章关闭评论时零 DOM 产物）；
  *   - type: "home" —— 返回首页按钮（onlySubPages: true 表示仅在非首页展示）；
  *   - devices：受控设备矩阵（"mobile" | "tablet" | "desktop"），省略表示全设备生效；
  *   - pages：页面范围过滤（如 ["post"]）。
@@ -40,12 +39,6 @@ export const fabConfig: FabConfig = withUserConfig("fab", {
 			pages: ["post"],
 			depth: 3,
 			closeOnSelect: true,
-		},
-		{
-			type: "comment",
-			enable: true,
-			devices: ["mobile", "tablet"],
-			pages: ["post"],
 		},
 		{
 			type: "home",

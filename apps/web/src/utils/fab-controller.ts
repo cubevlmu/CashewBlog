@@ -220,8 +220,7 @@ class FabController {
 	}
 
 	public openToc(): void {
-		// 打开前总是从侧栏源（#toc nav.m3-blog-toc）刷新目录内容：
-		// 加密文章解锁后侧栏 TOC 由 post-decryption 客户端重建，
+		// 打开前总是从侧栏源（#toc nav.m3-blog-toc）刷新目录内容，
 		// 悬浮面板需还原实时状态而非残留 SSR 空态。
 		this.syncFloatingToc();
 		const panel = document.getElementById("floating-toc-panel");
@@ -258,28 +257,6 @@ class FabController {
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	}
 
-	public scrollToComment(): void {
-		const button = document.getElementById("fab-comment-btn");
-		let target: Element | null = null;
-		const selector = button?.dataset.fabTargetSelector;
-		if (selector) {
-			try {
-				target = document.querySelector(selector);
-			} catch {
-				target = null;
-			}
-		}
-		target ||=
-			document.getElementById("comments") ||
-			document.querySelector("[data-comment-section]") ||
-			document.querySelector("#comment-container") ||
-			document.querySelector("#twikoo") ||
-			document.querySelector(".comment-section");
-		if (target) {
-			target.scrollIntoView({ behavior: "smooth" });
-		}
-	}
-
 	public navigateToHome(): void {
 		const homeUrl = (document.documentElement.dataset.base || "/") as string;
 		if (window.swup) {
@@ -293,7 +270,6 @@ class FabController {
 		this.resetMobileVisibility();
 		const container = document.getElementById("swup-container");
 		const currentPage = container?.dataset.currentPage;
-		const hasCommentsAttr = container?.dataset.hasComments;
 		const items = document.querySelectorAll<HTMLElement>("[data-fab-item]");
 
 		let visibilityChanged = false;
@@ -308,18 +284,6 @@ class FabController {
 			}
 			if (type === "home" && item.dataset.fabOnlySubPages === "true") {
 				isAllowed = isAllowed && currentPage !== "home";
-			}
-
-			// 评论按钮专属检测：若当前页面未启用/无评论区，则隐藏
-			if (type === "comment") {
-				const commentSectionExists = Boolean(
-					document.querySelector("#comments, [data-comment-section]"),
-				);
-				const isCommentActive =
-					hasCommentsAttr === "true" || commentSectionExists;
-				if (!isCommentActive) {
-					isAllowed = false;
-				}
 			}
 
 			const nextAllowed = String(isAllowed);

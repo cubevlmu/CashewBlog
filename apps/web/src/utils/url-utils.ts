@@ -1,10 +1,5 @@
-import { permalinkConfig } from "../config/permalinkConfig.ts";
 import type I18nKey from "../i18n/i18nKey.ts";
 import { i18n } from "../i18n/translation.ts";
-import {
-	generatePermalinkSlug,
-	type PostLikeForPermalink,
-} from "./permalink-utils.ts";
 
 /**
  * 移除文件扩展名（.md, .mdx, .markdown）
@@ -34,53 +29,12 @@ export function getPostUrlBySlug(slug: string): string {
 	return url(`/posts/${slugWithoutExt}/`);
 }
 
-export function getPostUrlByAlias(alias: string): string {
-	let cleanAlias = alias.replace(/^\/+/, "").replace(/\/+$/, "");
-	if (cleanAlias.startsWith("posts/")) {
-		cleanAlias = cleanAlias.replace(/^posts\//, "");
-	}
-	return url(`/posts/${cleanAlias}/`);
-}
 
 export function getPostUrl(
-	post:
-		| PostLikeForPermalink
-		| {
-				id?: string;
-				slug?: string;
-				url?: string;
-				data?: {
-					alias?: string;
-					permalink?: string;
-					published?: Date;
-					publishedAt?: Date;
-					category?: string | null;
-					draft?: boolean;
-				};
-		  },
+	post: { id?: string; slug?: string; url?: string },
 ): string {
-	if ("url" in post && typeof post.url === "string" && post.url.length > 0) {
-		return post.url;
-	}
-
-	if (post.data?.permalink && post.data.permalink.trim().length > 0) {
-		const slug = post.data.permalink.replace(/^\/+/, "").replace(/\/+$/, "");
-		return url(`/${slug}/`);
-	}
-
-	if (permalinkConfig.enable) {
-		const slug = generatePermalinkSlug(post as PostLikeForPermalink);
-		return url(`/${slug}/`);
-	}
-
-	if (post.data?.alias && post.data.alias.trim().length > 0) {
-		return getPostUrlByAlias(post.data.alias);
-	}
-
-	const postId =
-		(post as { id?: string; slug?: string }).id ??
-		(post as { id?: string; slug?: string }).slug ??
-		"";
+	if ("url" in post && typeof post.url === "string" && post.url.length > 0) return post.url;
+	const postId = post.id ?? post.slug ?? "";
 	return getPostUrlBySlug(postId);
 }
 

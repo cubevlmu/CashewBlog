@@ -7,10 +7,6 @@ import { spawn } from "node:child_process";
 
 const TEST_PAGES = [
 	{ name: "Home", path: "/" },
-	{ name: "Friends", path: "/friends/" },
-	{ name: "Projects", path: "/projects/" },
-	{ name: "Anime", path: "/anime/" },
-	{ name: "Moments", path: "/moments/" },
 	{ name: "Archive", path: "/archive/" },
 ];
 

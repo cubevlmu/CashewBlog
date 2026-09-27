@@ -37,13 +37,6 @@ function fail(path: string, message: string): never {
 	throw new Error(`Invalid font configuration at ${path}: ${message}`);
 }
 
-/** 校验正有限数 */
-function assertFinitePositive(value: number, path: string): void {
-	if (!Number.isFinite(value) || value <= 0) {
-		fail(path, "must be a positive finite number");
-	}
-}
-
 /** 校验字体字重（单数字 1-1000 或升序范围字符串 "100 800"） */
 function validateWeight(weight: FontVariant["weight"], path: string): void {
 	if (typeof weight === "number") {
@@ -163,14 +156,6 @@ export function resolveFontOptions(config: FontConfig): ResolvedFontOptions {
 		fail("mode", "must be system or custom");
 	if (!Array.isArray(config.fontFamilies))
 		fail("fontFamilies", "must be an array");
-	if (typeof config.subsetting.allowRemoteText !== "boolean") {
-		fail("subsetting.allowRemoteText", "must be a boolean");
-	}
-	assertFinitePositive(config.budget.maxTotalBytes, "budget.maxTotalBytes");
-	assertFinitePositive(config.budget.maxFamilyBytes, "budget.maxFamilyBytes");
-	if (config.budget.maxFamilyBytes > config.budget.maxTotalBytes) {
-		fail("budget.maxFamilyBytes", "cannot exceed budget.maxTotalBytes");
-	}
 
 	const roles: Record<FontRole, ResolvedFontRole> = {
 		body: emptyRole("body"),
@@ -220,8 +205,6 @@ export function resolveFontOptions(config: FontConfig): ResolvedFontOptions {
 		preloadRoles: (Object.keys(roles) as FontRole[]).filter(
 			(role) => roles[role].preload,
 		),
-		subsetting: { ...config.subsetting },
-		budget: { ...config.budget },
 	};
 }
 

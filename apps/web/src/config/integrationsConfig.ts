@@ -9,6 +9,8 @@ import type swup from "@swup/astro";
 import type expressiveCode from "astro-expressive-code";
 import type icon from "astro-icon";
 import type { AstroUserConfig } from "astro";
+// Pulls in the `showLineNumbers` block-prop augmentation.
+import type {} from "@expressive-code/plugin-line-numbers";
 
 /**
  * 所有模式共享的集成选项。
@@ -267,21 +269,3 @@ export const prebundleSpecifiers = [
 	"@fancyapps/ui",
 ];
 
-/**
- * 可选音乐侧栏的虚拟模块 id。
- *
- * 两侧的插件对象本身不共享（解析出来的侧栏路径不同：源码模式指向
- * `./src/components/...`，包模式指向 `paths.packageSrc` 下的同名文件），但虚拟
- * id 和「哪些产物算音乐包」的判定两侧完全一致，而且正是最容易悄悄改歪的地方，
- * 所以收敛到这里。
- */
-export const MUSIC_SIDEBAR_VIRTUAL_ID = "virtual:shirone-music-sidebar";
-
-/** 关掉音乐组件时，`generateBundle` 阶段要从产物里剔除的文件。 */
-export function isMusicBundleFile(fileName: string): boolean {
-	return (
-		fileName.includes("MusicSidebarClient") ||
-		fileName.startsWith("_astro/music.") ||
-		fileName.includes("/music.")
-	);
-}

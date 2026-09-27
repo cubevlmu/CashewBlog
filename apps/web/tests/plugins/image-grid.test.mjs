@@ -18,9 +18,9 @@ async function render(markdown) {
 }
 
 const THREE_IMAGES = [
-	"![alpha](/images/albums/AcgExample/01.webp)",
-	"![beta](/images/albums/AcgExample/02.webp)",
-	"![gamma](/images/albums/AcgExample/03.webp)",
+	"![alpha](/images/demo-01.webp)",
+	"![beta](/images/demo-02.webp)",
+	"![gamma](/images/demo-03.webp)",
 ].join("\n");
 
 test("renders a default grid with three tracks and one lightbox group", async () => {
@@ -47,7 +47,7 @@ test("renders a default grid with three tracks and one lightbox group", async ()
 
 	// 链接保持无样式污染标记，href 指向原图
 	assert.match(html, /class="image-grid__link no-styling"/);
-	assert.match(html, /href="\/images\/albums\/AcgExample\/01.webp"/);
+	assert.match(html, /href="\/images\/demo-01\.webp"/);
 });
 
 test("accepts valid columns, aspect and fit attributes", async () => {
@@ -85,9 +85,9 @@ test("uses title over alt for captions and skips figcaption when both are empty"
 	const html = await render(
 		[
 			":::grid",
-			"![alt only](/images/albums/AcgExample/01.webp)",
-			'![ignored alt](/images/albums/AcgExample/02.webp "the caption")',
-			"![](/images/albums/AcgExample/03.webp)",
+			"![alt only](/images/demo-01.webp)",
+			'![ignored alt](/images/demo-02.webp "the caption")',
+			"![](/images/demo-03.webp)",
 			":::",
 		].join("\n"),
 	);
@@ -110,11 +110,11 @@ test("assigns independent lightbox groups per grid", async () => {
 	const html = await render(
 		[
 			":::grid",
-			"![one](/images/albums/AcgExample/01.webp)",
+			"![one](/images/demo-01.webp)",
 			":::",
 			"",
 			":::grid",
-			"![two](/images/albums/AcgExample/02.webp)",
+			"![two](/images/demo-02.webp)",
 			":::",
 		].join("\n"),
 	);

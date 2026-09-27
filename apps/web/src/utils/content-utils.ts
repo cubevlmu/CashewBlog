@@ -5,15 +5,13 @@ import {
 	comparePublicationEntries,
 	validatePublicationMetadata,
 } from "@utils/content-date";
-import { siteMarkdownProcessor } from "@utils/markdown-processor";
-import { initPostIdMap } from "@utils/permalink-utils";
 import {
 	findUnknownSeriesSlugs,
 	normaliseSeriesSlug,
 	resolveSeriesPostCategory,
 	type SeriesEntity,
 } from "@utils/series-utils";
-import { getCategoryUrl, getPostUrl, url } from "@utils/url-utils";
+import { getCategoryUrl, getPostUrl } from "@utils/url-utils";
 
 /**
  * 加载系列实体目录（Astro 内容层会缓存集合加载，多次调用成本可忽略）。
@@ -69,7 +67,6 @@ async function getRawSortedPosts(): Promise<CollectionEntry<"posts">[]> {
 		}
 	}
 
-	initPostIdMap(sorted);
 	return sorted;
 }
 
@@ -183,92 +180,4 @@ export async function getCategoryList(): Promise<Category[]> {
 		});
 	}
 	return ret;
-}
-
-// // Moments (动态)：构建期渲染为序列化条目，供页面以 props 传给 Svelte 岛
-export type MomentImage = {
-	src: string;
-	alt: string;
-	/** Responsive list thumbnail; the original src remains the viewer/lightbox source. */
-	thumbnailSrc?: string;
-	thumbnailSrcset?: string;
-};
-
-export type MomentItem = {
-	id: string;
-	/** ISO 字符串（Date 无法跨岛序列化） */
-	published: string;
-	/** 正文 HTML（站点统一 markdown 插件链渲染） */
-	html: string;
-	pinned: boolean;
-	location: string;
-	/** 心情 Iconify 图标名 */
-	mood: string;
-	tags: string[];
-	images: MomentImage[];
-};
-
-/** 渲染器按需创建并缓存（插件加载较重，全构建期只跑一次） */
-let momentsRendererPromise: ReturnType<
-	typeof siteMarkdownProcessor.createRenderer
-> | null = null;
-
-const MOMENT_THUMBNAIL_WIDTHS = [192, 384, 640] as const;
-
-function withMomentThumbnails(image: MomentImage): MomentImage {
-	const resolvedSrc = image.src.startsWith("/") ? url(image.src) : image.src;
-	const match = image.src.match(/^\/images\/moments\/(.+)\.([^./]+)$/i);
-	if (!match) {
-		return {
-			...image,
-			src: resolvedSrc,
-			thumbnailSrc: image.thumbnailSrc
-				? image.thumbnailSrc.startsWith("/")
-					? url(image.thumbnailSrc)
-					: image.thumbnailSrc
-				: resolvedSrc,
-		};
-	}
-	const [, relativePath] = match;
-	const candidates = MOMENT_THUMBNAIL_WIDTHS.map((width) => ({
-		width,
-		src: url(`/assets/moments/thumbnails/${relativePath}-${width}.webp`),
-	}));
-	return {
-		...image,
-		src: resolvedSrc,
-		thumbnailSrc: candidates.find(({ width }) => width === 384)?.src,
-		thumbnailSrcset: candidates
-			.map(({ src, width }) => `${src} ${width}w`)
-			.join(", "),
-	};
-}
-
-export async function getSortedMoments(): Promise<MomentItem[]> {
-	const entries = await getCollection("moments", ({ data }) => {
-		return import.meta.env.PROD ? data.draft !== true : true;
-	});
-
-	const sorted = entries.sort(comparePublicationEntries);
-
-	momentsRendererPromise ??= siteMarkdownProcessor.createRenderer({});
-	const renderer = await momentsRendererPromise;
-
-	return Promise.all(
-		sorted.map(async (entry) => {
-			const { code } = await renderer.render(entry.body ?? "", {
-				frontmatter: entry.data as unknown as Record<string, unknown>,
-			});
-			return {
-				id: entry.id,
-				published: new Date(entry.data.published).toISOString(),
-				html: code,
-				pinned: entry.data.pinned,
-				location: entry.data.location,
-				mood: entry.data.mood,
-				tags: entry.data.tags,
-				images: entry.data.images.map(withMomentThumbnails),
-			} satisfies MomentItem;
-		}),
-	);
 }

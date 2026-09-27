@@ -1,5 +1,3 @@
-export type { PermalinkConfig } from "./permalinkConfig.ts";
-
 import type { AUTO_MODE, DARK_MODE, LIGHT_MODE } from "@constants/constants";
 import type { TextureConfig } from "./textureConfig";
 
@@ -90,17 +88,7 @@ export type SiteConfig = {
 	/** 显示设置浮层各切换项的前端可见性控制 */
 	displaySettings?: DisplaySettingsConfig;
 
-	lang:
-		| "en"
-		| "zh_CN"
-		| "zh_TW"
-		| "ja"
-		| "ko"
-		| "es"
-		| "th"
-		| "vi"
-		| "tr"
-		| "id";
+	lang: "zh_CN";
 
 	/** IANA time zone used to interpret precise content timestamps. */
 	timeZone: string;
@@ -153,11 +141,6 @@ export type ProfileConfig = {
 	}[];
 };
 
-export type LicenseConfig = {
-	enable: boolean;
-	name: string;
-	url: string;
-};
 
 export type LIGHT_DARK_MODE =
 	| typeof LIGHT_MODE

@@ -12,7 +12,6 @@ const postsCollection = defineCollection({
 		updatedAt: z.date().optional(),
 		pinned: z.boolean().optional().default(false),
 		draft: z.boolean().optional().default(false),
-		comment: z.boolean().optional().default(true),
 		description: z.string().optional().default(""),
 		image: z.string().optional().default(""),
 		tags: z.array(z.string()).optional().default([]),
@@ -25,20 +24,8 @@ const postsCollection = defineCollection({
 			.transform((value) => value.trim()),
 		/** 系列内顺序；缺省回退为按发布日期排 */
 		seriesOrder: z.number().int().optional(),
-		lang: z.string().optional().default(""),
 
-		/* Post Encryption */
-		encrypted: z.boolean().optional().default(false),
-		password: z
-			.union([z.string(), z.number()])
-			.transform((v) => String(v))
-			.optional(),
-		passwordHint: z.string().optional().default(""),
-		hideHomeContent: z.boolean().optional().default(true),
-
-		/* Post alias & custom permalink */
-		alias: z.string().optional(),
-		permalink: z.string().optional(),
+		/* Post alias & custom permalink (removed in dynamic migration) */
 
 		/* For internal use */
 		prevUrl: z.string().optional(),
@@ -68,31 +55,9 @@ const seriesCollection = defineCollection({
 	}),
 });
 
-const momentsCollection = defineCollection({
-	loader: glob({ base: "./src/content/moments", pattern: "**/*.md" }),
-	schema: z.object({
-		published: z.date(),
-		pinned: z.boolean().optional().default(false),
-		location: z.string().optional().default(""),
-		/** Mood icon (Iconify name, e.g. `material-symbols:sentiment-excited-outline-rounded`). */
-		mood: z.string().optional().default(""),
-		tags: z.array(z.string()).optional().default([]),
-		images: z
-			.array(
-				z.object({
-					src: z.string(),
-					alt: z.string().optional().default(""),
-				}),
-			)
-			.optional()
-			.default([]),
-		draft: z.boolean().optional().default(false),
-	}),
-});
 
 export const collections = {
 	posts: postsCollection,
 	spec: specCollection,
 	series: seriesCollection,
-	moments: momentsCollection,
 } as const;

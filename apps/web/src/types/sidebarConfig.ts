@@ -30,22 +30,11 @@ export type SidebarPage =
 	| "notFound" // 404 页面
 	| "home" // 首页（[...page].astro 及其分页）
 	| "archive" // 归档
-	| "friends" // 友链
-	| "moments" // 动态
-	| "anime" // 番剧收藏
-	| "compass" // 站点罗盘
-	| "skills" // 技能
-	| "projects" // 项目
-	| "devices" // 设备展示
-	| "games" // 游戏展示
-	| "timeline" // 时间线
-	| "albums" // 相册
 	| "about" // 关于
 	| "categories" // 分类索引
 	| "tags" // 标签索引
 	| "series" // 系列索引
 	| "rss" // RSS 订阅指南
-	| "atom" // Atom 订阅指南
 	| "post"; // 文章详情页
 
 /** 资料卡（内容来自 profileConfig，无 WidgetLayout 标题外壳） */
@@ -104,7 +93,7 @@ export interface AnnouncementWidget {
 	pages?: SidebarPage[];
 }
 
-/** 站点统计（数据自动汇总：文章/动态/分类/标签/总字数/运行天数） */
+/** 站点统计（数据自动汇总：文章/分类/标签/总字数/运行天数） */
 export interface StatsWidget {
 	type: "stats";
 	enable: boolean;
@@ -114,17 +103,6 @@ export interface StatsWidget {
 	pages?: SidebarPage[];
 }
 
-/** 月度文章历（有文日填色标记，点击日期展开当日文章） */
-export interface CalendarWidget {
-	type: "calendar";
-	enable: boolean;
-	slot: SidebarWidgetSlot;
-	column?: SidebarColumn;
-	/** 限定显示的页面，省略或空数组表示所有页面 */
-	pages?: SidebarPage[];
-	/** 周起始日，默认 mon（周一） */
-	startOfWeek?: "mon" | "sun";
-}
 
 /** 文章目录（仅文章详情页显示） */
 export interface TocWidget {
@@ -135,15 +113,6 @@ export interface TocWidget {
 	pages?: SidebarPage[];
 }
 
-/** 持久音乐播放器（内容来自 musicConfig） */
-export interface MusicWidget {
-	type: "music";
-	enable: boolean;
-	slot: SidebarWidgetSlot;
-	column?: SidebarColumn;
-	/** 限定显示的页面，省略或空数组表示所有页面 */
-	pages?: SidebarPage[];
-}
 
 export type SidebarWidget =
 	| ProfileWidget
@@ -152,9 +121,7 @@ export type SidebarWidget =
 	| SeriesWidget
 	| AnnouncementWidget
 	| StatsWidget
-	| CalendarWidget
-	| TocWidget
-	| MusicWidget;
+	| TocWidget;
 
 /**
  * 侧栏整体配置。components 渲染顺序 = 数组顺序，top 恒排在 sticky 之前。

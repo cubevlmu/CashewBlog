@@ -1,7 +1,7 @@
 ---
 /**
  * FeedGuide.astro
- * RSS 与 Atom 订阅引导有机体组件：展示订阅地址、快速复制、原始 XML 链接、阅读器推荐与最新推送预览。
+ * RSS 订阅引导有机体组件：展示订阅地址、快速复制、原始 XML 链接、阅读器推荐与最新推送预览。
  */
 import AccentBar from "@components/atoms/display/AccentBar.svelte";
 import Card from "@components/atoms/display/Card.svelte";
@@ -13,16 +13,9 @@ import { getPostUrl, url } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
 import { siteConfig } from "@/config";
 
-interface Props {
-	type: "rss" | "atom";
-}
-
-const { type } = Astro.props;
-const isRss = type === "rss";
-const title = i18n(isRss ? I18nKey.rss : I18nKey.atom);
-const subtitle = i18n(isRss ? I18nKey.rssSubtitle : I18nKey.atomSubtitle);
-const feedPath = isRss ? "rss.xml" : "atom.xml";
-const feedUrl = url(feedPath);
+const title = i18n(I18nKey.rss);
+const subtitle = i18n(I18nKey.rssSubtitle);
+const feedUrl = url("rss.xml");
 const siteBase = Astro.site ? Astro.site.href : siteConfig.site;
 const feedAbsoluteUrl = new URL(feedUrl, siteBase).href;
 
@@ -35,7 +28,7 @@ const posts = allPosts.slice(0, 6);
 	<Card color="var(--card-bg)" radius="l" class="p-6 md:p-8 mb-4 onload-animation">
 		<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
 			<div class="flex items-center justify-center w-14 h-14 rounded-[var(--shape-corner-m)] bg-[var(--primary)] text-[var(--on-primary)] shrink-0 shadow-[var(--m3e-elevation-1)]">
-				<Icon name={isRss ? "material-symbols:rss-feed-rounded" : "material-symbols:cell-tower-rounded"} class="text-3xl" />
+				<Icon name="material-symbols:rss-feed-rounded" class="text-3xl" />
 			</div>
 			<div class="flex-1 min-w-0">
 				<div class="flex items-center gap-2 mb-1">

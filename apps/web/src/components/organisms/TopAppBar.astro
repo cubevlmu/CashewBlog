@@ -11,7 +11,6 @@ import { url } from "@utils/url-utils";
 import { Icon } from "astro-icon/components";
 import { siteConfig } from "@/config";
 import { navBarConfig } from "@/config/navBarConfig";
-import DisplaySettings from "./DisplaySettings.svelte";
 import LightDarkSwitch from "./LightDarkSwitch.svelte";
 import Search from "./Search.svelte";
 
@@ -86,13 +85,7 @@ function isActive(link: (typeof links)[number]): boolean {
 		</nav>
 		<div class="flex-1"></div>
 		<Search client:only="svelte"></Search>
-		{!siteConfig.themeColor.fixed && (
-			<IconButton id="display-settings-switch" label="Display Settings" class="shrink-0">
-				<Icon name="material-symbols:palette-outline" class="text-[1.25rem]"></Icon>
-			</IconButton>
-		)}
 		<LightDarkSwitch client:only="svelte"></LightDarkSwitch>
-		<DisplaySettings client:only="svelte" class="top-full right-4 max-w-[calc(100vw-2rem)] md:right-0"></DisplaySettings>
 	</div>
 </div>
 
@@ -134,15 +127,6 @@ function isActive(link: (typeof links)[number]): boolean {
 			};
 		}
 
-		const settingBtn = document.getElementById("display-settings-switch");
-		if (settingBtn) {
-			settingBtn.onclick = () => {
-				const settingPanel = document.getElementById("display-setting");
-				if (settingPanel) {
-					settingPanel.classList.toggle("float-panel-closed");
-				}
-			};
-		}
 
 		syncTopAppBarNavigation();
 		document.querySelectorAll<HTMLElement>("[data-nav-key]").forEach((link) => {

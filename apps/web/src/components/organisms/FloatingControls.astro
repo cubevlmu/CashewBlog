@@ -12,17 +12,16 @@ import { Icon } from "astro-icon/components";
  * 右下角悬浮控制流有机体：统领全站 FAB 导航项、响应式设备适配与 Swup 生命周期。
  * 严格遵循【零额外负担】原则：评论系统未启用或当前文章禁用评论时，不输出评论按钮。
  */
-import { commentConfig, fabConfig, resolveCommentOptions } from "@/config";
+import { fabConfig } from "@/config";
 import { BANNER_HEIGHT } from "@/constants/constants";
 import type { SidebarPage } from "@/types/sidebarConfig";
 
 interface Props {
 	headings?: MarkdownHeading[];
 	page?: SidebarPage;
-	hasComments?: boolean;
 }
 
-const { headings = [], page, hasComments } = Astro.props;
+const { headings = [], page } = Astro.props;
 
 if (!fabConfig.enable) {
 	return null;
@@ -30,13 +29,9 @@ if (!fabConfig.enable) {
 
 const enabledItems = fabConfig.items.filter((item) => item.enable);
 const tocItem = enabledItems.find((i) => i.type === "toc");
-const commentItem = enabledItems.find((i) => i.type === "comment");
 const homeItem = enabledItems.find((i) => i.type === "home");
 const topItem = enabledItems.find((i) => i.type === "top");
 
-// 零额外负担：全局评论系统未启用或未配置时，不渲染评论 FAB 按钮
-const isCommentSystemEnabled = Boolean(resolveCommentOptions(commentConfig));
-const isCommentActiveOnPage = isCommentSystemEnabled && (hasComments ?? false);
 const isHomeItemVisible = homeItem
 	? isWidgetVisibleOnPage(homeItem.pages, page) &&
 		(!homeItem.onlySubPages || page !== "home")
@@ -82,24 +77,8 @@ const isHomeItemVisible = homeItem
 		</div>
 	)}
 
-	<!-- 2. 直达评论区：仅当站点已启用评论系统时渲染 -->
-	{commentItem && isCommentSystemEnabled && (
-		<FloatingActionButton
-			id="fab-comment-btn"
-			type="comment"
-			ariaLabel={i18n(I18nKey.backToComment)}
-			devices={commentItem.devices}
-			pages={commentItem.pages ?? ["post"]}
-			size={fabConfig.size}
-			targetSelector={commentItem.targetSelector}
-			class={(!isWidgetVisibleOnPage(commentItem.pages, page) || !isCommentActiveOnPage) ? "is-page-hidden" : ""}
-			onclick="window.__shironeFab?.scrollToComment()"
-		>
-			<Icon name="material-symbols:chat-bubble-outline-rounded" class="text-xl" />
-		</FloatingActionButton>
-	)}
 
-	<!-- 3. 返回首页 -->
+	<!-- 2. 返回首页 -->
 	{homeItem && (
 		<FloatingActionButton
 			id="fab-home-btn"
@@ -116,7 +95,7 @@ const isHomeItemVisible = homeItem
 		</FloatingActionButton>
 	)}
 
-	<!-- 4. 返回顶部（默认带滚动阈值隐藏） -->
+	<!-- 3. 返回顶部（默认带滚动阈值隐藏） -->
 	{topItem && (
 		<FloatingActionButton
 			id="fab-top-btn"

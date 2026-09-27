@@ -8,14 +8,12 @@ import { seriesConfig } from "../config/seriesConfig.ts";
 import {
 	getCategoryList,
 	getSeriesCatalog,
-	getSortedMoments,
 	getSortedPosts,
 	getTagList,
 } from "./content-utils";
 
 export interface SiteStats {
 	posts: number;
-	moments: number;
 	categories: number;
 	tags: number;
 	/** 系列实体数 */
@@ -35,9 +33,8 @@ let cache: SiteStats | null = null;
 export async function getSiteStats(): Promise<SiteStats> {
 	if (cache) return cache;
 
-	const [posts, moments, categories, tags, seriesCatalog] = await Promise.all([
+	const [posts, categories, tags, seriesCatalog] = await Promise.all([
 		getSortedPosts(),
-		getSortedMoments(),
 		getCategoryList(),
 		getTagList(),
 		// 功能关闭时不查集合（SiteStats 也不产出系列行）
@@ -61,7 +58,6 @@ export async function getSiteStats(): Promise<SiteStats> {
 
 	cache = {
 		posts: posts.length,
-		moments: moments.length,
 		categories: categories.length,
 		tags: tags.length,
 		/** 系列实体数（功能关闭时为 0，SiteStats 不产出该行） */

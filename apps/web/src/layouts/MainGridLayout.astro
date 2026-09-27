@@ -37,7 +37,6 @@ interface Props {
 	 *  #swup-container 的 data-current-page——Swup 替换容器时同步该属性，
 	 *  侧栏据此在站内导航后重新过滤 */
 	page?: SidebarPage;
-	hasComments?: boolean;
 }
 
 const {
@@ -51,7 +50,6 @@ const {
 	headings = [],
 	postCategory,
 	page,
-	hasComments,
 } = Astro.props;
 
 // 响应式侧栏配置（数据驱动布局）
@@ -94,7 +92,6 @@ const mainContentClasses = generateMainContentClasses(sidebarResponsive);
                     id="swup-container"
                     data-current-post-category={postCategory || ""}
                     data-current-page={page}
-                    data-has-comments={hasComments ? "true" : "false"}
                     data-banner-title={title || ""}
                     data-banner-description={description || ""}
                     data-banner-date={bannerDate || ""}
@@ -116,7 +113,7 @@ const mainContentClasses = generateMainContentClasses(sidebarResponsive);
             </div>
         </div>
 
-        <FloatingControls page={page} headings={headings} hasComments={hasComments} />
+        <FloatingControls page={page} headings={headings} />
         <RouteProgress client:load />
     </div>
 </div>

@@ -21,7 +21,7 @@ async function render(markdown) {
 	return code;
 }
 
-const IMAGE = "/images/albums/AcgExample/01.webp";
+const IMAGE = "/logo/icon.webp";
 
 test("parses the w-N% width token out of alt text", () => {
 	assert.deepEqual(parseMarkdownImageAlt("A demo image w-50%"), {

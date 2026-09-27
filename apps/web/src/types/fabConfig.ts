@@ -46,14 +46,8 @@ export interface FabTocConfig extends BaseFabItemConfig {
 	closeOnSelect?: boolean;
 }
 
-/** 3. 直达评论（BackToComment）：快速平滑滚动至评论区 */
-export interface FabCommentConfig extends BaseFabItemConfig {
-	type: "comment";
-	/** 评论容器选择器（默认 "#comment-container"） */
-	targetSelector?: string;
-}
 
-/** 4. 返回首页（BackToHome）：非首页路由快速返回根目录 */
+/** 3. 返回首页（BackToHome）：非首页路由快速返回根目录 */
 export interface FabHomeConfig extends BaseFabItemConfig {
 	type: "home";
 	/** 是否仅在非首页路由（!isHomePage）时显示（默认 true） */
@@ -64,7 +58,6 @@ export interface FabHomeConfig extends BaseFabItemConfig {
 export type FabItemConfig =
 	| FabTopConfig
 	| FabTocConfig
-	| FabCommentConfig
 	| FabHomeConfig;
 
 /**

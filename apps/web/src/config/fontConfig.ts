@@ -80,26 +80,6 @@ export const fontConfig: FontConfig = withUserConfig("font", {
 		},
 
 		// ---------------------------------------------------------------------
-		// 2. 中文 / 日文 CJK 字体（悠哉圆体 Yozai Medium，全量简繁中日韩 100% 覆盖）
-		// ---------------------------------------------------------------------
-		{
-			id: "yozai-cjk",
-			family: "Yozai Medium",
-			role: "cjk",
-			source: "local",
-			variants: [
-				{
-					file: "src/assets/fonts/Yozai-Medium.ttf",
-					weight: 500,
-					style: "normal",
-				},
-			],
-			fallback: ["system-ui", "sans-serif"],
-			display: "swap",
-			preload: false,
-		},
-
-		// ---------------------------------------------------------------------
 		// 3. 代码等宽字体（渲染代码块与终端文本，对应 CSS 变量 --font-mono）
 		// ---------------------------------------------------------------------
 		{
@@ -131,28 +111,6 @@ export const fontConfig: FontConfig = withUserConfig("font", {
 			preload: false,
 		},
 	],
-
-	/**
-	 * 字体子集化配置（生产构建时自动从文章、i18n、配置及 Meting 歌曲中提取字符，生成极速精简版 .woff2）
-	 * - Dev 开发环境：自动加载完整原字体，任意输入新汉字实时可见，极速 HMR 零等待；
-	 * - Build 生产构建：自动执行子集裁剪，将几十兆大字体压缩为几百 KB 的专属子集，秒开加载。
-	 */
-	subsetting: {
-		enable: true, // 启用自动化子集裁剪
-		includeContent: true, // 扫描 src/content/ 下所有文章
-		includeI18n: true, // 扫描全部 10 种语言词典
-		includeConfig: true, // 扫描站点配置与导航
-		includeCommon: true, // 包含常用标点与基础字符
-		allowRemoteText: true, // 允许抓取 Meting 云端歌单曲目文本参与字形提取
-	},
-
-	/**
-	 * 字体打包体积预算限制（子集化后通常仅 300KB ~ 1MB）
-	 */
-	budget: {
-		maxTotalBytes: 6 * 1024 * 1024, // 全站引用自定义字体总大小上限：6MB
-		maxFamilyBytes: 4 * 1024 * 1024, // 单个字体族文件大小上限：4MB
-	},
 });
 
 /** 经过校验与标准化处理后的字体配置对象，由 Astro 模板与 CSS 消费 */

@@ -4,8 +4,6 @@ import {
 	expressiveCodeShared,
 	IMAGE_ENDPOINT_ROUTE,
 	iconInclude,
-	isMusicBundleFile,
-	MUSIC_SIDEBAR_VIRTUAL_ID,
 	svelteCompilerOptions,
 	swupForwardOptions,
 	swupOptions,
@@ -160,12 +158,4 @@ describe("shared integrations config", () => {
 		assert.deepEqual(forwarded, [other], "every other warning is forwarded");
 	});
 
-	it("matches the music bundle files both modes prune", () => {
-		assert.equal(MUSIC_SIDEBAR_VIRTUAL_ID, "virtual:shirone-music-sidebar");
-		assert.equal(isMusicBundleFile("MusicSidebarClient.js"), true);
-		assert.equal(isMusicBundleFile("_astro/music.abc123.js"), true);
-		assert.equal(isMusicBundleFile("chunks/music.def456.js"), true);
-		assert.equal(isMusicBundleFile("_astro/header.abc123.js"), false);
-		assert.equal(isMusicBundleFile("index.html"), false);
-	});
 });

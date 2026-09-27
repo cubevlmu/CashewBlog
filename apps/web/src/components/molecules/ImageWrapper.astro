@@ -3,7 +3,6 @@ import { Image, Picture } from "astro:assets";
 import path from "node:path";
 import { imageBloomConfig } from "@/config";
 import { getBloomInlineVars } from "../../utils/image-bloom";
-import { getProjectImageLoader } from "../../utils/project-images";
 import { url } from "../../utils/url-utils";
 
 interface Props {
@@ -59,7 +58,7 @@ if (isLocal) {
 	const normalizedPath = path
 		.normalize(path.join("../../", basePath, src))
 		.replace(/\\/g, "/");
-	const file = files[normalizedPath] ?? getProjectImageLoader(src, basePath);
+	const file = files[normalizedPath];
 	if (!file) {
 		console.error(
 			`\n[ERROR] Image file not found: ${normalizedPath.replace("../../", "src/")}`,

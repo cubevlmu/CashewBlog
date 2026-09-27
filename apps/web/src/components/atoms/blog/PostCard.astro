@@ -28,7 +28,6 @@ interface Props {
 	published?: string;
 	updated?: string;
 	pinned?: boolean;
-	encrypted?: boolean;
 	category?: BlogMetaLink | null;
 	tags?: BlogMetaLink[];
 	/** 字数展示文本（如 "1426 words"，渲染在分类右侧） */
@@ -51,7 +50,6 @@ const {
 	published,
 	updated,
 	pinned = false,
-	encrypted = false,
 	category = null,
 	tags = [],
 	wordCount,
@@ -61,14 +59,7 @@ const {
 
 const hasCover = !!image;
 const pinnedLabel = i18n(I18nKey.pinned);
-const encryptedLabel = i18n(I18nKey.postEncryptedBadge);
-/* 置顶 + 加密并存时合入可访问名称，避免屏幕阅读器丢失任一状态 */
-const stateLabels = [
-	pinned ? pinnedLabel : "",
-	encrypted ? encryptedLabel : "",
-].filter(Boolean);
-const titleLabel =
-	stateLabels.length > 0 ? `${title}, ${stateLabels.join(", ")}` : title;
+const titleLabel = pinned ? `${title}, ${pinnedLabel}` : title;
 ---
 
 <article
@@ -83,25 +74,8 @@ const titleLabel =
 		>
 			<AccentBar size="medium" />
 			{pinned && (
-				<span
-					class:list={[
-						"m3-blog-postcard__pin",
-						{ "m3-blog-postcard__pin--locked": encrypted },
-					]}
-					aria-hidden="true"
-					title={encrypted ? `${pinnedLabel}, ${encryptedLabel}` : pinnedLabel}
-				>
+				<span class="m3-blog-postcard__pin" aria-hidden="true" title={pinnedLabel}>
 					<Icon name="material-symbols:keep-rounded" />
-					{encrypted && (
-						<span class="m3-blog-postcard__pin-lock">
-							<Icon name="material-symbols:lock-rounded" />
-						</span>
-					)}
-				</span>
-			)}
-			{encrypted && !pinned && (
-				<span class="m3-blog-postcard__encrypted" aria-hidden="true" title={encryptedLabel}>
-					<Icon name="material-symbols:lock-rounded" />
 				</span>
 			)}
 			{title}
@@ -219,37 +193,6 @@ const titleLabel =
 			width: 1.125rem
 			height: 1.125rem
 
-	&__encrypted
-		display: inline-flex
-		align-items: center
-		justify-content: center
-		flex: 0 0 1.75rem
-		height: 1.75rem
-		border-radius: var(--shape-corner-m)
-		background: var(--tertiary-container)
-		color: var(--on-tertiary-container)
-		> :global(svg)
-			width: 1.125rem
-			height: 1.125rem
-
-	/* 置顶 + 加密角标：tertiary 小锁圆点叠加在 pin 徽标右上角（BadgedBox 语言），
-	   带卡片色描边与背景分离，整体宽度与单 pin 徽标一致 */
-	&__pin-lock
-		position: absolute
-		top: -0.375rem
-		right: -0.375rem
-		display: inline-flex
-		align-items: center
-		justify-content: center
-		width: 1rem
-		height: 1rem
-		border-radius: var(--shape-corner-full)
-		background: var(--tertiary-container)
-		color: var(--on-tertiary-container)
-		box-shadow: 0 0 0 2px var(--card-bg)
-		> :global(svg)
-			width: 0.625rem
-			height: 0.625rem
 
 	/* PostMeta 是 Astro 子组件，需用 global 命中其根节点 */
 	:global(.m3-blog-postcard__meta)

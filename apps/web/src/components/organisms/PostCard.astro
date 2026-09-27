@@ -11,9 +11,7 @@ import PostCard from "@components/atoms/blog/PostCard.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
-import { isEncryptedPost } from "@utils/post-encryption";
 import { getCategoryUrl, getDir, getTagUrl } from "@utils/url-utils";
-import { getProjectImageLoader } from "@utils/project-images";
 
 interface Props {
 	class?: string;
@@ -75,7 +73,7 @@ if (image) {
 			.normalize(path.join("../../", imageBasePath, image))
 			.replace(/\\/g, "/");
 		const file =
-			files[normalizedPath] ?? getProjectImageLoader(image, imageBasePath);
+			files[normalizedPath];
 		if (file) {
 			const mod = await file();
 			try {
@@ -120,16 +118,9 @@ const categoryLink = category
 	: null;
 const tagLinks = tags.map((t) => ({ name: t.trim(), href: getTagUrl(t) }));
 
-const isEncrypted = isEncryptedPost(entry.data);
 const words = remarkPluginFrontmatter.words ?? 0;
-const wordCount =
-	isEncrypted && entry.data.hideHomeContent
-		? undefined
-		: `${words} ${i18n(words === 1 ? I18nKey.wordCount : I18nKey.wordsCount)}`;
-const excerpt =
-	isEncrypted && entry.data.hideHomeContent
-		? i18n(I18nKey.postEncryptedSummary)
-		: description || remarkPluginFrontmatter.excerpt;
+const wordCount = `${words} ${i18n(words === 1 ? I18nKey.wordCount : I18nKey.wordsCount)}`;
+const excerpt = description || remarkPluginFrontmatter.excerpt;
 ---
 
 <PostCard
@@ -147,7 +138,6 @@ const excerpt =
 	published={formatDateToYYYYMMDD(published)}
 	updated={updated ? formatDateToYYYYMMDD(updated) : undefined}
 	pinned={pinned}
-	encrypted={isEncrypted}
 	category={categoryLink}
 	tags={tagLinks}
 	wordCount={wordCount}
