@@ -9,7 +9,7 @@ CashewBlog keeps Shirone's reading experience and Material 3 Expressive visual s
 - **Public frontend:** Astro + Svelte, derived from Shirone, SSR at runtime.
 - **Admin:** Vue 3 + PrimeVue, deliberately simple and operational rather than visually coupled to the public site.
 - **Backend:** ASP.NET Core + EF Core + PostgreSQL, Clean Architecture.
-- **Editing:** Milkdown WYSIWYG-style Markdown editor; Markdown remains the canonical storage format.
+- **Editing:** block-based WYSIWYG Markdown editor assembled from PrimeVue controls; Markdown remains the canonical storage format.
 - **Deployment:** one application image containing ASP.NET, Astro SSR and the built admin assets; PostgreSQL is external.
 - **Operator model:** exactly one administrator password, no user/role/permission subsystem.
 

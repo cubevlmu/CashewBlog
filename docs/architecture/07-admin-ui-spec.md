@@ -1,8 +1,13 @@
 # Admin UI Specification
 
-Stack: **Vue 3 + PrimeVue**.
+Stack: **Vue 3 + PrimeVue 5**.
 
 The admin should optimize implementation speed and operational clarity. It does not need to visually replicate Shirone.
+
+The shell uses the PrimeVue Sidebar compounds: a grouped rail that collapses to icons on desktop and
+becomes an offcanvas panel on mobile. Settings sections are real routes (`/admin/settings/<section>`,
+with `/admin/settings` redirecting to `general`) so the sidebar can group them under 站点设置 and the
+header breadcrumb can address them individually.
 
 ## Routes/menu
 
@@ -95,7 +100,7 @@ Layout:
 │ Back     status/autosave                  Preview  Publish │
 ├─────────────────────────────────┬──────────────────────────┤
 │                                 │ Status                   │
-│ Milkdown editor                 │ Cover                    │
+│ PrimeVue Markdown editor        │ Cover                    │
 │                                 │ Category                 │
 │ toolbar + WYSIWYG               │ Tags                     │
 │                                 │ Series / order           │
@@ -105,6 +110,17 @@ Layout:
 │                                 │ Pinned                   │
 └─────────────────────────────────┴──────────────────────────┘
 ```
+
+Body editor:
+
+- the writing area spans the full editor width, matching the formatting toolbar
+- narrow screens keep block type, bold, italic and insert inline (44px targets); the other
+  actions move into the toolbar's "…" menu so the bar never overflows
+- right click opens a block context menu (clipboard, format, convert, insert, move, delete);
+  Shift + right click keeps the browser menu; on touch or narrow screens long press / right
+  click opens the same actions in a bottom drawer
+- post settings drawer: status overview, then 封面 / 内容信息 / 系列与展示 / 搜索引擎优化 panels
+  (SEO collapsed until used, with a search-result preview); the summary is generated from prose only
 
 Autosave:
 

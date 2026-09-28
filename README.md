@@ -3,8 +3,10 @@
 CashewBlog 是一个**单管理员、数据库驱动的个人博客 CMS**：保留 [Shirone](https://github.com/LyraVoid/Shirone)
 的 Material 3 Expressive 前台视觉与阅读体验，把静态主题改造成可在后台编辑、单镜像部署的动态站点。
 
+![CashewBlog 项目 Logo](cashew_logo.png)
+
 - **前台**：Astro SSR + Svelte（`apps/web`，源自 Shirone）
-- **后台**：Vue 3 + PrimeVue + Milkdown（`apps/admin`，挂载在 `/admin`）
+- **后台**：Vue 3 + PrimeVue（`apps/admin`，挂载在 `/admin`）
 - **后端**：ASP.NET Core 10 + EF Core + PostgreSQL，Clean Architecture（`src/`）
 - **部署**：一个应用镜像（ASP.NET 网关 + Astro Node + 后台静态资源），PostgreSQL 由你自行提供
 
@@ -23,6 +25,10 @@ CashewBlog 是一个**单管理员、数据库驱动的个人博客 CMS**：保�
 docker build -t cashewblog .
 docker run -d -p 8080:8080 -v ./data:/data -v ./uploads:/uploads cashewblog
 ```
+
+后台基于 PrimeVue 5，构建时需要 **PrimeUI license key**：本地放在 `apps/admin/.env.local`
+（`VITE_PRIMEUI_LICENSE=...`，已被 git 忽略，模板见 `apps/admin/.env.example`），Docker 构建用
+`--build-arg VITE_PRIMEUI_LICENSE=...` 传入。缺少有效 key 时后台（仅后台）会显示授权提示。
 
 首次访问 `http://localhost:8080/setup`，按向导填写站点信息、管理员密码、PostgreSQL 连接（数据库需提前创建）
 与上传目录。初始化后配置写入 `/data/config.json`（管理员密码以 Argon2id 哈希保存），之后升级时应用会在启动时
@@ -66,6 +72,9 @@ PostgreSQL 仍由外部服务提供，首次使用仍需先建库和完成 setup
 后台 Vite 单独启动时使用 `http://localhost:5174/admin/`，未初始化时进入 `/admin/setup`。
 只需更新网关里的后台静态资源时运行 `pnpm build:admin`。
 
+后台需要 PrimeUI license key 才能构建出无授权提示的产物：把 `apps/admin/.env.example` 复制为
+`apps/admin/.env.local` 并填入 key（见下方「致谢与许可」）。
+
 检查与测试：
 
 ```bash
@@ -73,8 +82,9 @@ dotnet build CashewBlog.slnx && dotnet test CashewBlog.slnx   # 集成测试需�
 pnpm --filter @cashewblog/web check && pnpm -r test && pnpm -r build
 ```
 
-管理端参考 SiriusNet 的 dashboard 结构：分组侧栏、可折叠导航、顶栏、统计卡片及手机抽屉菜单。
-使用 PrimeVue Aura 橙色主题、明暗模式及组件，以 Tailwind 工具类处理布局，不自写组件皮肤；文章正文使用 Milkdown，页面 HTML/CSS 使用 Monaco。
+管理端参考 SiriusNet 的 dashboard 结构：PrimeVue 5 的 Sidebar 复合组件实现分组侧栏、可折叠图标模式、
+顶栏与手机 offcanvas 导航，设置分区（常规/外观/导航/侧栏/页脚…）作为 `/admin/settings/<分区>` 挂在「站点设置」下面。
+使用 PrimeVue Aura 橙色主题、明暗模式及组件，以 Tailwind 工具类处理布局，不自写组件皮肤；文章正文使用由 PrimeVue 组件组装的所见即所得 Markdown 编辑器（站点扩展语法按原文保留为源码块），页面 HTML/CSS 使用 Monaco。
 所有导航入口均接入 REST API，媒体选择器可用于正文、封面和页面；设置表单覆盖站点外观、导航、侧栏等。
 
 浏览器验收需要一个**已初始化的本地测试实例**（外部 PostgreSQL、API、Astro 都启动），以及 Chrome：
@@ -93,3 +103,6 @@ pnpm test:admin:e2e
 
 前台源自 [Shirone](https://github.com/LyraVoid/Shirone)（MIT，© matsuzaka-yuki，基于 saicaca 的 Fuwari）。
 CashewBlog 以 MIT 许可发布，见 [`LICENSE`](LICENSE)。
+
+后台依赖 **PrimeVue 5**（PrimeUI Community/Commercial 授权，非 MIT），需自备 license key；请按你的使用场景
+确认符合 PrimeUI 的 Community 或 Commercial 条款：<https://primeui.dev/licenses>。

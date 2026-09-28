@@ -1,5 +1,33 @@
 export type Value =
   string | number | boolean | null | Value[] | { [key: string]: Value };
+
+export function isDateField(path: string): boolean {
+  return path === "general.siteStartDate";
+}
+
+export function isCardCollection(path: string): boolean {
+  return [
+    "profile.links",
+    "general.keywords",
+    "seo.keywords",
+    "navigation",
+    "banner.desktop",
+    "banner.mobile",
+    "sidebar.widgets",
+  ].includes(path) || path.endsWith(".children");
+}
+
+export function summarizeValue(value: Value): string {
+  if (typeof value === "string") return value || "未填写";
+  if (Array.isArray(value)) return `${value.length} 项`;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, Value>;
+    return [record.name, record.label, record.title, record.url]
+      .filter((item): item is string => typeof item === "string" && item.length > 0)
+      .join(" · ") || "未填写";
+  }
+  return value === null ? "未填写" : String(value);
+}
 export const labels: Record<string, string> = {
   general: "常规",
   profile: "个人资料",

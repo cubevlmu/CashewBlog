@@ -51,7 +51,9 @@ Rules:
 
 ## 3. Article editor
 
-Use Milkdown, with an editing experience closer to a toolbar-based CMS than raw Markdown.
+Use the in-house PrimeVue block editor (it replaced Milkdown), with an editing experience closer
+to a toolbar-based CMS than raw Markdown. Site extension syntax it cannot edit visually is kept
+verbatim as raw source blocks with a source dialog.
 
 Toolbar/features:
 

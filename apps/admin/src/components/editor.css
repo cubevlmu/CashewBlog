@@ -1,0 +1,264 @@
+/* Semantic styles for the Markdown editing surface. Tailwind's preflight resets headings,
+   lists and quotes, so the document typography is restored here; colours come from
+   PrimeVue theme variables so light and dark mode follow the admin theme. */
+
+.md-editor {
+  --md-border: var(--p-content-border-color);
+  --md-soft: var(--p-content-hover-background);
+  --md-muted: var(--p-text-muted-color);
+  --md-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+.md-content {
+  /* Long press opens the block menu; keep iOS's link/image callout out of the way. */
+  -webkit-touch-callout: none;
+  color: var(--p-text-color);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.md-block {
+  margin: 0.125rem 0;
+}
+
+.md-surface {
+  position: relative;
+  min-height: 1.75em;
+  outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.md-surface.is-empty[data-placeholder]::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  color: var(--md-muted);
+  pointer-events: none;
+}
+p.md-surface {
+  margin: 0;
+  padding: 0.125rem 0;
+}
+h1.md-surface,
+h2.md-surface,
+h3.md-surface,
+h4.md-surface,
+h5.md-surface,
+h6.md-surface {
+  margin: 1rem 0 0.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+h1.md-surface {
+  font-size: 2rem;
+}
+h2.md-surface {
+  font-size: 1.6rem;
+}
+h3.md-surface {
+  font-size: 1.35rem;
+}
+h4.md-surface {
+  font-size: 1.15rem;
+}
+h5.md-surface {
+  font-size: 1rem;
+}
+h6.md-surface {
+  font-size: 0.9rem;
+  color: var(--md-muted);
+}
+blockquote.md-surface {
+  margin: 0.5rem 0;
+  padding: 0.25rem 1rem;
+  border-left: 4px solid var(--p-primary-color);
+  border-radius: 0 0.375rem 0.375rem 0;
+  background: var(--md-soft);
+  color: var(--md-muted);
+}
+blockquote.md-surface p {
+  margin: 0.25rem 0;
+}
+
+.md-list ul,
+.md-list ol {
+  margin: 0.125rem 0;
+  padding-left: 1.5rem;
+}
+.md-list ul {
+  list-style: disc;
+}
+.md-list ul ul {
+  list-style: circle;
+}
+.md-list ol {
+  list-style: decimal;
+  padding-left: 1.75rem;
+}
+.md-list li {
+  margin: 0.125rem 0;
+}
+.md-list li.md-task {
+  list-style: none;
+  margin-left: -1.375rem;
+}
+.md-list li.md-task > input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0 0.5rem 0 0;
+  vertical-align: -0.125rem;
+  accent-color: var(--p-primary-color);
+  cursor: pointer;
+}
+
+.md-surface a {
+  color: var(--p-primary-color);
+  text-decoration: underline;
+}
+.md-surface code {
+  padding: 0.1em 0.35em;
+  border: 1px solid var(--md-border);
+  border-radius: 0.25rem;
+  background: var(--md-soft);
+  font-family: var(--md-mono);
+  font-size: 0.875em;
+}
+.md-atom {
+  display: inline-block;
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+  font-family: var(--md-mono);
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  user-select: all;
+}
+.md-atom:has(> img) {
+  padding: 0;
+  background: none;
+}
+.md-inline-image {
+  display: inline-block;
+  max-height: 8rem;
+  vertical-align: bottom;
+}
+
+.md-code-input {
+  font-family: var(--md-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.md-table {
+  min-width: 100%;
+  border-collapse: collapse;
+}
+.md-table th,
+.md-table td {
+  min-width: 6rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--md-border);
+  vertical-align: top;
+}
+.md-table th {
+  background: var(--md-soft);
+  font-weight: 600;
+}
+.md-table-actions {
+  display: none;
+}
+.md-block.is-active .md-table-actions {
+  display: flex;
+}
+
+.md-image {
+  margin: 0.5rem 0;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  outline: none;
+}
+.md-image img {
+  max-width: 100%;
+  max-height: 32rem;
+  margin: 0 auto;
+  border-radius: 0.5rem;
+}
+.md-image figcaption {
+  margin-top: 0.25rem;
+  color: var(--md-muted);
+  font-size: 0.8rem;
+}
+.md-rule {
+  padding: 0.75rem 0;
+  border-radius: 0.25rem;
+  outline: none;
+}
+.md-rule hr {
+  border: 0;
+  border-top: 2px solid var(--md-border);
+}
+.md-raw {
+  margin: 0.25rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--md-border);
+  border-radius: 0.5rem;
+  background: var(--md-soft);
+  outline: none;
+}
+.md-raw pre {
+  max-height: 12rem;
+  margin: 0.25rem 0 0;
+  overflow: auto;
+  font-family: var(--md-mono);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.md-image:focus-visible,
+.md-rule:focus-visible,
+.md-raw:focus-visible,
+.md-image:focus {
+  box-shadow: 0 0 0 2px var(--p-primary-color);
+}
+
+/* Block handle: hidden on phones (the toolbar opens block actions there), always shown
+   for the active block and revealed on hover only where hover exists. */
+.md-handle {
+  position: absolute !important;
+  top: 0.125rem;
+  left: -2.75rem;
+  display: none !important;
+}
+@media (min-width: 640px) {
+  .md-handle {
+    display: inline-flex !important;
+  }
+}
+@media (hover: hover) {
+  .md-handle {
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .md-block:hover > .md-handle,
+  .md-block.is-active > .md-handle,
+  .md-handle:focus-visible {
+    opacity: 1;
+  }
+}
+
+.md-floating {
+  padding: 0.25rem;
+  border: 1px solid var(--md-border);
+  border-radius: 0.5rem;
+  background: var(--p-content-background);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+.md-editor.is-dragging .md-content {
+  outline: 2px dashed var(--p-primary-color);
+  outline-offset: -0.5rem;
+  border-radius: 0.5rem;
+}
+.md-sheet .p-drawer-content {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}

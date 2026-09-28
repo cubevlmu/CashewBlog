@@ -29,9 +29,7 @@ const step = ref(0),
   confirmation = ref(""),
   busy = ref(false),
   test = ref<DatabaseTestResult | null>(null);
-const steps = ["站点", "管理员", "数据库", "存储", "初始化"].map((label) => ({
-  label,
-}));
+const stepLabels = ["站点", "管理员", "数据库", "存储", "初始化"];
 watch(
   () => form.database,
   () => {
@@ -75,95 +73,115 @@ async function initialize() {
   <Card
     ><template #title>初始化 CashewBlog</template
     ><template #content>
-      <Steps :model="steps" :active-step="step" readonly />
       <Fluid
         ><form @submit.prevent="step === 4 ? initialize() : next()">
-          <Fieldset v-if="step === 0" legend="站点信息"
-            ><Field label="站点名称"
-              ><InputText
-                v-model="form.siteName"
-                required
-                maxlength="100" /></Field
-            ><Field label="站点网址"
-              ><InputText v-model="form.siteUrl" type="url" required /></Field
-            ><Field label="管理员昵称"
-              ><InputText v-model="form.adminName" required /></Field
-            ><Field label="时区"
-              ><InputText v-model="form.timezone" required /></Field
-          ></Fieldset>
-          <Fieldset v-if="step === 1" legend="管理员密码"
-            ><Field label="密码（至少 8 位）"
-              ><Password
-                v-model="form.password"
-                toggle-mask
-                required
-                :input-props="{
-                  minlength: 8,
-                  autocomplete: 'new-password',
-                }" /></Field
-            ><Field label="确认密码"
-              ><Password
-                v-model="confirmation"
-                :feedback="false"
-                toggle-mask
-                required /></Field
-            ><Message
-              v-if="confirmation && confirmation !== form.password"
-              severity="error"
-              >两次密码不一致</Message
-            ></Fieldset
-          >
-          <Fieldset v-if="step === 2" legend="PostgreSQL"
-            ><Message severity="info"
-              >请先创建数据库，初始化会自动创建表结构。</Message
-            ><Field
-              v-for="key in ['host', 'database', 'username'] as const"
-              :key="key"
-              :label="
-                { host: '主机', database: '数据库名', username: '用户名' }[key]
-              "
-              ><InputText v-model="form.database[key]" required /></Field
-            ><Field label="端口"
-              ><InputNumber
-                v-model="form.database.port"
-                :min="1"
-                :max="65535"
-                :use-grouping="false" /></Field
-            ><Field label="数据库密码"
-              ><Password
-                v-model="form.database.password"
-                :feedback="false"
-                toggle-mask /></Field
-            ><Field label="SSL 模式"
-              ><Select
-                v-model="form.database.sslMode"
-                :options="[
-                  'Disable',
-                  'Allow',
-                  'Prefer',
-                  'Require',
-                  'VerifyCA',
-                  'VerifyFull',
-                ]" /></Field
-            ><Button
-              label="测试连接"
-              :loading="busy"
-              @click="testDatabase"
-            /><Message v-if="test" :severity="test.ok ? 'success' : 'error'">{{
-              test.message
-            }}</Message></Fieldset
-          >
-          <Fieldset v-if="step === 3" legend="媒体存储"
-            ><Field label="上传目录"
-              ><InputText v-model="form.storage!.root" required /></Field
-            ><Field label="最大上传大小（字节）"
-              ><InputNumber
-                v-model="form.storage!.maxUploadBytes"
-                :min="1" /></Field
-          ></Fieldset>
-          <Message v-if="step === 4" severity="info"
-            >即将为 {{ form.siteName }} 初始化数据库并保存配置。</Message
-          >
+          <Stepper v-model:value="step" linear>
+            <StepList
+              ><Step
+                v-for="(label, index) in stepLabels"
+                :key="label"
+                :value="index"
+                >{{ label }}</Step
+              ></StepList
+            >
+            <StepPanels>
+              <StepPanel :value="0"
+                ><Field label="站点名称"
+                  ><InputText
+                    v-model="form.siteName"
+                    required
+                    maxlength="100" /></Field
+                ><Field label="站点网址"
+                  ><InputText
+                    v-model="form.siteUrl"
+                    type="url"
+                    required /></Field
+                ><Field label="管理员昵称"
+                  ><InputText v-model="form.adminName" required /></Field
+                ><Field label="时区"
+                  ><InputText v-model="form.timezone" required /></Field
+              ></StepPanel>
+              <StepPanel :value="1"
+                ><Field label="密码（至少 8 位）"
+                  ><Password
+                    v-model="form.password"
+                    toggle-mask
+                    required
+                    :input-props="{
+                      minlength: 8,
+                      autocomplete: 'new-password',
+                    }" /></Field
+                ><Field label="确认密码"
+                  ><Password
+                    v-model="confirmation"
+                    :feedback="false"
+                    toggle-mask
+                    required /></Field
+                ><Message
+                  v-if="confirmation && confirmation !== form.password"
+                  severity="error"
+                  >两次密码不一致</Message
+                ></StepPanel
+              >
+              <StepPanel :value="2"
+                ><Message severity="info"
+                  >请先创建数据库，初始化会自动创建表结构。</Message
+                ><Field
+                  v-for="key in ['host', 'database', 'username'] as const"
+                  :key="key"
+                  :label="
+                    {
+                      host: '主机',
+                      database: '数据库名',
+                      username: '用户名',
+                    }[key]
+                  "
+                  ><InputText v-model="form.database[key]" required /></Field
+                ><Field label="端口"
+                  ><InputNumber
+                    v-model="form.database.port"
+                    :min="1"
+                    :max="65535"
+                    :use-grouping="false" /></Field
+                ><Field label="数据库密码"
+                  ><Password
+                    v-model="form.database.password"
+                    :feedback="false"
+                    toggle-mask /></Field
+                ><Field label="SSL 模式"
+                  ><Select
+                    v-model="form.database.sslMode"
+                    :options="[
+                      'Disable',
+                      'Allow',
+                      'Prefer',
+                      'Require',
+                      'VerifyCA',
+                      'VerifyFull',
+                    ]" /></Field
+                ><Button
+                  label="测试连接"
+                  :loading="busy"
+                  @click="testDatabase"
+                /><Message v-if="test" :severity="test.ok ? 'success' : 'error'">{{
+                  test.message
+                }}</Message></StepPanel
+              >
+              <StepPanel :value="3"
+                ><Field label="上传目录"
+                  ><InputText v-model="form.storage!.root" required /></Field
+                ><Field label="最大上传大小（字节）"
+                  ><InputNumber
+                    v-model="form.storage!.maxUploadBytes"
+                    :min="1" /></Field
+              ></StepPanel>
+              <StepPanel :value="4"
+                ><Message severity="info"
+                  >即将为 {{ form.siteName }} 初始化数据库并保存配置。</Message
+                ></StepPanel
+              >
+            </StepPanels>
+          </Stepper>
           <Toolbar
             ><template #start
               ><Button

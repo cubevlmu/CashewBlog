@@ -92,29 +92,58 @@ onMounted(load);
 <template>
   <Toolbar
     ><template #start
-      ><Button
-        icon="pi pi-arrow-left"
-        text
-        @click="router.push('/admin/pages')"
-      /><span>{{ id ? "编辑页面" : "新建页面" }}</span></template
-    ><template #end
-      ><Button
-        label="预览"
-        icon="pi pi-eye"
-        severity="secondary"
-        @click="preview = !preview" /><Button
-        label="插入媒体"
-        @click="mediaVisible = true" /><Button
-        label="保存"
-        icon="pi pi-save"
-        :loading="busy"
-        @click="save" /><Button
-        v-if="id"
-        label="删除"
-        icon="pi pi-trash"
-        severity="danger"
-        text
-        @click="remove" /></template></Toolbar
+      ><div class="flex items-center gap-1">
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          rounded
+          severity="secondary"
+          aria-label="返回页面列表"
+          title="返回页面列表"
+          @click="router.push('/admin/pages')" /><Button
+          icon="pi pi-image"
+          text
+          rounded
+          severity="secondary"
+          aria-label="插入媒体"
+          title="插入媒体"
+          @click="mediaVisible = true" /><Button
+          :icon="preview ? 'pi pi-eye-slash' : 'pi pi-eye'"
+          text
+          rounded
+          :severity="preview ? 'primary' : 'secondary'"
+          :aria-label="preview ? '关闭预览' : '预览'"
+          :title="preview ? '关闭预览' : '预览'"
+          @click="preview = !preview"
+        /></div></template
+    >
+    <template #center
+      ><InputText
+        v-model="model.title"
+        maxlength="200"
+        placeholder="页面标题"
+        aria-label="标题"
+        class="w-full !border-transparent !bg-transparent !text-base !font-semibold"
+    /></template>
+    <template #end
+      ><div class="flex flex-wrap items-center justify-end gap-2">
+        <ButtonGroup
+          ><Button
+            label="保存"
+            icon="pi pi-check"
+            size="small"
+            :loading="busy"
+            @click="save" /><Button
+            v-if="id"
+            label="删除"
+            icon="pi pi-trash"
+            size="small"
+            severity="danger"
+            :disabled="busy"
+            @click="remove"
+        /></ButtonGroup>
+      </div></template
+    ></Toolbar
   ><iframe
     v-if="preview"
     title="页面预览"
@@ -123,8 +152,6 @@ onMounted(load);
     width="100%"
     height="480"
   /><Fluid v-else
-    ><Field label="标题"
-      ><InputText v-model="model.title" maxlength="200" /></Field
     ><Field label="Slug"
       ><InputText v-model="model.slug" placeholder="留空自动生成" /></Field
     ><Field label="布局"

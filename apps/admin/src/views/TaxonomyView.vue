@@ -2,6 +2,8 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useConfirm } from "primevue/useconfirm";
+import type { PageState } from "primevue/paginator";
+import ResponsiveDataTable from "../components/ResponsiveDataTable.vue";
 import type {
   AdminCategoryDto,
   AdminTagDto,
@@ -14,11 +16,16 @@ const route = useRoute(),
   confirm = useConfirm();
 const kind = computed(() => String(route.params.kind));
 type Term = AdminCategoryDto | AdminTagDto | AdminSeriesDto;
+const termName = (item: Term) => ("title" in item ? item.title : item.name);
 const items = ref<Term[]>([]),
   categories = ref<AdminCategoryDto[]>([]),
   busy = ref(false),
   visible = ref(false),
   editing = ref<string>();
+const page = ref(1);
+function paginate(event: PageState) {
+  page.value = event.page + 1;
+}
 const model = reactive({
   name: "",
   title: "",
@@ -121,36 +128,99 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <Panel
-    :header="kind === 'categories' ? '分类' : kind === 'tags' ? '标签' : '系列'"
+  <ResponsiveDataTable
+    :value="items"
+    :loading="busy"
+    :lazy="false"
+    :empty-text="`暂无${kind === 'categories' ? '分类' : kind === 'tags' ? '标签' : '系列'}`"
+    table-style="min-width: 44rem"
+    :page="page"
+    :total-records="items.length"
+    @page="paginate"
   >
-    <Toolbar
-      ><template #end
-        ><Button label="新建" icon="pi pi-plus" @click="edit()" /></template
-    ></Toolbar>
-    <DataTable :value="items" :loading="busy" paginator :rows="20">
-      <template #empty>暂无记录</template>
-      <Column
-        :field="kind === 'series' ? 'title' : 'name'"
-        header="名称"
-      /><Column field="slug" header="Slug" /><Column
-        field="postCount"
-        header="文章数"
-      />
+    <template #actions
+      ><Button
+        icon="pi pi-plus"
+        aria-label="新建"
+        title="新建"
+        @click="edit()"
+    /></template>
+    <Column header="名称"
+        ><template #body="{ data }"
+          ><span class="font-medium">{{ termName(data) }}</span></template
+      ></Column>
+      <Column header="Slug"
+        ><template #body="{ data }"
+          ><span class="font-mono text-xs text-[var(--p-text-muted-color)]">{{
+            data.slug
+          }}</span></template
+      ></Column>
+      <Column header="文章数"
+        ><template #body="{ data }"
+          ><Tag :value="`${data.postCount} 篇`" severity="secondary" /></template
+      ></Column>
       <Column header="操作"
         ><template #body="{ data }"
-          ><Button label="编辑" text @click="edit(data)" /><Button
-            v-if="kind === 'series'"
-            label="文章排序"
-            text
-            @click="reorder(data)" /><Button
-            label="删除"
-            text
-            severity="danger"
-            @click="remove(data)" /></template
+          ><div class="flex justify-end gap-0.5">
+            <Button
+              icon="pi pi-pencil"
+              text
+              rounded
+              aria-label="编辑"
+              title="编辑"
+              @click="edit(data)" /><Button
+              v-if="kind === 'series'"
+              icon="pi pi-sort-alt"
+              text
+              rounded
+              aria-label="文章排序"
+              title="文章排序"
+              @click="reorder(data)" /><Button
+              icon="pi pi-trash"
+              text
+              rounded
+              severity="danger"
+              aria-label="删除"
+              title="删除"
+              @click="remove(data)"
+            /></div></template
       ></Column>
-    </DataTable>
-  </Panel>
+    <template #item="{ item: data }"
+      ><article class="flex items-start justify-between gap-3 p-4">
+        <div class="min-w-0 space-y-1.5">
+          <p class="font-medium">{{ termName(data) }}</p>
+          <p class="truncate font-mono text-xs text-[var(--p-text-muted-color)]">
+            {{ data.slug }}
+          </p>
+          <Tag :value="`${data.postCount} 篇`" severity="secondary" />
+        </div>
+        <div class="flex shrink-0 gap-0.5">
+          <Button
+            icon="pi pi-pencil"
+            text
+            rounded
+            aria-label="编辑"
+            title="编辑"
+            @click="edit(data)" /><Button
+            v-if="kind === 'series'"
+            icon="pi pi-sort-alt"
+            text
+            rounded
+            aria-label="文章排序"
+            title="文章排序"
+            @click="reorder(data)" /><Button
+            icon="pi pi-trash"
+            text
+            rounded
+            severity="danger"
+            aria-label="删除"
+            title="删除"
+            @click="remove(data)"
+          />
+        </div>
+      </article></template
+    >
+  </ResponsiveDataTable>
   <Dialog v-model:visible="visible" modal header="编辑内容">
     <Fluid
       ><form @submit.prevent="save">

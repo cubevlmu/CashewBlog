@@ -2,9 +2,13 @@
 import { computed } from "vue";
 import Chart from "primevue/chart";
 import Skeleton from "primevue/skeleton";
-import { useRouter } from "vue-router";
 import type { AnalyticsOverviewDto, SystemInfoDto } from "../api/types";
-import { bytesLabel, dateLabel, statusLabel } from "../state";
+import {
+  bytesLabel,
+  dateLabel,
+  statusLabel,
+  statusSeverity,
+} from "../state";
 import { dark } from "../theme";
 const props = defineProps<{
   id: string;
@@ -12,7 +16,6 @@ const props = defineProps<{
   overview?: AnalyticsOverviewDto;
   info?: SystemInfoDto;
 }>();
-const router = useRouter();
 const icons: Record<string, string> = {
   totalPosts: "file-edit",
   drafts: "pencil",
@@ -165,15 +168,18 @@ const chartOptions = computed(() => ({
         ><template #empty>发布第一篇文章后，这里会显示阅读排行。</template
         ><Column header="文章"
           ><template #body="{ data }"
-            ><Button
-              :label="data.title"
-              text
-              size="small"
-              class="!p-0 text-left"
-              @click="
-                router.push(`/admin/posts/${data.id}`)
-              " /></template></Column
-        ><Column field="viewCount" header="阅读"
+            ><RouterLink
+              :to="`/admin/posts/${data.id}`"
+              class="block truncate font-medium hover:underline"
+              >{{ data.title }}</RouterLink
+            ></template
+          ></Column
+        ><Column header="阅读"
+          ><template #body="{ data }"
+            ><span class="font-semibold tabular-nums">{{
+              data.viewCount
+            }}</span></template
+          ></Column
       /></DataTable>
       <DataTable
         v-else-if="id === 'recentPosts'"
@@ -186,21 +192,18 @@ const chartOptions = computed(() => ({
         ><template #empty>还没有文章，开始写下第一篇内容吧。</template
         ><Column header="文章"
           ><template #body="{ data }"
-            ><Button
-              :label="data.title"
-              text
-              size="small"
-              class="!p-0 text-left"
-              @click="
-                router.push(`/admin/posts/${data.id}`)
-              " /></template></Column
+            ><RouterLink
+              :to="`/admin/posts/${data.id}`"
+              class="block truncate font-medium hover:underline"
+              >{{ data.title }}</RouterLink
+            ></template
+          ></Column
         ><Column header="状态"
           ><template #body="{ data }"
             ><Tag
               :value="statusLabel(data.status)"
-              :severity="
-                data.status === 'published' ? 'success' : 'secondary'
-              " /></template></Column
+              :severity="statusSeverity(data.status)" /></template
+          ></Column
         ><Column header="更新"
           ><template #body="{ data }"
             ><span class="text-xs text-[var(--p-text-muted-color)]">{{

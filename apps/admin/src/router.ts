@@ -22,6 +22,7 @@ export const router = createRouter({
     {
       path: "/admin/posts/:id",
       component: () => import("./views/PostEditorView.vue"),
+      meta: { bare: true },
     },
     {
       path: "/admin/:kind(categories|tags|series)",
@@ -31,6 +32,7 @@ export const router = createRouter({
     {
       path: "/admin/pages/:id",
       component: () => import("./views/PageEditorView.vue"),
+      meta: { bare: true },
     },
     { path: "/admin/media", component: () => import("./views/MediaView.vue") },
     {
@@ -39,6 +41,14 @@ export const router = createRouter({
     },
     {
       path: "/admin/settings",
+      redirect: "/admin/settings/general",
+    },
+    {
+      path: "/admin/settings/security",
+      component: () => import("./views/SecurityView.vue"),
+    },
+    {
+      path: "/admin/settings/:section",
       component: () => import("./views/SettingsView.vue"),
     },
     { path: "/:pathMatch(.*)*", redirect: "/admin" },

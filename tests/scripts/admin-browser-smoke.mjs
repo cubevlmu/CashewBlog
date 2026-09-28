@@ -53,19 +53,24 @@ try {
   ).id;
   await page.goto(base + "/admin/posts/new");
   await page.getByLabel("标题", { exact: true }).fill("验收文章-" + suffix);
-  await page.getByRole("button", { name: "Markdown", exact: true }).click();
-  await page
-    .getByRole("textbox", { name: "Markdown 正文", exact: true })
-    .fill("# 原始正文");
-  await page.getByRole("button", { name: "发布", exact: true }).click();
-  await expect(page.getByText("已发布", { exact: true })).toBeVisible();
+  const body = page.locator(".md-editor p.md-surface").first();
+  await body.click();
+  await body.pressSequentially("原始正文");
+  // Publish and visibility actions live in the 文章设置 drawer.
+  const settingsAction = async (name) => {
+    const action = page.getByRole("button", { name, exact: true });
+    if (!(await action.isVisible()))
+      await page.getByRole("button", { name: "文章设置", exact: true }).click();
+    await action.click();
+  };
+  await settingsAction("发布");
+  await expect(page.getByText("已发布", { exact: true }).first()).toBeVisible();
   postId = page.url().split("/").at(-1);
   const dto = await (await api("GET", "/api/admin/posts/" + postId)).json();
   assert.equal(dto.status, "published");
-  await page.getByRole("button", { name: "Markdown", exact: true }).click();
-  await page
-    .getByRole("textbox", { name: "Markdown 正文", exact: true })
-    .fill("# 未发布的工作副本");
+  await body.click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await body.pressSequentially("未发布的工作副本");
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(
     page.getByRole("status").filter({ hasText: "正文已自动保存" }),
@@ -90,11 +95,11 @@ try {
       .contentMarkdown,
     /工作副本/,
   );
-  await page.getByRole("button", { name: "设为私密", exact: true }).click();
-  await expect(page.getByText("私密", { exact: true })).toBeVisible();
+  await settingsAction("设为私密");
+  await expect(page.getByText("私密", { exact: true }).first()).toBeVisible();
   assert.equal((await anonymous.request.get(base + publicPath)).status(), 404);
-  await page.getByRole("button", { name: "发布", exact: true }).click();
-  await expect(page.getByText("已发布", { exact: true })).toBeVisible();
+  await settingsAction("发布");
+  await expect(page.getByText("已发布", { exact: true }).first()).toBeVisible();
   assert.equal(
     (
       await anonymous.request.get(

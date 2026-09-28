@@ -1,3 +1,14 @@
 @layer theme, base, primevue, utilities;
 @import "tailwindcss";
 @custom-variant dark (&:where(.admin-dark, .admin-dark *));
+
+/* PrimeVue's Panel content is a single-column grid whose item keeps the default
+   content-based minimum, so a table with a `table-style` min-width stretches the column
+   and paints past the panel border. Let the column shrink so wide tables scroll inside
+   the card instead. */
+.p-panel-content-container {
+  grid-template-columns: minmax(0, 1fr);
+}
+.p-panel-content-wrapper {
+  min-width: 0;
+}

@@ -8,9 +8,12 @@ This file is the compact source of truth for decisions aligned with the product 
 | Upstream strategy | Fork Shirone and diverge independently; no requirement to keep easy upstream merge compatibility |
 | Repository | One monorepo for public frontend, admin and backend |
 | Public frontend | Astro + Svelte, Shirone-derived, SSR |
-| Admin | Vue 3 + PrimeVue |
+| Admin | Vue 3 + PrimeVue 5 |
+| Admin license | PrimeVue 5 ships under the PrimeUI Community/Commercial license; the key is supplied at build time via `VITE_PRIMEUI_LICENSE` (never committed) |
+| Admin navigation | PrimeVue Sidebar compounds with icon-collapse on desktop and offcanvas on mobile |
+| Settings sections | Real sub-routes `/admin/settings/<section>`; `/admin/settings` redirects to `general` |
 | Backend | ASP.NET Core + EF Core + PostgreSQL, Clean Architecture |
-| Editor | Milkdown, toolbar/WYSIWYG-oriented; Markdown canonical storage |
+| Editor | In-house block WYSIWYG editor assembled from PrimeVue controls (replaced Milkdown); Markdown canonical storage; unsupported site extensions kept as raw source blocks |
 | Article states | Draft / Published / Private |
 | Private semantics | Authenticated administrator only |
 | Scheduled posts | No |

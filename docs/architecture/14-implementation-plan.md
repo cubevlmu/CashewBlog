@@ -105,7 +105,7 @@ Vue 3 + PrimeVue:
 - login
 - dashboard
 - post list/editor
-- Milkdown
+- PrimeVue Markdown editor
 - media library
 - taxonomy
 - series
@@ -159,7 +159,7 @@ Gate: fresh image + empty data volume -> setup -> publish -> restart -> data pre
 ### Admin
 
 - [ ] 14-day login cookie
-- [ ] Milkdown editing
+- [ ] WYSIWYG Markdown editing (PrimeVue editor, extensions preserved)
 - [ ] autosave working copy
 - [ ] public post not mutated until Update
 - [ ] soft delete + trash + permanent delete

@@ -7,10 +7,20 @@ export const setup = ref<SetupStatusDto | null>(null);
 export const failure = ref("");
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    const fields = Object.entries(error.fieldErrors).map(
-      ([key, messages]) => `${key}: ${messages.join("；")}`,
-    );
-    return [error.detail ?? error.title, ...fields].join("\n");
+    const fields = Object.entries(error.fieldErrors).map(([key, messages]) => {
+      const field = key === "title" ? "标题" : key;
+      const localized = messages.map((message) =>
+        key === "title" && message.startsWith("Title is required")
+          ? "请输入文章标题（最多 200 个字符）"
+          : message,
+      );
+      return `${field}: ${localized.join("；")}`;
+    });
+    const heading =
+      error.code === "validation_failed"
+        ? "提交内容未通过验证"
+        : error.detail ?? error.title;
+    return [heading, ...fields].filter(Boolean).join("\n");
   }
   return error instanceof Error ? error.message : "操作失败，请重试";
 }
@@ -36,6 +46,12 @@ export const statuses = [
 ];
 export const statusLabel = (status: string) =>
   statuses.find((item) => item.value === status)?.label ?? status;
+export const statusSeverity = (status: string) =>
+  status === "published"
+    ? "success"
+    : status === "draft"
+      ? "warn"
+      : "secondary";
 export const dateLabel = (date: string | null) =>
   date ? new Date(date).toLocaleString("zh-CN") : "—";
 export const bytesLabel = (bytes: number | null) =>
