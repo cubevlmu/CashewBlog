@@ -35,8 +35,8 @@ Done and verified: 49 admin unit tests (including happy-dom DOM tests) pass, `vu
 against a disposable instance passed (shortcuts, marks, lists/tasks/nesting, quote, code, slash
 table, undo/redo, byte-for-byte extension round trip, raw source dialog, image upload, mobile
 44px toolbar + block drawer, no horizontal scroll). `admin-browser-smoke.mjs` passes its admin
-steps; it only trips on the Astro dev server's toolbar 504 (dev-only). Not yet committed — the
-working tree also holds earlier uncommitted admin work (PrimeVue 5 upgrade, redesigned views).
+steps; it only trips on the Astro dev server's toolbar 504 (dev-only). Reviewed by the owner and
+committed together with the PrimeVue 5 admin upgrade it depends on.
 
 Implemented:
 
@@ -55,14 +55,15 @@ Implemented:
   `EditorLinkDialog.vue`, `EditorTable.vue` (includes the table actions), `EditorCodeBlock.vue`,
   `editor.css`.
 - Tests in `tests/` (vitest only includes `tests/**`): `markdown-document`, `markdown-inline`,
-  `editor-commands`.
+  `editor-commands`, `editor-dom` (happy-dom).
+- Follow-up review: full-width writing area, "…" overflow menu on narrow toolbars, right-click
+  context menu / long-press block drawer, reorganized post settings drawer, prose-only summary.
 - Docs updated (00/01/07/14/15); browser smoke test locator now `.md-editor p.md-surface`.
 
 Deviations from the task list: `MarkdownEditor.vue` is the editor (no wrapper); table actions live
 in `EditorTable.vue`; the link editor is a Dialog; task lists are a `list` with checked items.
 
-Remaining: owner review, then commits (the earlier uncommitted admin work should land first,
-since the editor depends on its PrimeVue 5 upgrade), and a real iOS/Android device check.
+Remaining: a check on a real iOS/Android device (only emulated touch has been tested).
 
 ---
 
