@@ -18,6 +18,7 @@ import {
 	viteBuildShared,
 } from "./src/config/integrationsConfig.ts";
 import { siteMarkdownProcessor } from "./src/utils/markdown-processor.mjs";
+import { gatewayEntry } from "./scripts/gateway-entry.mjs";
 
 const isDev = process.argv.includes("dev");
 const webRoot = fileURLToPath(new URL(".", import.meta.url)).replaceAll("\\", "/").replace(/\/$/, "");
@@ -71,7 +72,7 @@ export default defineConfig({
 	root: fileURLToPath(new URL(".", import.meta.url)),
 	output: "server",
 	adapter: node({ mode: "standalone" }),
-	trailingSlash: TRAILING_SLASH,
+	trailingSlash: TRAILING_SLASH, // Admin previews and public permalinks accept both forms.
 	image: { endpoint: { route: IMAGE_ENDPOINT_ROUTE } },
 	fonts: fontDeclarations(),
 	markdown: { processor: siteMarkdownProcessor },
@@ -114,6 +115,7 @@ export default defineConfig({
 			],
 		},
 		plugins: [
+			gatewayEntry(process.env.CASHEWBLOG_API_URL ?? "http://127.0.0.1:8080"),
 			tailwindcss(),
 		],
 		optimizeDeps: { include: prebundleSpecifiers },

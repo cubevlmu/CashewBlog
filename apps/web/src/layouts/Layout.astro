@@ -56,6 +56,8 @@ const initialPage =
 // itself only ever sees the loopback proxy request.
 const siteOrigin = new URL(siteConfig.site);
 const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteOrigin);
+// Both URL forms render, but metadata keeps one canonical permalink.
+if (!canonicalUrl.pathname.endsWith("/")) canonicalUrl.pathname += "/";
 
 const defaultSocialImage =
 	siteConfig.ogImage ||
