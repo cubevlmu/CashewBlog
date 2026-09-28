@@ -32,6 +32,8 @@ Using isolated PostgreSQL on port 55433, API on 8087 and Astro on 4327:
   The script creates uniquely named fixtures and removes its own records afterward.
 - Separate browser check: settings saved, dashboard layout persisted, no page errors after HTML/CSS
   worker configuration. Dashboard does not overflow horizontally at 1280 px.
+- Public browser hydration: all 10 Svelte islands hydrated, no console errors; a temporary
+  development route updated automatically after editing its source (watcher regression check).
 - API restart with the same test data: session remained valid, schema was up to date, content and
   settings persisted. Public homepage/post/nested page/RSS/sitemap returned 200.
 - Admin build/type check and 4 HTTP tests passed.

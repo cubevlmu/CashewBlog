@@ -20,7 +20,7 @@ import {
 import { siteMarkdownProcessor } from "./src/utils/markdown-processor.mjs";
 
 const isDev = process.argv.includes("dev");
-const webRoot = fileURLToPath(new URL(".", import.meta.url)).replaceAll("\\", "/");
+const webRoot = fileURLToPath(new URL(".", import.meta.url)).replaceAll("\\", "/").replace(/\/$/, "");
 const isBuild = process.argv.includes("build");
 
 /** Astro font declarations for the retained body/cjk/mono roles. */
@@ -87,20 +87,18 @@ export default defineConfig({
 	vite: {
 		root: fileURLToPath(new URL(".", import.meta.url)),
 		server: {
-			// Keep the dev server's file watcher inside the project. Vite 8 can
-			// otherwise follow pnpm workspace links to the drive root on Windows.
-			fs: { allow: [fileURLToPath(new URL(".", import.meta.url))] },
+			// Scope watching to web sources while retaining Vite's default workspace
+			// file serving allowlist for pnpm dependencies outside this directory.
 			watch: {
 				ignored: (filePath) => {
 					const normalized = filePath.replaceAll("\\", "/");
 					return (
-						!normalized.startsWith(webRoot) ||
+						(normalized !== webRoot && !normalized.startsWith(`${webRoot}/`)) ||
 						normalized.includes("/node_modules/") ||
 						normalized.includes("/System Volume Information")
 					);
 				},
 				followSymlinks: false,
-				usePolling: true,
 			},
 		},
 		resolve: {

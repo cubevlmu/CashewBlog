@@ -23,6 +23,7 @@ const anonymous = await browser.newContext();
 const page = await context.newPage();
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
+page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
 const suffix = Date.now().toString(36);
 let postId, categoryId, pageId, mediaId;
 async function api(method, path, data) {
@@ -159,6 +160,8 @@ try {
   ).toHaveCount(0);
   for (const path of ["/", "/rss.xml", "/sitemap.xml"])
     assert.equal((await anonymous.request.get(base + path)).status(), 200);
+  await page.goto(base + "/posts/" + encodeURIComponent(dto.slug) + "/", { waitUntil: "networkidle" });
+  await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
   assert.deepEqual(errors, []);
   console.log(
     "PASS login, taxonomy, publish, working copy, private access, media references, Monaco, preview, trash, public routes",
