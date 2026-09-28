@@ -1,6 +1,7 @@
 import { createApp } from "vue";
 import PrimeVue from "primevue/config";
-import Aura from "@primeuix/themes/aura";
+import { adminPreset } from "./theme";
+import "./utilities.css";
 import ConfirmationService from "primevue/confirmationservice";
 import "primeicons/primeicons.css";
 import App from "./App.vue";
@@ -30,7 +31,6 @@ import ToggleSwitch from "primevue/toggleswitch";
 import Dialog from "primevue/dialog";
 import ConfirmDialog from "primevue/confirmdialog";
 import Steps from "primevue/steps";
-import Menubar from "primevue/menubar";
 import FileUpload from "primevue/fileupload";
 import Image from "primevue/image";
 import OrderList from "primevue/orderlist";
@@ -54,7 +54,13 @@ app.use(PrimeVue, {
     strong: "强",
     passwordPrompt: "请输入密码",
   },
-  theme: { preset: Aura, options: { darkModeSelector: false } },
+  theme: {
+    preset: adminPreset,
+    options: {
+      darkModeSelector: ".admin-dark",
+      cssLayer: { name: "primevue", order: "theme, base, primevue, utilities" },
+    },
+  },
 });
 app.use(ConfirmationService);
 app.component("Field", Field);
@@ -80,7 +86,6 @@ app.component("ToggleSwitch", ToggleSwitch);
 app.component("Dialog", Dialog);
 app.component("ConfirmDialog", ConfirmDialog);
 app.component("Steps", Steps);
-app.component("Menubar", Menubar);
 app.component("FileUpload", FileUpload);
 app.component("Image", Image);
 app.component("OrderList", OrderList);

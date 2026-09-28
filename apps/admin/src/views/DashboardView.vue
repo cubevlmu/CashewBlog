@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import Chart from "primevue/chart";
+import { computed, onMounted, onBeforeUnmount, ref } from "vue";
+import DashboardWidget from "../components/DashboardWidget.vue";
 import { GridLayout, GridItem } from "grid-layout-plus";
 import { http } from "../api/http";
 import type {
@@ -8,7 +8,14 @@ import type {
   SystemInfoDto,
   SiteSettings,
 } from "../api/types";
-import { attempt, dateLabel, bytesLabel, statusLabel } from "../state";
+import { attempt } from "../state";
+const mobileQuery = window.matchMedia("(max-width: 767px)");
+const isMobile = ref(mobileQuery.matches);
+const updateMobile = (event: MediaQueryListEvent) => {
+  isMobile.value = event.matches;
+};
+mobileQuery.addEventListener("change", updateMobile);
+onBeforeUnmount(() => mobileQuery.removeEventListener("change", updateMobile));
 const overview = ref<AnalyticsOverviewDto>(),
   info = ref<SystemInfoDto>();
 const layout = ref<
@@ -34,43 +41,14 @@ const names: Record<string, string> = {
   mediaStorage: "媒体存储",
 };
 const allIds = Object.keys(names);
-const chart = computed(() => ({
-  labels: overview.value?.daily.map((d) => d.date) ?? [],
-  datasets: [
-    {
-      label: "阅读量",
-      data: overview.value?.daily.map((d) => d.views) ?? [],
-      borderColor: "#10b981",
-      fill: false,
-    },
-  ],
-}));
-function value(id: string) {
-  if (!overview.value || !info.value) return "—";
-  if (
-    ["totalPosts", "drafts", "trash", "totalViews", "todayViews"].includes(id)
-  )
-    return String(overview.value[id as "totalPosts"]);
-  switch (id) {
-    case "runtime":
-      return `${info.value.version} · ${info.value.dotnetVersion} · Node ${info.value.nodeVersion ?? "—"} · Astro ${info.value.astroVersion ?? "—"} · 已运行 ${Math.floor(info.value.uptimeSeconds / 60)} 分钟`;
-    case "cpu":
-      return info.value.cpuUsagePercent === null
-        ? "—"
-        : `${info.value.cpuUsagePercent.toFixed(1)}%`;
-    case "memory":
-      return `进程 ${bytesLabel(info.value.processMemoryBytes)} / 系统 ${bytesLabel(info.value.systemMemoryTotalBytes)}`;
-    case "disk":
-      return `媒体磁盘可用 ${bytesLabel(info.value.uploadsDisk.freeBytes)} / 配置磁盘可用 ${bytesLabel(info.value.dataDisk.freeBytes)}`;
-    case "database":
-      return `${info.value.database.healthy ? "正常" : "异常"} · ${info.value.database.serverVersion ?? ""} · ${info.value.database.latencyMs ?? "—"} ms`;
-    case "mediaStorage":
-      return `${info.value.mediaCount} 项 · ${bytesLabel(info.value.uploadsUsageBytes)}`;
-    default:
-      return "—";
-  }
-}
+const visibleLayout = computed(() =>
+  [...layout.value]
+    .filter((w) => !hidden.value.includes(w.i))
+    .sort((a, b) => a.y - b.y || a.x - b.x),
+);
+const loading = ref(false);
 async function refresh() {
+  loading.value = true;
   await attempt(async () => {
     [overview.value, info.value] = await Promise.all([
       http.get<AnalyticsOverviewDto>("/api/admin/analytics/overview", {
@@ -79,6 +57,7 @@ async function refresh() {
       http.get<SystemInfoDto>("/api/admin/system/info"),
     ]);
   });
+  loading.value = false;
 }
 async function save() {
   await attempt(async () => {
@@ -125,19 +104,34 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <Panel header="仪表盘"
-    ><Toolbar
-      ><template #start
-        ><Button label="刷新" icon="pi pi-refresh" @click="refresh" /></template
-      ><template #end
-        ><Button
-          label="调整布局"
+  <div class="space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-[var(--p-text-muted-color)]">
+        过去 30 天的站点概览
+      </p>
+      <div class="flex items-center gap-2">
+        <Button
+          label="刷新"
+          icon="pi pi-refresh"
+          size="small"
           severity="secondary"
-          @click="edit = !edit" /><Button
-          v-if="edit"
-          label="保存布局"
-          @click="save" /></template></Toolbar
-    ><Message v-if="saved" severity="success">布局已保存</Message>
+          outlined
+          :loading="loading"
+          @click="refresh"
+        /><Button
+          label="调整布局"
+          icon="pi pi-sliders-h"
+          size="small"
+          severity="secondary"
+          text
+          class="!hidden md:!inline-flex"
+          @click="edit = !edit"
+        /><Button v-if="edit" label="保存布局" size="small" @click="save" />
+      </div>
+    </div>
+    <Message v-if="saved" severity="success" closable @close="saved = false"
+      >布局已保存</Message
+    >
     <Field v-if="edit" label="隐藏组件"
       ><MultiSelect
         v-model="hidden"
@@ -145,59 +139,48 @@ onMounted(async () => {
         option-label="label"
         option-value="value"
     /></Field>
-    <GridLayout
-      v-if="layout.length"
-      v-model:layout="layout"
-      :col-num="12"
-      :row-height="70"
-      :is-draggable="edit"
-      :is-resizable="edit"
-      :responsive="true"
-    >
-      <GridItem
-        v-for="widget in layout"
-        v-show="edit || !hidden.includes(widget.i)"
-        :key="widget.i"
-        v-bind="widget"
+    <div v-if="!isMobile">
+      <GridLayout
+        v-if="layout.length"
+        v-model:layout="layout"
+        :col-num="12"
+        :row-height="70"
+        :margin="[16, 16]"
+        :is-draggable="edit"
+        :is-resizable="edit"
+        :responsive="false"
       >
-        <Panel :header="names[widget.i] ?? widget.i">
-          <Chart
-            v-if="widget.i === 'viewsTrend'"
-            type="line"
-            :data="chart"
-            :options="{
-              maintainAspectRatio: true,
-              aspectRatio: 4,
-              animation: false,
-            }"
-          />
-          <DataTable
-            v-else-if="widget.i === 'popularPosts'"
-            :value="overview?.topPosts ?? []"
-            scrollable
-            scroll-height="180px"
-            ><Column field="title" header="标题" /><Column
-              field="viewCount"
-              header="阅读"
-          /></DataTable>
-          <DataTable
-            v-else-if="widget.i === 'recentPosts'"
-            :value="overview?.recentPosts ?? []"
-            scrollable
-            scroll-height="180px"
-            ><Column field="title" header="标题" /><Column header="状态"
-              ><template #body="{ data }">{{
-                statusLabel(data.status)
-              }}</template></Column
-            ><Column header="更新时间"
-              ><template #body="{ data }">{{
-                dateLabel(data.updatedAt)
-              }}</template></Column
-            ></DataTable
-          >
-          <p v-else>{{ value(widget.i) }}</p>
-        </Panel>
-      </GridItem>
-    </GridLayout>
-  </Panel>
+        <GridItem
+          v-for="widget in layout"
+          v-show="edit || !hidden.includes(widget.i)"
+          :key="widget.i"
+          v-bind="widget"
+          ><DashboardWidget
+            :id="widget.i"
+            :title="names[widget.i] ?? widget.i"
+            :overview="overview"
+            :info="info"
+        /></GridItem>
+      </GridLayout>
+    </div>
+    <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div
+        v-for="widget in visibleLayout"
+        :key="widget.i"
+        :class="[
+          'min-w-0',
+          ['viewsTrend', 'popularPosts', 'recentPosts'].includes(widget.i)
+            ? 'sm:col-span-2 min-h-64'
+            : 'min-h-36',
+        ]"
+      >
+        <DashboardWidget
+          :id="widget.i"
+          :title="names[widget.i] ?? widget.i"
+          :overview="overview"
+          :info="info"
+        />
+      </div>
+    </div>
+  </div>
 </template>

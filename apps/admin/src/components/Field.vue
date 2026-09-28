@@ -15,8 +15,8 @@ onMounted(() => {
 });
 </script>
 <template>
-  <div ref="root">
-    <label :for="target">{{ label }}</label
+  <div ref="root" class="mb-4 space-y-1">
+    <label :for="target" class="text-sm font-medium">{{ label }}</label
     ><br /><slot /><br v-if="hint" /><small v-if="hint">{{ hint }}</small>
   </div>
 </template>

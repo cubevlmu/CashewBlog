@@ -6,7 +6,8 @@ This records executed checks, not a deployment certification.
 
 Vue Router routes cover setup/login, dashboard, posts/editor/trash, categories/tags/series,
 custom pages, media, analytics, and all site-settings sections. PrimeVue Aura supplies form,
-navigation, table, dialog, confirmation, and layout components; there is no custom admin stylesheet.
+navigation, table, dialog, confirmation, and layout components. Tailwind provides layout utilities;
+`utilities.css` only imports utility layers and defines the dark-mode variant, with no custom component skin.
 Milkdown and Monaco use their own editor resources. The Monaco host has a fixed initial height.
 
 - Setup tests database connectivity and initializes an operator-created database.
@@ -48,3 +49,13 @@ fresh-image → setup → publish → recreate test on a Docker-capable machine 
 
 The browser smoke test requires `CASHEWBLOG_E2E_URL` (loopback only),
 `CASHEWBLOG_E2E_PASSWORD` and an installed Chrome. It is intended for a disposable local instance.
+
+## Unified local startup and dashboard shell
+
+- `pnpm dev` builds/stages the admin, builds the API into isolated artifacts, and supervises
+  Astro, ASP.NET and the admin build watcher in one terminal. One browser origin serves all routes.
+- Original manually started services are not killed. Port conflicts fail before starting services.
+- Admin navigation follows the SiriusNet reference structure using PrimeVue 4 components:
+  grouped sidebar, collapsed icons, account menu, toolbar, Orange Aura cards and theme toggle.
+- Browser checks cover desktop collapse, dark mode, 390px mobile drawer navigation and no horizontal
+  overflow. Existing saved dashboard widget geometry/visibility is retained.

@@ -6,6 +6,8 @@
 **/TestResults
 .git
 .codegraph
+.local-dev
+.local-test
 .claude
 data
 uploads

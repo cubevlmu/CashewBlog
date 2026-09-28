@@ -44,22 +44,25 @@ CREATE DATABASE cashewblog OWNER postgres;
 Setup 会创建表结构，但不会创建数据库；`database_not_found` 表示数据库名称不存在。
 首次访问请打开 API 网关的 `/setup`；完成初始化之前，公开 API 返回 `503 setup_required` 是正常行为。
 
+只需一个终端：
+
 ```bash
 pnpm install
-
-# 构建管理端并复制到 ASP.NET 的 wwwroot/admin
-pnpm build:admin
-
-# 后端（网关 + API，:8080）：首次运行打开 http://127.0.0.1:8080/setup
-pnpm dev:api
-
-# 前台（Astro dev，:4321；网关会把非 /api、/admin、/uploads 的请求代理过来）
-pnpm dev:web
-
-# 后台热更新开发（http://localhost:5174/admin/，代理 /api 到 :8080）
-# 未初始化时会进入 /admin/setup；使用统一网关时则是 /setup
-pnpm dev:admin
+pnpm dev
 ```
+
+统一入口是 **http://127.0.0.1:8080**：前台 `/`，后台 `/admin`，首次初始化 `/setup`。
+启动器自动构建管理端和 API，再启动 Astro、API 和后台构建监听；`Ctrl+C` 一次停止全部子进程。
+前台修改即时更新；后台源码修改自动重新构建并复制到网关，构建完成后刷新页面即可。
+PostgreSQL 仍由外部服务提供，首次使用仍需先建库和完成 setup。
+
+如果原来已分别运行 `dev:api` / `dev:web`，请先关闭那些终端，再用 `pnpm dev`，避免占用端口。
+启动器发现端口占用会退出并提示，不会结束已有服务。构建中间文件位于已忽略的 `.local-dev/`。
+可通过 `CASHEWBLOG_PORT` / `CASHEWBLOG_WEB_PORT` 调整网关和内部 Astro 端口。
+
+独立调试命令仍保留：`pnpm dev:api`、`pnpm dev:web`、`pnpm dev:admin`。
+后台 Vite 单独启动时使用 `http://localhost:5174/admin/`，未初始化时进入 `/admin/setup`。
+只需更新网关里的后台静态资源时运行 `pnpm build:admin`。
 
 检查与测试：
 
@@ -68,7 +71,8 @@ dotnet build CashewBlog.slnx && dotnet test CashewBlog.slnx   # 集成测试需�
 pnpm --filter @cashewblog/web check && pnpm -r test && pnpm -r build
 ```
 
-管理端使用 PrimeVue Aura 主题及组件；文章正文使用 Milkdown，页面 HTML/CSS 使用 Monaco。
+管理端参考 SiriusNet 的 dashboard 结构：分组侧栏、可折叠导航、顶栏、统计卡片及手机抽屉菜单。
+使用 PrimeVue Aura 橙色主题、明暗模式及组件，以 Tailwind 工具类处理布局，不自写组件皮肤；文章正文使用 Milkdown，页面 HTML/CSS 使用 Monaco。
 所有导航入口均接入 REST API，媒体选择器可用于正文、封面和页面；设置表单覆盖站点外观、导航、侧栏等。
 
 浏览器验收需要一个**已初始化的本地测试实例**（外部 PostgreSQL、API、Astro 都启动），以及 Chrome：

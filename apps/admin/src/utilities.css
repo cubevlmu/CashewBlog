@@ -1,0 +1,3 @@
+@layer theme, base, primevue, utilities;
+@import "tailwindcss";
+@custom-variant dark (&:where(.admin-dark, .admin-dark *));

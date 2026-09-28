@@ -85,6 +85,7 @@ export default defineConfig({
 		}),
 	],
 	vite: {
+		...(process.env.CASHEWBLOG_WEB_CACHE_DIR ? { cacheDir: process.env.CASHEWBLOG_WEB_CACHE_DIR } : {}),
 		root: fileURLToPath(new URL(".", import.meta.url)),
 		server: {
 			// Scope watching to web sources while retaining Vite's default workspace

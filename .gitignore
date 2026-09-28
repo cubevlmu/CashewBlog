@@ -16,6 +16,7 @@ TestResults/
 /data/
 /uploads/
 /.local-test/
+/.local-dev/
 
 # Tooling
 .codegraph/
