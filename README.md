@@ -37,13 +37,17 @@ docker run -d -p 8080:8080 -v ./data:/data -v ./uploads:/uploads cashewblog
 ```bash
 pnpm install
 
-# 后端（网关 + API，:8080）：首次运行打开 http://localhost:8080/setup
-dotnet run --project src/CashewBlog.Api
+# 构建管理端并复制到 ASP.NET 的 wwwroot/admin
+pnpm build:admin
+
+# 后端（网关 + API，:8080）：首次运行打开 http://127.0.0.1:8080/setup
+pnpm dev:api
 
 # 前台（Astro dev，:4321；网关会把非 /api、/admin、/uploads 的请求代理过来）
 pnpm dev:web
 
-# 后台（Vite dev，/admin/，代理 /api 到 :8080）
+# 后台热更新开发（http://localhost:5174/admin/，代理 /api 到 :8080）
+# 未初始化时会进入 /admin/setup；使用统一网关时则是 /setup
 pnpm dev:admin
 ```
 
@@ -53,6 +57,21 @@ pnpm dev:admin
 dotnet build CashewBlog.slnx && dotnet test CashewBlog.slnx   # 集成测试需先运行 tests/scripts/start-test-postgres.sh
 pnpm --filter @cashewblog/web check && pnpm -r test && pnpm -r build
 ```
+
+管理端使用 PrimeVue Aura 主题及组件；文章正文使用 Milkdown，页面 HTML/CSS 使用 Monaco。
+所有导航入口均接入 REST API，媒体选择器可用于正文、封面和页面；设置表单覆盖站点外观、导航、侧栏等。
+
+浏览器验收需要一个**已初始化的本地测试实例**（外部 PostgreSQL、API、Astro 都启动），以及 Chrome：
+
+```powershell
+$env:CASHEWBLOG_E2E_URL = 'http://127.0.0.1:8080'
+$env:CASHEWBLOG_E2E_PASSWORD = '<测试实例管理员密码>'
+pnpm test:admin:e2e
+```
+
+脚本只允许 loopback 地址，创建自己的文章、分类、页面和附件，并在结束时清理这些记录。
+覆盖发布、工作副本、私密访问、媒体引用保护、Monaco、回收站恢复及公开页面。
+当前验收记录与尚未运行的 Docker 门槛见 [`docs/acceptance.md`](docs/acceptance.md)。
 
 ## 致谢与许可
 

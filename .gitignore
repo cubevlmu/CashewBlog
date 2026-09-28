@@ -15,6 +15,7 @@ TestResults/
 # Runtime state
 /data/
 /uploads/
+/.local-test/
 
 # Tooling
 .codegraph/

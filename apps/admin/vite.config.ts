@@ -17,6 +17,7 @@ export default defineConfig({
     proxy: {
       "/api": { target: gateway, changeOrigin: false },
       "/uploads": { target: gateway, changeOrigin: false },
+      "/posts": { target: gateway, changeOrigin: false },
     },
   },
   build: {

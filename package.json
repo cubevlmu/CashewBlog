@@ -3,6 +3,9 @@
   "private": true,
   "packageManager": "pnpm@10.18.0",
   "scripts": {
+    "build:admin": "pnpm --filter @cashewblog/admin build && node tools/stage-admin.mjs",
+    "dev:api": "dotnet run --project src/CashewBlog.Api --no-launch-profile -- --urls http://127.0.0.1:8080",
+    "test:admin:e2e": "node tests/scripts/admin-browser-smoke.mjs",
     "dev:web": "pnpm --filter @cashewblog/web dev",
     "dev:admin": "pnpm --filter @cashewblog/admin dev",
     "build": "pnpm -r build",

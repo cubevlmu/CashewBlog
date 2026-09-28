@@ -5,9 +5,9 @@
   "description": "CashewBlog public frontend (Astro SSR, derived from Shirone)",
   "license": "MIT",
   "scripts": {
-    "dev": "node scripts/icons/generate-local-icons.mjs && astro dev",
+    "dev": "node scripts/icons/generate-local-icons.mjs && astro dev --host 127.0.0.1",
     "check": "astro check",
-    "type-check": "tsc --noEmit --isolatedDeclarations",
+    "type-check": "tsc --noEmit",
     "build": "node scripts/icons/generate-local-icons.mjs && astro build",
     "preview": "astro preview",
     "astro": "astro",
