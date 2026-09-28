@@ -1,1 +1,4 @@
 dist/
+
+# Local build-time configuration; never commit the PrimeUI license key.
+.env.local

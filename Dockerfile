@@ -11,12 +11,17 @@ FROM node:${NODE_VERSION}-bookworm-slim AS frontend
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 RUN corepack enable
 WORKDIR /repo
+# PrimeUI license key for the admin SPA (PrimeVue 5). Pass it with
+#   docker build --build-arg VITE_PRIMEUI_LICENSE=... .
+# A local apps/admin/.env.local is copied below and used when the arg is omitted.
+ARG VITE_PRIMEUI_LICENSE
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/admin/package.json apps/admin/package.json
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY apps apps
-RUN pnpm --filter @cashewblog/web build \
+RUN export VITE_PRIMEUI_LICENSE=$VITE_PRIMEUI_LICENSE \
+ && pnpm --filter @cashewblog/web build \
  && pnpm --filter @cashewblog/admin build \
  && pnpm --filter @cashewblog/web deploy --prod --legacy /out/web \
  && cp -r apps/web/dist /out/web/dist \

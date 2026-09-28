@@ -64,6 +64,10 @@ Suggested stages:
 3. .NET SDK restore/build/publish.
 4. final runtime image with .NET runtime + Node runtime + required native image-processing libraries.
 
+The admin build needs the PrimeUI license key (PrimeVue 5): pass it as
+`docker build --build-arg VITE_PRIMEUI_LICENSE=...`; a local `apps/admin/.env.local` is used when the
+argument is omitted.
+
 Copy only production dependencies/build output into final stage.
 
 ## Health

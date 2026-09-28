@@ -18,6 +18,9 @@ TestResults/
 /.local-test/
 /.local-dev/
 
+# Admin build output staged into the API host (bakes in the PrimeUI license key)
+src/CashewBlog.Api/wwwroot/
+
 # Tooling
 .codegraph/
 .idea/
