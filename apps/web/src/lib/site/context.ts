@@ -1,6 +1,6 @@
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { getBootstrap } from "@/lib/api/client";
+import { ApiError, getBootstrap } from "@/lib/api/client";
 import type {
 	CategorySummaryDto,
 	SeriesSummaryDto,
@@ -276,6 +276,7 @@ export async function loadSiteContext(): Promise<SiteContext> {
 	try {
 		return createSiteContext(await getBootstrap());
 	} catch (error) {
+		if (error instanceof ApiError && error.code === "setup_required") throw error;
 		console.error("[cashewblog] bootstrap unavailable:", error);
 		return createSiteContext(null);
 	}

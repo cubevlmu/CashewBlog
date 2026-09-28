@@ -34,6 +34,16 @@ docker run -d -p 8080:8080 -v ./data:/data -v ./uploads:/uploads cashewblog
 
 需要 .NET SDK 10、Node.js ≥ 22.12、pnpm 10、PostgreSQL。
 
+首次使用前，请用 PostgreSQL 管理员连接已有的 `postgres` 数据库，执行：
+
+```sql
+CREATE DATABASE cashewblog OWNER postgres;
+```
+
+这里的 `postgres` 是数据库用户，和博客管理员密码无关。若使用其他数据库用户，请修改 OWNER。
+Setup 会创建表结构，但不会创建数据库；`database_not_found` 表示数据库名称不存在。
+首次访问请打开 API 网关的 `/setup`；完成初始化之前，公开 API 返回 `503 setup_required` 是正常行为。
+
 ```bash
 pnpm install
 

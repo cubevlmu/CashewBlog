@@ -19,13 +19,25 @@ export const API_ORIGIN = (
 ).replace(/\/+$/, "");
 
 export class ApiError extends Error {
+	readonly status: number;
+	readonly path: string;
+	readonly code?: string;
 	constructor(
-		readonly status: number,
-		readonly path: string,
+		status: number,
+		path: string,
+		code?: string,
 	) {
 		super(`CashewBlog API ${path} responded ${status}`);
 		this.name = "ApiError";
+		this.status = status;
+		this.path = path;
+		this.code = code;
 	}
+}
+
+async function apiError(response: Response, path: string): Promise<ApiError> {
+	const problem = await response.json().catch(() => null);
+	return new ApiError(response.status, path, typeof problem?.error === "string" ? problem.error : undefined);
 }
 
 export interface PostListQuery {
@@ -70,7 +82,7 @@ export function createBlogApi(options: { cookie?: string | null } = {}) {
 		if (init.withCookie && options.cookie) headers.cookie = options.cookie;
 		const response = await fetch(`${API_ORIGIN}/api${path}`, { headers });
 		if (response.status === 404 && init.allowNotFound) return null;
-		if (!response.ok) throw new ApiError(response.status, path);
+		if (!response.ok) throw await apiError(response, path);
 		return (await response.json()) as T;
 	}
 
@@ -124,7 +136,7 @@ export async function getBootstrap(): Promise<SiteBootstrapDto> {
 				bootstrapCache.checkedAt = Date.now();
 				return bootstrapCache.data;
 			}
-			if (!response.ok) throw new ApiError(response.status, "/site/bootstrap");
+			if (!response.ok) throw await apiError(response, "/site/bootstrap");
 			const data = (await response.json()) as SiteBootstrapDto;
 			bootstrapCache = {
 				data,
