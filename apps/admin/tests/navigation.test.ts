@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   currentNavigation,
   navigationTrail,
+  pageDescription,
   pageIcon,
   pageTitle,
 } from "../src/navigation";
@@ -54,7 +55,7 @@ describe("admin navigation trails", () => {
     expect(navigationTrail("/admin/settings/appearance")).toEqual([
       { label: "工作台", to: "/admin" },
       { label: "站点管理" },
-      { label: "站点设置", to: "/admin/settings" },
+      { label: "站点设置", to: "/admin/settings/general" },
       { label: "外观" },
     ]);
     expect(pageTitle("/admin/settings/appearance")).toBe("外观");
@@ -69,12 +70,18 @@ describe("admin navigation trails", () => {
     expect(navigationTrail("/admin/settings/security")).toEqual([
       { label: "工作台", to: "/admin" },
       { label: "站点管理" },
-      { label: "站点设置", to: "/admin/settings" },
+      { label: "站点设置", to: "/admin/settings/general" },
       { label: "安全与导出" },
     ]);
   });
 
-  it("hangs the trash under 文章 instead of the top level", () => {
+  it("describes each settings section on its own page", () => {
+    expect(pageDescription("/admin/settings/appearance")).toBe("主题色、明暗模式、背景纹理与文章列表样式。");
+    expect(pageDescription("/admin/settings/security")).toBe("修改管理员密码，导出设置与文章。");
+    expect(pageDescription("/admin/posts")).toBe("记录想法，管理草稿与已发布的文章。");
+  });
+
+  it("lists 全部文章 and 回收站 as sibling pages under 文章", () => {
     expect(navigationTrail("/admin/trash")).toEqual([
       { label: "工作台", to: "/admin" },
       { label: "内容管理" },
@@ -83,6 +90,12 @@ describe("admin navigation trails", () => {
     ]);
     expect(pageTitle("/admin/trash")).toBe("回收站");
     expect(pageIcon("/admin/trash")).toBe("pi pi-trash");
-    expect(pageTitle("/admin/posts")).toBe("文章");
+    expect(pageTitle("/admin/posts")).toBe("全部文章");
+    expect(navigationTrail("/admin/posts")).toEqual([
+      { label: "工作台", to: "/admin" },
+      { label: "内容管理" },
+      { label: "文章" },
+      { label: "全部文章" },
+    ]);
   });
 });

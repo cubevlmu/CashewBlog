@@ -23,6 +23,12 @@ Cookie configuration in production:
 - constant-time/hash-verification behavior through established library
 - do not distinguish nonexistent account because no account concept exists
 - log failed attempts without logging passwords
+- the login entrance is configurable (a generated single path segment by default); anonymous `/admin` pages and the login API stay hidden until that entrance is opened
+- Cloudflare Turnstile can be enabled from setup or Security settings; the backend validates tokens with Cloudflare Siteverify and never exposes the secret key
+- repeated failures from one address trigger an in-memory exponential lockout in addition to the request rate limiter
+
+Security alerts are retained as PostgreSQL aggregates (up to 500 rows) keyed by category, source IP and
+request path. Administrators can inspect, acknowledge, acknowledge all, or delete them from the admin UI.
 
 ## CSRF
 

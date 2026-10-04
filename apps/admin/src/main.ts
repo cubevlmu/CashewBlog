@@ -7,6 +7,7 @@ import "primeicons/primeicons.css";
 import App from "./App.vue";
 import Field from "./components/Field.vue";
 import { router } from "./router";
+import { goToEntrance } from "./entrance";
 import { onUnauthorized } from "./api/http";
 import { session } from "./state";
 import Splitter from "primevue/splitter";
@@ -157,9 +158,6 @@ app.component("Divider", Divider);
 app.component("DatePicker", DatePicker);
 onUnauthorized(() => {
   session.value = { authenticated: false, name: null, expiresAt: null };
-  void router.push({
-    path: "/admin/login",
-    query: { next: router.currentRoute.value.fullPath },
-  });
+  goToEntrance(router.currentRoute.value.fullPath);
 });
 app.use(router).mount("#app");

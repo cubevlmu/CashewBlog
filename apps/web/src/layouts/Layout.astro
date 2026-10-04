@@ -350,3 +350,9 @@ import { bindFancyboxRuntime } from "../utils/fancybox-runtime";
 bindFancyboxRuntime();
 
 </script>
+
+<script>
+	import { initializeCache } from "../utils/browser-cache";
+	import { showSnackbar } from "../utils/snackbar";
+	void initializeCache(() => showSnackbar("基础 CSS、JavaScript 和字体已缓存到本机，下次打开会更快。", { icon: "material-symbols:offline-bolt-rounded" }));
+</script>

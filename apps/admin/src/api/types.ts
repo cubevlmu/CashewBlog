@@ -25,6 +25,7 @@ export interface Problem {
   errors?: Record<string, string[]>; // 400 validation_failed: field path -> messages
   references?: MediaReferenceDto[]; // 409 media_in_use
   maxUploadBytes?: number; // 413 payload_too_large
+  retryAfterSeconds?: number; // 429 login_locked
 }
 
 export type ErrorCode =
@@ -33,6 +34,8 @@ export type ErrorCode =
   | "csrf_invalid" // 400
   | "unauthorized" // 401
   | "invalid_password" // 401 on login
+  | "turnstile_failed" // 400 on login
+  | "login_locked" // 429, retryAfterSeconds
   | "forbidden" // 403
   | "not_found" // 404
   | "media_in_use" // 409
@@ -203,6 +206,53 @@ export interface SessionDto {
   authenticated: boolean;
   name: string | null /* "admin" */;
   expiresAt: IsoDateTime | null;
+}
+
+export interface SecurityAlertDto {
+  id: number;
+  category: string;
+  severity: "Critical" | "Warning" | string;
+  sourceIp: string;
+  path: string;
+  message: string;
+  count: number;
+  firstSeenAt: IsoDateTime;
+  lastSeenAt: IsoDateTime;
+  acknowledgedAt: IsoDateTime | null;
+}
+
+export interface SecurityAlertPageDto {
+  items: SecurityAlertDto[];
+  offset: number;
+  limit: number;
+  totalCount: number;
+  activeCount: number;
+}
+
+/** GET /api/admin/login/options (404 unless the login entrance was opened). */
+export interface LoginOptionsDto {
+  turnstileSiteKey: string | null;
+}
+
+export interface LoginRequest {
+  password: string;
+  turnstileToken?: string | null;
+}
+
+export interface SecuritySettingsDto {
+  loginPath: string; // "/k7x2mq9dfa", or "/admin/login" when no entrance is configured
+  loginPathHidden: boolean;
+  turnstileSiteKey: string | null;
+  hasTurnstileSecret: boolean;
+}
+
+export interface UpdateSecuritySettingsRequest {
+  currentPassword: string;
+  loginPath: string;
+  turnstileEnabled: boolean;
+  turnstileSiteKey?: string | null;
+  turnstileSecretKey?: string | null; // null/empty keeps the stored secret
+  turnstileToken?: string | null; // required when the keys change
 }
 
 export interface UpsertPostRequest {
@@ -506,6 +556,17 @@ export interface InitializeRequest {
   password: string; // ≥ 8 chars; stored as Argon2id hash
   database: DatabaseTestRequest; // the database must already exist; migrations run automatically
   storage?: { root?: string | null; maxUploadBytes?: number | null }; // defaults from status
+  security?: {
+    loginPath?: string | null; // empty → generated
+    turnstileSiteKey?: string | null;
+    turnstileSecretKey?: string | null;
+    turnstileToken?: string | null; // required with Turnstile keys
+  };
+}
+
+export interface InitializeResult {
+  initialized: boolean;
+  redirectTo: string; // the login entrance
 }
 
 export interface SiteSettings {

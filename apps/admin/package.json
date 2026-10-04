@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@iconify/vue": "^5.0.3",
+    "@material/material-color-utilities": "^0.4.0",
     "@primeuix/themes": "^3.0.0",
     "@primevue/forms": "^5.0.1",
     "chart.js": "^4.5.1",

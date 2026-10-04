@@ -109,7 +109,9 @@ type ErrorCode =
   | "invalid_state"     // 409
   | "payload_too_large" // 413
   | "rate_limited"      // 429 (login: default 5 attempts / minute / IP), Retry-After: 60
-  | "setup_required";   // 503 before first-run setup
+  | "setup_required"    // 503 before first-run setup
+  | "login_locked"      // 429 after repeated password failures; includes retryAfterSeconds
+  | "turnstile_failed"; // 400 when Cloudflare Turnstile validation fails
 ```
 
 ---
@@ -292,12 +294,28 @@ CSRF header on writes.
 |---|---|---|
 | `GET /api/admin/csrf` | – | `{ token: string; headerName: "X-XSRF-TOKEN" }` (also sets `XSRF-TOKEN`) |
 | `GET /api/admin/session` | – | `SessionDto` (also sets `XSRF-TOKEN`) |
-| `POST /api/admin/login` | `{ password: string }` | `SessionDto`; 401 `invalid_password`; 429 `rate_limited` |
+| `GET /api/admin/login/options` | – | `LoginOptionsDto` (404 unless the configured login entrance was opened) |
+| `POST /api/admin/login` | `{ password: string; turnstileToken?: string }` | `SessionDto`; 401 `invalid_password`; 400 `turnstile_failed`; 429 `rate_limited` or `login_locked` |
 | `POST /api/admin/logout` | – | 204 |
 | `POST /api/admin/password` | `{ currentPassword: string; newPassword: string }` (min 8 chars) | 204; other sessions are signed out |
+| `GET /api/admin/security` | – | Current login entrance and Turnstile status (never the secret key) |
+| `PUT /api/admin/security` | Current password, login path and optional Turnstile keys/token | Updated security status; keys are verified before saving |
 
 ```ts
 interface SessionDto { authenticated: boolean; name: string | null /* "admin" */; expiresAt: IsoDateTime | null }
+interface LoginOptionsDto { turnstileSiteKey: string | null }
+
+### Security alerts
+
+| Method & path | Query/body | Response |
+|---|---|---|
+| `GET /api/admin/security-alerts` | `includeAcknowledged`, `severity`, `category`, `offset`, `limit` | `SecurityAlertPageDto` |
+| `POST /api/admin/security-alerts/{id}/acknowledge` | – | 204 |
+| `POST /api/admin/security-alerts/acknowledge-all` | – | 204 |
+| `DELETE /api/admin/security-alerts/{id}` | – | 204 |
+
+Security alerts are aggregated by category, source IP and path; the API never returns passwords,
+cookies, secrets or request bodies.
 ```
 
 ### Posts
@@ -618,7 +636,7 @@ call returns `503 setup_required` and page requests redirect (302) to `/setup`.
 |---|---|---|
 | `GET /api/setup/status` | – | `SetupStatusDto` |
 | `POST /api/setup/database/test` | `DatabaseTestRequest` | `DatabaseTestResult` (always 200; check `ok`) |
-| `POST /api/setup/initialize` | `InitializeRequest` | `{ initialized: true; redirectTo: "/admin" }`; 400 with field errors (`database` holds connection/migration errors) |
+| `POST /api/setup/initialize` | `InitializeRequest` | `{ initialized: true; redirectTo: "/<configured-or-generated-login-entrance>" }`; 400 with field errors (`database` holds connection/migration errors) |
 
 ```ts
 interface SetupStatusDto {
@@ -645,6 +663,12 @@ interface InitializeRequest {
   password: string;             // ≥ 8 chars; stored as Argon2id hash
   database: DatabaseTestRequest; // the database must already exist; migrations run automatically
   storage?: { root?: string | null; maxUploadBytes?: number | null }; // defaults from status
+  security?: {
+    loginPath?: string | null; // empty → generated secret entrance
+    turnstileSiteKey?: string | null;
+    turnstileSecretKey?: string | null;
+    turnstileToken?: string | null; // required when Turnstile keys are supplied
+  };
 }
 ```
 

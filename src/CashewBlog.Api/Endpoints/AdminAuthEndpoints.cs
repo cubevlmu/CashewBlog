@@ -4,9 +4,11 @@ using System.Text;
 using CashewBlog.Api.Hosting;
 using CashewBlog.Application.Abstractions;
 using CashewBlog.Application.Admin;
+using CashewBlog.Infrastructure.Security;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CashewBlog.Api.Endpoints;
 
@@ -34,15 +36,68 @@ public static class AdminAuthEndpoints
                 : new SessionDto(false, null, null));
         }).AllowAnonymous();
 
+        // Both login endpoints answer 404 unless the browser came through the login entrance.
+        admin.MapGet("/login/options", (HttpContext context, AdminEntrance entrance, AuthService auth) =>
+            entrance.IsValid(context)
+                ? Results.Ok(new LoginOptionsDto(auth.Turnstile.Enabled ? auth.Turnstile.SiteKey : null))
+                : ApiErrors.NotFound()).AllowAnonymous();
+
         admin.MapPost("/login", async (LoginRequest request, HttpContext context, AuthService auth, IConfigStore config,
-            IAntiforgery antiforgery, ILogger<AuthService> logger) =>
+            AdminEntrance entrance, LoginThrottle throttle, ISecurityAlertRecorder alerts, IAntiforgery antiforgery, ILogger<AuthService> logger, CancellationToken ct) =>
         {
-            if (!auth.VerifyPassword(request.Password))
+            if (!entrance.IsValid(context))
             {
-                logger.LogWarning("Failed admin login from {Ip}", context.Connection.RemoteIpAddress);
+                return ApiErrors.NotFound();
+            }
+
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            if (throttle.LockedFor(ip) is { } locked)
+            {
+                await alerts.RecordAsync("LoginBruteForce", "Critical", ip, context.Request.Path,
+                    "被锁定的来源继续尝试登录。", ct);
+                return Locked(context, locked);
+            }
+
+            if (!await auth.VerifyTurnstileAsync(request.TurnstileToken, ip, ct))
+            {
+                logger.LogWarning("Admin login from {Ip} failed the Turnstile check", ip);
+                return ApiErrors.Problem(StatusCodes.Status400BadRequest, "turnstile_failed", "Human verification failed. Complete the challenge again.");
+            }
+
+            // Argon2 costs ~19 MiB and tens of milliseconds; a small gate keeps floods from exhausting the host.
+            if (!await PasswordGate.WaitAsync(TimeSpan.FromSeconds(10), ct))
+            {
+                return ApiErrors.Problem(StatusCodes.Status429TooManyRequests, "rate_limited", "The server is busy. Try again shortly.");
+            }
+
+            bool valid;
+            try
+            {
+                valid = auth.VerifyPassword(request.Password);
+            }
+            finally
+            {
+                PasswordGate.Release();
+            }
+
+            if (!valid)
+            {
+                var lockout = throttle.RecordFailure(ip);
+                logger.LogWarning("Failed admin login from {Ip}", ip);
+                // Uniform, slightly randomized latency blunts timing and scripted guessing.
+                await Task.Delay(Random.Shared.Next(200, 400), ct);
+                if (lockout is { } started)
+                {
+                    await alerts.RecordAsync("LoginBruteForce", "Critical", ip, context.Request.Path,
+                        "登录失败次数达到锁定阈值。", ct);
+                    logger.LogWarning("Admin login locked for {Ip} for {Minutes} minutes after repeated failures", ip, (int)started.TotalMinutes);
+                    return Locked(context, started);
+                }
+
                 return ApiErrors.Problem(StatusCodes.Status401Unauthorized, "invalid_password", "Incorrect password.");
             }
 
+            throttle.Reset(ip);
             var identity = new ClaimsIdentity(
                 [new Claim(ClaimTypes.Name, "admin"), new Claim(PasswordStampClaim, PasswordStamp(config))],
                 CookieAuthenticationDefaults.AuthenticationScheme);
@@ -53,9 +108,9 @@ public static class AdminAuthEndpoints
             // The antiforgery token is bound to the user; hand out one for the new identity.
             context.User = principal;
             Csrf.Issue(context, antiforgery);
-            logger.LogInformation("Admin signed in from {Ip}", context.Connection.RemoteIpAddress);
+            logger.LogInformation("Admin signed in from {Ip}", ip);
             return Results.Ok(new SessionDto(true, "admin", properties.ExpiresUtc));
-        }).AllowAnonymous().RequireRateLimiting(LoginRateLimitPolicy);
+        }).AllowAnonymous().RequireRateLimiting(LoginRateLimitPolicy).WithMetadata(new RequestSizeLimitAttribute(16 * 1024));
 
         admin.MapPost("/logout", async (HttpContext context, IAntiforgery antiforgery) =>
         {
@@ -84,6 +139,22 @@ public static class AdminAuthEndpoints
             Csrf.Issue(context, antiforgery);
             return Results.NoContent();
         });
+
+        secured.MapGet("/security", (AuthService auth) => auth.GetSecuritySettings());
+
+        secured.MapPut("/security", (UpdateSecuritySettingsRequest request, HttpContext context, AuthService auth, CancellationToken ct) =>
+            auth.UpdateSecuritySettingsAsync(request, context.Connection.RemoteIpAddress?.ToString(), ct));
+    }
+
+    private static readonly SemaphoreSlim PasswordGate = new(2, 2);
+
+    private static IResult Locked(HttpContext context, TimeSpan remaining)
+    {
+        var seconds = (int)Math.Ceiling(remaining.TotalSeconds);
+        context.Response.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return ApiErrors.Problem(StatusCodes.Status429TooManyRequests, "login_locked",
+            "Too many failed sign-in attempts from this address. Try again later.",
+            new Dictionary<string, object?> { ["retryAfterSeconds"] = seconds });
     }
 
     /// <summary>Short fingerprint of the current password hash; sessions issued before a password change become invalid.</summary>

@@ -117,7 +117,7 @@ try {
       buffer: Buffer.from("smoke attachment"),
     });
   await expect(
-    page.getByRole("cell", { name: suffix + ".txt", exact: true }),
+    page.getByRole("button", { name: "查看 " + suffix + ".txt", exact: true }),
   ).toBeVisible();
   const media = (
     await (await api("GET", "/api/admin/media?q=" + suffix)).json()
@@ -133,7 +133,6 @@ try {
   );
   await page.goto(base + "/admin/pages/new");
   await page.getByLabel("标题", { exact: true }).fill("验收页面-" + suffix);
-  await page.getByLabel("Slug", { exact: true }).fill("smoke/" + suffix);
   await expect(page.locator(".monaco-editor").first()).toBeVisible();
   await page.getByRole("button", { name: "保存", exact: true }).click();
   await expect(page).not.toHaveURL(/pages\/new/);
@@ -144,7 +143,15 @@ try {
     "",
   );
   assert.equal(
-    (await anonymous.request.get(base + "/smoke/" + suffix + "/")).status(),
+    (
+      await anonymous.request.get(
+        // Page slugs are generated from the title.
+        base +
+          "/" +
+          encodeURI((await (await api("GET", "/api/admin/pages/" + pageId)).json()).slug) +
+          "/",
+      )
+    ).status(),
     200,
   );
   await page.goto(base + "/admin/settings");

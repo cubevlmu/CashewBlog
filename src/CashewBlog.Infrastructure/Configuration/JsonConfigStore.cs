@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CashewBlog.Application.Abstractions;
 using CashewBlog.Application.Setup;
+using CashewBlog.Domain.Rules;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
@@ -174,6 +175,19 @@ public sealed class JsonConfigStore : IConfigStore
         if (!config.Admin.PasswordHash.StartsWith("$argon2id$", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Admin.PasswordHash must be an Argon2id PHC string.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(config.Admin.LoginPath)
+            && LoginPathRules.Normalize(config.Admin.LoginPath) is var (normalized, error)
+            && (error is not null || normalized != config.Admin.LoginPath))
+        {
+            throw new InvalidOperationException($"Admin.LoginPath must be a single lower-case path segment such as \"/my-entrance\" ({error ?? "use " + normalized}).");
+        }
+
+        var turnstile = config.Admin.Turnstile;
+        if (string.IsNullOrWhiteSpace(turnstile.SiteKey) != string.IsNullOrWhiteSpace(turnstile.SecretKey))
+        {
+            throw new InvalidOperationException("Admin.Turnstile needs both SiteKey and SecretKey, or neither.");
         }
 
         _ = BuildConnectionString(config.Database); // validates SslMode

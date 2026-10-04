@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import AdminNavigation from "./components/AdminNavigation.vue";
 import {
-  currentNavigation,
   navigationTrail,
+  pageDescription,
   pageIcon,
   pageTitle,
 } from "./navigation";
 import { dark, toggleTheme } from "./theme";
 import { router } from "./router";
+import { goToEntrance } from "./entrance";
 import { http } from "./api/http";
 import { attempt, failure, session } from "./state";
+import CacheManagementDialog from "./components/CacheManagementDialog.vue";
+import { initializeCache } from "./browser-cache";
 const route = useRoute();
 const mobileQuery = window.matchMedia("(max-width: 1023px)");
 const isMobile = ref(mobileQuery.matches),
@@ -25,16 +28,21 @@ const showMenu = computed(
     session.value?.authenticated &&
     !["/setup", "/admin/setup"].includes(route.path),
 );
-const active = computed(() => currentNavigation(route.path));
 const trail = computed(() => navigationTrail(route.path));
 const title = computed(() => pageTitle(route.path));
 const icon = computed(() => pageIcon(route.path));
+const description = computed(() => pageDescription(route.path));
+const cacheDialog = ref(false);
+const cacheReady = ref(false);
 function onMobileChange(event: MediaQueryListEvent) {
   isMobile.value = event.matches;
   open.value = !event.matches;
 }
 mobileQuery.addEventListener("change", onMobileChange);
 onBeforeUnmount(() => mobileQuery.removeEventListener("change", onMobileChange));
+onMounted(() => {
+  void initializeCache(() => { cacheReady.value = true; });
+});
 watch(open, (value) => {
   if (!isMobile.value)
     localStorage.setItem("cashew-admin-collapsed", String(!value));
@@ -47,12 +55,16 @@ async function logout() {
   await attempt(async () => {
     await http.post("/api/admin/logout");
     session.value = null;
-    await router.push("/admin/login");
+    goToEntrance();
   });
 }
 </script>
 <template>
   <ConfirmDialog />
+  <CacheManagementDialog v-model:visible="cacheDialog" />
+  <Message v-if="cacheReady" class="fixed right-4 bottom-4 z-50 max-w-sm shadow-lg" severity="success" closable @close="cacheReady = false">
+    基础 CSS、JavaScript 和字体已缓存到本机，下次打开会更快。
+  </Message>
   <SidebarLayout
     v-if="showMenu"
     class="relative h-dvh overflow-hidden bg-slate-50 font-sans text-[var(--p-text-color)] dark:bg-zinc-950"
@@ -67,7 +79,7 @@ async function logout() {
       <SidebarSpacer />
       <SidebarAside>
         <SidebarPanel>
-          <AdminNavigation @navigate="navigate" @logout="logout" />
+          <AdminNavigation :collapsed="!isMobile && !open" @navigate="navigate" @logout="logout" />
           <SidebarRail />
         </SidebarPanel>
       </SidebarAside>
@@ -86,10 +98,9 @@ async function logout() {
               aria-label="展开或收起侧边栏"
               title="展开或收起侧边栏"
               ><i class="pi pi-bars" /></SidebarTrigger
-            ><i
-              :class="[icon, 'text-[var(--p-primary-color)]']"
-              aria-hidden="true"
-            /><span class="text-sm font-semibold">{{ title }}</span>
+            ><span class="flex size-8 items-center justify-center rounded-lg bg-[var(--p-primary-100)] text-[var(--p-primary-700)] dark:bg-[var(--p-primary-900)] dark:text-[var(--p-primary-200)]">
+              <i :class="icon" aria-hidden="true" />
+            </span><span class="text-sm font-semibold">{{ title }}</span>
           </div></template
         >
         <template #end
@@ -111,6 +122,22 @@ async function logout() {
               rounded
               aria-label="切换后台明暗模式"
               @click="toggleTheme"
+            /><Button
+              icon="pi pi-cog"
+              text
+              severity="secondary"
+              rounded
+              aria-label="站点设置"
+              title="站点设置"
+              @click="navigate('/admin/settings/general')"
+            /><Button
+              icon="pi pi-database"
+              text
+              severity="secondary"
+              rounded
+              aria-label="浏览器缓存管理"
+              title="浏览器缓存管理"
+              @click="cacheDialog = true"
             /></div
         ></template>
       </Toolbar>
@@ -143,7 +170,7 @@ async function logout() {
                 {{ title }}
               </h1>
               <p class="mt-2 text-sm text-[var(--p-text-muted-color)]">
-                {{ active.description }}
+                {{ description }}
               </p>
             </div>
             <Button
@@ -165,14 +192,14 @@ async function logout() {
       </div>
     </SidebarMain>
   </SidebarLayout>
+  <RouterView v-else-if="route.meta.login" />
   <main
     v-else
     class="flex min-h-dvh items-center justify-center bg-slate-50 p-4 font-sans text-[var(--p-text-color)] dark:bg-zinc-950 sm:p-8"
   >
     <div
       :class="[
-        'w-full space-y-4',
-        route.path.includes('setup') ? 'max-w-3xl' : 'max-w-md',
+        'w-full space-y-4 max-w-3xl',
       ]"
     >
       <Message v-if="failure" severity="error" closable @close="failure = ''">{{

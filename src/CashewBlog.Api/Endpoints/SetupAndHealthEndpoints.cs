@@ -13,7 +13,8 @@ public static class SetupAndHealthEndpoints
         var setup = app.MapGroup("/api/setup").WithTags("Setup");
         setup.MapGet("/status", (ISetupService s) => s.GetStatus());
         setup.MapPost("/database/test", (DatabaseTestRequest request, ISetupService s, CancellationToken ct) => s.TestDatabaseAsync(request, ct));
-        setup.MapPost("/initialize", (InitializeRequest request, ISetupService s, CancellationToken ct) => s.InitializeAsync(request, ct));
+        setup.MapPost("/initialize", (InitializeRequest request, HttpContext context, ISetupService s, CancellationToken ct) =>
+            s.InitializeAsync(request, context.Connection.RemoteIpAddress?.ToString(), ct));
     }
 
     public static void MapHealthEndpoints(this IEndpointRouteBuilder app, RuntimeOptions options)

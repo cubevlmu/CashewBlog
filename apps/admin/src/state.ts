@@ -54,5 +54,9 @@ export const statusSeverity = (status: string) =>
       : "secondary";
 export const dateLabel = (date: string | null) =>
   date ? new Date(date).toLocaleString("zh-CN") : "—";
-export const bytesLabel = (bytes: number | null) =>
-  bytes === null ? "—" : `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
+export const bytesLabel = (bytes: number | null) => {
+  if (bytes === null) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
+};

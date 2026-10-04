@@ -17,6 +17,7 @@ import EditorCodeBlock from "./EditorCodeBlock.vue";
 import EditorLinkDialog from "./EditorLinkDialog.vue";
 import EditorTable from "./EditorTable.vue";
 import EditorToolbar from "./EditorToolbar.vue";
+import MediaPickerDialog from "./MediaPickerDialog.vue";
 import SlashMenu from "./SlashMenu.vue";
 import "./editor.css";
 import {
@@ -71,6 +72,7 @@ import {
 } from "../editor/markdown-blocks";
 import { createBlock, parseMarkdown, rawLabel, serializeMarkdown, type MarkdownBlock } from "../editor/markdown-document";
 import { errorMessage, upload } from "../state";
+import type { MediaAssetDto } from "../api/types";
 
 const props = defineProps<{ modelValue: string }>();
 const emit = defineEmits<{
@@ -675,10 +677,11 @@ function chooseInsert(key: string) {
   // An empty paragraph (or the paragraph holding the `/query`) is replaced in place.
   const replace = target.kind === "paragraph" && (!plainText(elementOf(target.id) ?? document.createElement("p")).trim() || fromSlash);
   if (replace) target.source = "";
-  if (key === "image" || key === "file") {
+  if (key === "image" || key === "file" || key === "media") {
     activeId.value = target.id;
     remembered = { id: target.id, range: null };
-    pickFiles(key);
+    if (key === "media") libraryVisible.value = true;
+    else pickFiles(key);
     return;
   }
   if (key === "raw") {
@@ -1080,7 +1083,7 @@ function onDrop(event: DragEvent) {
   void addFiles(files);
 }
 
-// Public API (used by PostEditorView's media library) ---------------------------------------------------------
+// Selection memory and insertion (uploads, paste, media library) -----------------------------------------
 
 function rememberSelection() {
   const id = activeId.value ?? blocks.value.at(-1)?.id;
@@ -1127,7 +1130,21 @@ function insert(markdown: string) {
   } else splice(index + 1, 0, ...parsed);
   void focusBlock(parsed.at(-1)!.id);
 }
-defineExpose({ rememberSelection, insert });
+// Media library: insert files that are already uploaded ---------------------------------------------
+
+const libraryVisible = ref(false);
+function openLibrary() {
+  if (!remembered) rememberSelection();
+  libraryVisible.value = true;
+}
+function onLibrarySelect(asset: MediaAssetDto) {
+  libraryVisible.value = false;
+  const name = (asset.altText ?? asset.originalFileName).replace(/[\[\]\\]/g, "");
+  insert(asset.kind === "image" ? `![${name}](${asset.url})` : `[${name}](${asset.url})`);
+}
+function onLibraryHide() {
+  remembered = null;
+}
 
 // Lifecycle ------------------------------------------------------------------------------------------------------
 
@@ -1178,6 +1195,7 @@ onBeforeUnmount(() => {
       @insert="openInsertMenu($event)"
       @actions="openActions(activeId ?? blocks.at(-1)?.id, undefined, $event)"
       @upload="pickFiles"
+      @library="openLibrary"
     />
 
     <div v-if="uploading || failedUploads.length" class="flex w-full flex-col gap-2 px-4 pt-3 sm:px-8" aria-live="polite">
@@ -1350,6 +1368,7 @@ onBeforeUnmount(() => {
     </div>
 
     <input ref="fileInput" type="file" class="hidden" @change="onFilesPicked" />
+    <MediaPickerDialog v-model:visible="libraryVisible" header="从媒体库插入" @select="onLibrarySelect" @hide="onLibraryHide" />
   </section>
 
   <ContextMenu ref="contextMenu" :model="contextItems" />

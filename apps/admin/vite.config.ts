@@ -19,11 +19,21 @@ export default defineConfig({
         const target = fileURLToPath(
           new URL("../../src/CashewBlog.Api/wwwroot/admin/", import.meta.url),
         );
-        await mkdir(target, { recursive: true });
-        await cp(fileURLToPath(new URL("./dist/", import.meta.url)), target, {
-          recursive: true,
-        });
-        console.log("[CashewBlog] Admin updated — refresh /admin.");
+        const source = fileURLToPath(new URL("./dist/", import.meta.url));
+        // Rapid saves overlap watch rebuilds, so dist/ can change mid-copy; a failed copy
+        // must not take the whole dev stack down, the next rebuild stages again.
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            await mkdir(target, { recursive: true });
+            await cp(source, target, { recursive: true });
+            console.log("[CashewBlog] Admin updated — refresh /admin.");
+            return;
+          } catch (error) {
+            if (attempt === 2)
+              console.warn(`[CashewBlog] Could not stage the admin build (${(error as Error).message}); it will be retried on the next rebuild.`);
+            else await new Promise((resolve) => setTimeout(resolve, 300));
+          }
+        }
       },
     },
   ],
@@ -47,5 +57,7 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     environment: "node",
+    // Published with extensionless ESM imports that only a bundler resolves.
+    server: { deps: { inline: ["@material/material-color-utilities"] } },
   },
 });

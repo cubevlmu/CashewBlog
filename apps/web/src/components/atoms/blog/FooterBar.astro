@@ -14,6 +14,8 @@ interface Props {
 	name: string;
 	/** 版权年份（默认当前年） */
 	year?: number;
+	/** Product copyright holder shown before the site owner. */
+	copyrightName?: string;
 	links?: FooterLink[];
 	poweredBy?: FooterLink[];
 	version?: string;
@@ -26,6 +28,7 @@ interface Props {
 const {
 	name,
 	year = new Date().getFullYear(),
+	copyrightName = "CashewBlog",
 	links = [],
 	poweredBy = [],
 	version = "",
@@ -40,7 +43,9 @@ const {
 	<div class="m3-blog-footer__inner">
 		{customHtml && <div class="m3-blog-footer__custom" set:html={customHtml} />}
 		<p class="m3-blog-footer__text">
-			&copy; {year} {name}. All Rights Reserved.
+			&copy; {year} {copyrightName}. All Rights Reserved.
+			<span class="m3-blog-footer__sep" aria-hidden="true">/</span>
+			{name}
 			{links.map((l) => (
 				<Fragment>
 					<span class="m3-blog-footer__sep" aria-hidden="true">/</span>

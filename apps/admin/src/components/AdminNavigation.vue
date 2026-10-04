@@ -3,9 +3,11 @@ import Avatar from "primevue/avatar";
 import Menu from "primevue/menu";
 import { ref } from "vue";
 import { useRoute } from "vue-router";
-import { groups, currentNavigation } from "../navigation";
+import { groups, currentNavigation, firstPage } from "../navigation";
 import type { NavigationItem } from "../navigation";
 
+/** The sidebar is collapsed to its icon rail, where sub-menus are not visible. */
+const props = defineProps<{ collapsed: boolean }>();
 const emit = defineEmits<{ navigate: [path: string]; logout: [] }>();
 const route = useRoute();
 const logoSrc = `${import.meta.env.BASE_URL}cashew_logo.png`;
@@ -20,8 +22,18 @@ const userItems = [
   { label: "退出登录", icon: "pi pi-sign-out", command: () => emit("logout") },
 ];
 const openMenus = ref<Record<string, boolean>>({});
+// Menus with sub-pages have no page of their own: the active sub-page is highlighted
+// instead, except on the icon rail where the sub-pages are hidden.
 const isActive = (item: NavigationItem) =>
-  currentNavigation(route.path).path === item.path;
+  (props.collapsed || !item.children?.length) && currentNavigation(route.path).path === item.path;
+/**
+ * A menu with sub-pages only expands/collapses (PrimeVue toggles it on click); on the icon
+ * rail, where its sub-pages are hidden, it opens the first one instead.
+ */
+function select(item: NavigationItem) {
+  if (!item.children?.length) emit("navigate", item.path);
+  else if (props.collapsed) emit("navigate", firstPage(item));
+}
 /**
  * Parent menus follow the route: a menu with the active page inside opens on load and on
  * navigation. Toggling the menu takes over until the next mount, so a manual collapse is
@@ -68,7 +80,7 @@ const menuOpen = (item: NavigationItem) =>
               :is-active="isActive(item)"
               :title="item.label"
               :aria-current="isActive(item) ? 'page' : undefined"
-              @click="emit('navigate', item.path)"
+              @click="select(item)"
             >
               <i :class="item.icon" aria-hidden="true" /><span>{{
                 item.label

@@ -3,6 +3,8 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useConfirm } from "primevue/useconfirm";
 import type { PageState } from "primevue/paginator";
+import SelectButton from "primevue/selectbutton";
+import { VueDraggable } from "vue-draggable-plus";
 import ResponsiveDataTable from "../components/ResponsiveDataTable.vue";
 import type {
   AdminCategoryDto,
@@ -15,6 +17,9 @@ import { attempt } from "../state";
 const route = useRoute(),
   confirm = useConfirm();
 const kind = computed(() => String(route.params.kind));
+const termLabel = computed(() =>
+  kind.value === "categories" ? "分类" : kind.value === "tags" ? "标签" : "系列",
+);
 type Term = AdminCategoryDto | AdminTagDto | AdminSeriesDto;
 const termName = (item: Term) => ("title" in item ? item.title : item.name);
 const items = ref<Term[]>([]),
@@ -221,43 +226,93 @@ onMounted(async () => {
       </article></template
     >
   </ResponsiveDataTable>
-  <Dialog v-model:visible="visible" modal header="编辑内容">
+  <Dialog
+    v-model:visible="visible"
+    modal
+    :draggable="false"
+    :header="`${editing ? '编辑' : '新建'}${termLabel}`"
+    :style="{ width: 'min(36rem, 96vw)' }"
+  >
     <Fluid
-      ><form @submit.prevent="save">
-        <Field v-if="kind === 'series'" label="标题"
-          ><InputText v-model="model.title" required
-        /></Field>
-        <Field v-else label="名称"
-          ><InputText v-model="model.name" required
-        /></Field>
-        <Field label="Slug"><InputText v-model="model.slug" /></Field>
-        <Field v-if="kind !== 'tags'" label="描述"
-          ><Textarea v-model="model.description" auto-resize
-        /></Field>
-        <Field v-if="kind === 'series'" label="状态"
-          ><Select
-            v-model="model.status"
-            :options="[
-              { label: '连载中', value: 'ongoing' },
-              { label: '已完结', value: 'completed' },
-            ]"
-            option-label="label"
-            option-value="value"
-        /></Field>
-        <Field v-if="kind === 'series'" label="默认分类"
-          ><Select
-            v-model="model.defaultCategoryId"
-            :options="categories"
-            option-label="name"
-            option-value="id"
-            show-clear
-        /></Field>
-        <Button type="submit" label="保存" :loading="busy" /></form
-    ></Fluid>
+      ><form id="term-form" class="flex flex-col gap-5" @submit.prevent="save">
+        <div class="flex flex-col gap-1.5">
+          <label for="term-name" class="text-sm font-medium">{{ kind === "series" ? "标题" : "名称" }}</label>
+          <InputText v-if="kind === 'series'" id="term-name" v-model="model.title" required autofocus />
+          <InputText v-else id="term-name" v-model="model.name" required autofocus />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label for="term-slug" class="text-sm font-medium">Slug</label>
+          <InputText id="term-slug" v-model="model.slug" class="font-mono" placeholder="留空自动生成" />
+          <small class="text-[var(--p-text-muted-color)]">
+            用于页面地址；留空时根据{{ kind === "series" ? "标题" : "名称" }}自动生成。
+          </small>
+        </div>
+        <div v-if="kind !== 'tags'" class="flex flex-col gap-1.5">
+          <label for="term-description" class="text-sm font-medium">描述</label>
+          <Textarea id="term-description" v-model="model.description" auto-resize rows="4" placeholder="可选" />
+        </div>
+        <div v-if="kind === 'series'" class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div class="flex flex-col gap-1.5">
+            <span id="series-status-label" class="text-sm font-medium">状态</span>
+            <SelectButton
+              v-model="model.status"
+              :options="[
+                { label: '连载中', value: 'ongoing' },
+                { label: '已完结', value: 'completed' },
+              ]"
+              option-label="label"
+              option-value="value"
+              :allow-empty="false"
+              aria-labelledby="series-status-label"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label for="series-category" class="text-sm font-medium">默认分类</label>
+            <Select
+              v-model="model.defaultCategoryId"
+              input-id="series-category"
+              :options="categories"
+              option-label="name"
+              option-value="id"
+              placeholder="不指定"
+              show-clear
+            />
+            <small class="text-[var(--p-text-muted-color)]">系列中没有自己分类的文章使用该分类。</small>
+          </div>
+        </div>
+      </form></Fluid
+    >
+    <template #footer>
+      <Button label="取消" text severity="secondary" @click="visible = false" />
+      <Button type="submit" form="term-form" label="保存" icon="pi pi-check" :loading="busy" />
+    </template>
   </Dialog>
-  <Dialog v-model:visible="orderVisible" modal header="系列文章顺序"
-    ><OrderList v-model="ordered" data-key="id"
-      ><template #option="{ option }">{{ option.title }}</template></OrderList
-    ><Button label="保存顺序" @click="saveOrder"
-  /></Dialog>
+  <Dialog
+    v-model:visible="orderVisible"
+    modal
+    :draggable="false"
+    header="系列文章顺序"
+    :style="{ width: 'min(40rem, 96vw)' }"
+  >
+    <p class="mt-0 mb-3 text-sm text-[var(--p-text-muted-color)]">拖动调整文章在系列中的阅读顺序。</p>
+    <VueDraggable
+      v-if="ordered.length"
+      v-model="ordered"
+      handle=".drag-handle"
+      class="max-h-[60dvh] divide-y divide-[var(--p-content-border-color)] overflow-y-auto rounded-lg border border-[var(--p-content-border-color)]"
+    >
+      <div v-for="(post, index) in ordered" :key="post.id" class="flex items-center gap-3 px-3 py-2">
+        <Button class="drag-handle shrink-0 cursor-grab" icon="pi pi-bars" text severity="secondary" aria-label="拖动排序" title="拖动排序" />
+        <span class="w-6 shrink-0 text-right font-mono text-sm text-[var(--p-text-muted-color)]">{{ index + 1 }}</span>
+        <span class="min-w-0 flex-1 truncate text-sm">{{ post.title }}</span>
+      </div>
+    </VueDraggable>
+    <p v-else class="m-0 rounded-lg border border-dashed border-[var(--p-content-border-color)] px-4 py-6 text-center text-sm text-[var(--p-text-muted-color)]">
+      该系列还没有文章。
+    </p>
+    <template #footer>
+      <Button label="取消" text severity="secondary" @click="orderVisible = false" />
+      <Button label="保存顺序" icon="pi pi-check" :disabled="!ordered.length" @click="saveOrder" />
+    </template>
+  </Dialog>
 </template>

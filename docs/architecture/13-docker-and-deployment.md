@@ -68,6 +68,17 @@ The admin build needs the PrimeUI license key (PrimeVue 5): pass it as
 `docker build --build-arg VITE_PRIMEUI_LICENSE=...`; a local `apps/admin/.env.local` is used when the
 argument is omitted.
 
+The repository workflow builds pull requests, updates a `latest` `linux/amd64` image package on every `main`
+push, and publishes version-tagged packages to GitHub Releases. Each release includes a compressed `docker save`
+archive and a SHA-256 file. Set the repository
+Actions secret `PRIMEUI_LICENSE`; it is passed only to the admin build argument.
+
+Browser caching is enabled for the public site and admin static bundles through the root service worker
+`/browser-cache-worker.js`. Content-hashed CSS/JavaScript/font assets are reused locally, public images
+are cached with bounded storage, and public HTML is revalidated online before reuse. API responses,
+authenticated pages, setup, health, and upload writes are never stored by the worker. Both front and admin
+provide a cache-management dialog to inspect usage, request persistent storage, or clear one/all buckets.
+
 Copy only production dependencies/build output into final stage.
 
 ## Health

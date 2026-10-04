@@ -179,6 +179,7 @@ export const INSERT_ITEMS: InsertItem[] = [
   { key: "table", label: "表格", icon: "pi pi-table", keywords: "table biaoge" },
   { key: "image", label: "图片", icon: "pi pi-image", keywords: "image picture upload tupian" },
   { key: "file", label: "附件", icon: "pi pi-paperclip", keywords: "file attachment upload fujian" },
+  { key: "media", label: "从媒体库插入", icon: "pi pi-images", keywords: "media library meitiku tupian fujian" },
   { key: "rule", label: "分割线", icon: "pi pi-minus", keywords: "rule divider hr fengexian" },
   { key: "note", label: "提示框", icon: "pi pi-info-circle", keywords: "admonition note tip warning callout tishi" },
   { key: "collapse", label: "折叠面板", icon: "pi pi-angle-double-down", keywords: "collapse details zhedie" },

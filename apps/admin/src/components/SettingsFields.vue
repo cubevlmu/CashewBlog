@@ -1,32 +1,62 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, shallowRef } from "vue";
+import { computed, ref, shallowRef } from "vue";
+import AutoComplete from "primevue/autocomplete";
+import SelectButton from "primevue/selectbutton";
+import Slider from "primevue/slider";
 import { VueDraggable } from "vue-draggable-plus";
 import IconPicker from "./IconPicker.vue";
+import MediaPickerDialog from "./MediaPickerDialog.vue";
+import SettingsGroup from "./SettingsGroup.vue";
+import ThemeHueField from "./ThemeHueField.vue";
+import ThemeStyleSelect from "./ThemeStyleSelect.vue";
 import {
   choices,
+  fieldLabels,
+  groupFields,
+  hints,
   isCardCollection,
+  isChipList,
   isDateField,
+  isWideField,
   labels,
+  normalizePath,
+  ranges,
   summarizeValue,
   template,
   sidebarPages,
+  type FieldGroup,
   type Value,
 } from "./settings-fields";
+import type { ThemeSpec, ThemeStyle } from "../theme-colors";
 
-const props = defineProps<{ modelValue: Value; path: string }>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: Value;
+    path: string;
+    /** Fields rendered elsewhere, e.g. an `enable` shown in the group header. */
+    hidden?: string[];
+    /** Rendered inside a group of a section's root, so no panels of its own. */
+    embedded?: boolean;
+    inputId?: string;
+  }>(),
+  { hidden: () => [], embedded: false, inputId: undefined },
+);
 const emit = defineEmits<{ "update:modelValue": [value: Value] }>();
 const key = computed(() => props.path.split(".").at(-1)!);
-const MediaView = defineAsyncComponent(() => import("../views/MediaView.vue"));
+const pattern = computed(() => normalizePath(props.path));
+const root = computed(() => !props.path.includes(".") && !props.embedded);
 const mediaVisible = ref(false);
 const itemVisible = ref(false);
 const selectedIndex = ref(-1);
 const itemDraft = shallowRef<Value>("");
-const mediaField = computed(
+
+const isImage = computed(
   () =>
     ["profile.avatar", "general.favicon", "seo.ogImage"].includes(props.path) ||
     /^banner\.(desktop|mobile)\.\d+$/.test(props.path),
 );
-const isImage = computed(() => mediaField.value);
+const imageCollection = computed(() => /^banner\.(desktop|mobile)$/.test(props.path));
+const range = computed(() => ranges[pattern.value]);
 const options = computed(() =>
   key.value === "type"
     ? props.path.startsWith("sidebar")
@@ -34,13 +64,12 @@ const options = computed(() =>
       : ["home", "archive", "categories", "tags", "series", "rss", "page", "url"]
     : choices[key.value],
 );
-const entries = computed(() =>
+const record = computed(() =>
   props.modelValue && typeof props.modelValue === "object" && !Array.isArray(props.modelValue)
-    ? Object.entries(props.modelValue).filter(([name]) =>
-        !(name === "id" && (props.path === "navigation" || props.path.endsWith(".children"))),
-      )
-    : [],
+    ? (props.modelValue as Record<string, Value>)
+    : null,
 );
+const groups = computed(() => (record.value ? groupFields(props.path, record.value, props.hidden) : []));
 const collection = computed(() => Array.isArray(props.modelValue) && isCardCollection(props.path));
 const languageOptions = [
   { label: "中文（简体）", value: "zh-CN", flag: "🇨🇳" },
@@ -97,6 +126,7 @@ const cardTitle = (item: Value, index: number) => {
     const type = item.type;
     return typeof type === "string" ? sidebarWidgetLabels[type] ?? "未知组件" : `组件 ${index + 1}`;
   }
+  if (imageCollection.value && typeof item === "string") return item ? item.split("/").at(-1)! : `图片 ${index + 1}`;
   const summary = summarizeValue(item);
   return summary === "未填写" ? `项目 ${index + 1}` : summary;
 };
@@ -128,13 +158,29 @@ const cardDetail = (item: Value): string => {
 const displayChoices = computed(() =>
   (options.value ?? []).map((value) => ({ value, label: choiceLabels[key.value]?.[value] ?? value })),
 );
-const themeHue = computed(() => {
-  const hue = (props.modelValue as Record<string, Value>)?.themeHue;
-  return typeof hue === "number" ? hue : 315;
-});
 
+function fieldId(name: string) {
+  return `setting-${props.path}.${name}`.replace(/[^\w-]/g, "-");
+}
+function hintFor(name: string) {
+  return hints[normalizePath(`${props.path}.${name}`)];
+}
+function labelFor(name: string) {
+  return fieldLabels[normalizePath(`${props.path}.${name}`)] ?? labels[name] ?? name;
+}
+/** A group holding just one list or object already shows that field's name as its title. */
+function showsLabel(group: FieldGroup, name: string) {
+  return !(group.fields.length === 1 && group.title === (labels[name] ?? name) && Array.isArray(record.value?.[name]));
+}
 function updateField(name: string, value: Value) {
   emit("update:modelValue", { ...(props.modelValue as Record<string, Value>), [name]: value });
+}
+function setEnable(name: string, value: boolean) {
+  const child = record.value?.[name] as Record<string, Value>;
+  updateField(name, { ...child, enable: value });
+}
+function groupEnabled(group: FieldGroup) {
+  return group.object ? (record.value?.[group.object] as Record<string, Value>)?.enable !== false : true;
 }
 function updateItem(index: number, value: Value) {
   const items = [...(props.modelValue as Value[])];
@@ -145,6 +191,18 @@ function remove(index: number) {
   const items = [...(props.modelValue as Value[])];
   items.splice(index, 1);
   emit("update:modelValue", items);
+}
+function add() {
+  if (imageCollection.value) {
+    mediaVisible.value = true;
+    return;
+  }
+  emit("update:modelValue", [...(props.modelValue as Value[]), template(props.path)]);
+}
+function onMediaSelect(url: string) {
+  mediaVisible.value = false;
+  if (imageCollection.value) emit("update:modelValue", [...(props.modelValue as Value[]), url]);
+  else emit("update:modelValue", url);
 }
 function editItem(index: number) {
   selectedIndex.value = index;
@@ -160,112 +218,236 @@ function formatDate(value: unknown): string | null {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }
 const canAdd = computed(() => key.value !== "children" || props.path.split(".").filter((k) => k === "children").length < 2);
-
+const sliderValue = computed(() => (typeof props.modelValue === "number" ? props.modelValue : range.value?.min ?? 0));
 </script>
 
 <template>
+  <!-- Objects: titled groups with a two-column field grid -->
+  <div v-if="record" class="flex min-w-0 flex-col gap-5">
+    <SettingsGroup
+      v-for="group in groups"
+      :key="group.id"
+      :title="group.title"
+      :hint="group.hint"
+      :root="root"
+      :toggle="group.toggle && group.object ? groupEnabled(group) : undefined"
+      @toggle="group.object && setEnable(group.object, $event)"
+    >
+      <div v-if="group.object" :class="{ 'opacity-60': !groupEnabled(group) }">
+        <SettingsFields
+          :model-value="record[group.object]"
+          :path="`${path}.${group.object}`"
+          :hidden="group.toggle ? ['enable'] : []"
+          @update:model-value="updateField(group.object, $event)"
+        />
+      </div>
+      <div v-else class="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+        <template v-for="name in group.fields" :key="name">
+          <div
+            v-if="typeof record[name] === 'boolean'"
+            class="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-[var(--p-content-border-color)] px-4 py-3"
+          >
+            <div class="min-w-0">
+              <label :for="fieldId(name)" class="text-sm font-medium">{{ labelFor(name) }}</label>
+              <p v-if="hintFor(name)" class="m-0 mt-0.5 text-xs text-[var(--p-text-muted-color)]">{{ hintFor(name) }}</p>
+            </div>
+            <ToggleSwitch
+              :input-id="fieldId(name)"
+              :model-value="record[name] as boolean"
+              class="shrink-0"
+              @update:model-value="updateField(name, $event)"
+            />
+          </div>
+          <div
+            v-else
+            class="flex min-w-0 flex-col gap-1.5"
+            :class="{ 'md:col-span-2': isWideField(`${path}.${name}`) || Array.isArray(record[name]) }"
+          >
+            <label v-if="showsLabel(group, name)" :for="fieldId(name)" class="text-sm font-medium">{{ labelFor(name) }}</label>
+            <ThemeHueField
+              v-if="path === 'appearance' && name === 'themeHue'"
+              :model-value="record.themeHue as number"
+              :theme-style="record.themeStyle as ThemeStyle"
+              :theme-spec="record.themeSpec as ThemeSpec"
+              @update:model-value="updateField(name, $event)"
+            />
+            <ThemeStyleSelect
+              v-else-if="path === 'appearance' && name === 'themeStyle'"
+              :model-value="record.themeStyle as ThemeStyle"
+              :hue="record.themeHue as number"
+              :theme-spec="record.themeSpec as ThemeSpec"
+              :labels="choiceLabels.themeStyle"
+              @update:model-value="updateField(name, $event)"
+            />
+            <SettingsFields
+              v-else
+              :model-value="record[name]"
+              :path="`${path}.${name}`"
+              :input-id="fieldId(name)"
+              embedded
+              @update:model-value="updateField(name, $event)"
+            />
+            <small v-if="hintFor(name) && showsLabel(group, name)" class="text-[var(--p-text-muted-color)]">{{ hintFor(name) }}</small>
+          </div>
+        </template>
+      </div>
+    </SettingsGroup>
+  </div>
+
+  <!-- A section whose root is a list (navigation) -->
+  <SettingsGroup v-else-if="root && Array.isArray(modelValue)" :title="fieldLabels[path] ?? labels[path] ?? path" :hint="hints[path]" root>
+    <SettingsFields :model-value="modelValue" :path="path" embedded @update:model-value="emit('update:modelValue', $event)" />
+  </SettingsGroup>
+
   <MultiSelect
-    v-if="key === 'pages'"
+    v-else-if="key === 'pages'"
     :model-value="modelValue"
+    :input-id="inputId"
     :options="sidebarPages.map((value) => ({ value, label: choiceLabels.pages[value] ?? value }))"
     option-label="label"
     option-value="value"
+    display="chip"
+    placeholder="所有页面"
     @update:model-value="emit('update:modelValue', $event)"
   />
-  <template v-else-if="Array.isArray(modelValue) && collection">
+  <AutoComplete
+    v-else-if="isChipList(path)"
+    :model-value="modelValue as string[]"
+    :input-id="inputId"
+    multiple
+    :typeahead="false"
+    fluid
+    placeholder="输入后按回车添加"
+    @update:model-value="emit('update:modelValue', $event)"
+  />
+
+  <!-- Card collections: sortable rows edited in a dialog -->
+  <div v-else-if="Array.isArray(modelValue) && collection" class="flex min-w-0 flex-col gap-2">
     <VueDraggable
+      v-if="modelValue.length"
       :model-value="modelValue"
       handle=".drag-handle"
-      class="flex flex-col gap-2"
+      class="divide-y divide-[var(--p-content-border-color)] overflow-hidden rounded-lg border border-[var(--p-content-border-color)]"
       @update:model-value="emit('update:modelValue', $event)"
     >
-      <Card v-for="(item, index) in modelValue" :key="index" class="settings-item-card w-full min-w-0 border border-surface-200 shadow-sm dark:border-white/20 dark:shadow-black/30">
-        <template #content>
-          <div class="flex min-w-0 items-center gap-2">
-            <Button class="drag-handle shrink-0" icon="pi pi-arrows-v" text severity="secondary" aria-label="上下拖动排序" />
-            <button class="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left" type="button" @click="editItem(index)">
-              <span class="block truncate text-sm font-medium">{{ cardTitle(item, index) }}</span>
-              <span class="block truncate text-xs text-muted-color">{{ cardDetail(item) }}</span>
-            </button>
-            <Button icon="pi pi-pencil" text rounded severity="secondary" aria-label="编辑" @click="editItem(index)" />
-            <Button icon="pi pi-trash" text rounded severity="danger" aria-label="移除" @click="remove(index)" />
-          </div>
-        </template>
-      </Card>
+      <div v-for="(item, index) in modelValue" :key="index" class="flex min-w-0 items-center gap-2 bg-[var(--p-content-background)] px-2 py-2">
+        <Button class="drag-handle shrink-0 cursor-grab" icon="pi pi-bars" text severity="secondary" aria-label="拖动排序" title="拖动排序" />
+        <img
+          v-if="imageCollection && typeof item === 'string' && item"
+          :src="item"
+          alt=""
+          class="h-10 w-16 shrink-0 rounded object-cover"
+        />
+        <button class="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left text-[var(--p-text-color)]" type="button" @click="imageCollection ? undefined : editItem(index)">
+          <span class="block truncate text-sm font-medium">{{ cardTitle(item, index) }}</span>
+          <span v-if="!imageCollection" class="block truncate text-xs text-[var(--p-text-muted-color)]">{{ cardDetail(item) }}</span>
+        </button>
+        <Button v-if="!imageCollection" icon="pi pi-pencil" text rounded severity="secondary" aria-label="编辑" title="编辑" @click="editItem(index)" />
+        <Button icon="pi pi-trash" text rounded severity="danger" aria-label="移除" title="移除" @click="remove(index)" />
+      </div>
     </VueDraggable>
-    <Button v-if="canAdd" class="w-full justify-start" label="添加" icon="pi pi-plus" text @click="emit('update:modelValue', [...modelValue, template(path)])" />
-    <Dialog v-model:visible="itemVisible" :header="selectedIndex >= 0 ? `编辑${labels[key] ?? '项目'}` : '编辑项目'" modal maximizable :style="{ width: 'min(42rem, 96vw)' }">
+    <p v-else class="m-0 rounded-lg border border-dashed border-[var(--p-content-border-color)] px-4 py-5 text-center text-sm text-[var(--p-text-muted-color)]">
+      暂无{{ labels[key] ?? "项目" }}
+    </p>
+    <Button
+      v-if="canAdd"
+      class="self-start" :fluid="false"
+      :label="imageCollection ? '从媒体库添加' : '添加'"
+      :icon="imageCollection ? 'pi pi-images' : 'pi pi-plus'"
+      size="small"
+      outlined
+      @click="add"
+    />
+    <Dialog
+      v-model:visible="itemVisible"
+      :header="`编辑${labels[key] ?? '项目'}`"
+      modal
+      maximizable
+      :draggable="false"
+      :style="{ width: 'min(42rem, 96vw)' }"
+    >
       <SettingsFields v-model="itemDraft" :path="`${path}.${selectedIndex}`" />
       <template #footer>
         <Button label="取消" severity="secondary" text @click="itemVisible = false" />
         <Button label="完成" icon="pi pi-check" @click="saveItem" />
       </template>
     </Dialog>
-  </template>
-  <template v-else-if="Array.isArray(modelValue)">
-    <VueDraggable :model-value="modelValue" handle=".drag-handle" class="space-y-2" @update:model-value="emit('update:modelValue', $event)">
-      <div v-for="(item, index) in modelValue" :key="index" class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
-        <div class="mb-2 flex justify-end gap-1">
-          <Button class="drag-handle" icon="pi pi-arrows-v" text severity="secondary" aria-label="上下拖动排序" />
-          <Button icon="pi pi-trash" text severity="danger" aria-label="移除" @click="remove(index)" />
+  </div>
+
+  <!-- Plain lists (e.g. subtitles): one input per row -->
+  <div v-else-if="Array.isArray(modelValue)" class="flex min-w-0 flex-col gap-2">
+    <VueDraggable :model-value="modelValue" handle=".drag-handle" class="flex flex-col gap-2" @update:model-value="emit('update:modelValue', $event)">
+      <div v-for="(item, index) in modelValue" :key="index" class="flex min-w-0 items-center gap-2">
+        <Button class="drag-handle shrink-0 cursor-grab" icon="pi pi-bars" text severity="secondary" aria-label="拖动排序" title="拖动排序" />
+        <div class="min-w-0 flex-1">
+          <SettingsFields :model-value="item" :path="`${path}.${index}`" @update:model-value="updateItem(index, $event)" />
         </div>
-        <SettingsFields :model-value="item" :path="`${path}.${index}`" @update:model-value="updateItem(index, $event)" />
+        <Button icon="pi pi-trash" text rounded severity="danger" aria-label="移除" title="移除" @click="remove(index)" />
       </div>
     </VueDraggable>
-    <Button v-if="canAdd" label="添加" icon="pi pi-plus" text @click="emit('update:modelValue', [...modelValue, template(path)])" />
-  </template>
-  <template v-else-if="modelValue && typeof modelValue === 'object'">
-    <div class="settings-object">
-      <template v-for="([name, value], index) in entries" :key="name">
-        <Divider v-if="index > 0 && path === 'appearance' && ['texture', 'topAppBarAlign', 'progressIndicatorStyle', 'postList'].includes(name)" class="my-4" />
-        <div v-if="path === 'appearance' && ['texture', 'postList'].includes(name)" class="mb-3 text-sm font-semibold text-muted-color">{{ labels[name] }}</div>
-        <template v-if="value && typeof value === 'object' && !Array.isArray(value)">
-          <Divider v-if="path === 'appearance'" class="my-3" />
-          <div v-if="path === 'appearance' && ['texture', 'postList'].includes(name)" class="mb-2 text-sm font-semibold text-muted-color">{{ labels[name] }}</div>
-          <SettingsFields :model-value="value" :path="`${path}.${name}`" @update:model-value="updateField(name, $event)" />
-        </template>
-        <Field v-else :label="labels[name] ?? name">
-          <SettingsFields :model-value="value" :path="`${path}.${name}`" @update:model-value="updateField(name, $event)" />
-        </Field>
-      </template>
-      <section v-if="path === 'appearance'" class="mt-4 rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-        <div class="mb-3 flex items-center gap-2 text-sm font-semibold"><i class="pi pi-eye" />外观实时预览</div>
-        <div class="grid grid-cols-1 gap-3">
-          <div class="rounded-lg p-3" :style="{ background: `hsl(${themeHue} 70% 96%)`, color: `hsl(${themeHue} 48% 28%)` }"><div class="text-xs opacity-70">主题色</div><div class="mt-1 font-semibold">你好，世界</div><div class="mt-1 text-xs">这是页面内容与背景的预览</div></div>
-          <div class="flex items-center gap-2 rounded-lg border border-surface-200 p-3 dark:border-surface-700"><span class="size-8 rounded-full" :style="{ background: `hsl(${themeHue} 65% 52%)` }" /><div><div class="text-xs text-muted-color">强调色</div><div class="text-sm font-medium">链接与图标</div></div></div>
-          <div class="flex items-center gap-2 rounded-lg p-3 text-white" :style="{ background: `hsl(${themeHue} 58% 44%)` }"><i class="pi pi-check-circle" /><span class="text-sm font-medium">按钮预览</span></div>
-        </div>
-      </section>
+    <Button v-if="canAdd" class="self-start" :fluid="false" label="添加" icon="pi pi-plus" size="small" outlined @click="add" />
+  </div>
+
+  <div v-else-if="isImage" class="flex min-w-0 flex-wrap items-center gap-4 rounded-lg border border-[var(--p-content-border-color)] p-3">
+    <div v-if="modelValue" class="relative size-20 shrink-0 overflow-hidden rounded-lg border border-[var(--p-content-border-color)] bg-[var(--p-content-hover-background)]">
+      <img :src="String(modelValue)" alt="图片预览" class="size-full object-cover" />
     </div>
-  </template>
-  <div v-else-if="isImage" class="w-full rounded-xl border border-surface-200 p-3 dark:border-surface-700">
-    <div class="flex flex-wrap items-center gap-3">
-      <div v-if="modelValue" class="group relative size-24 shrink-0 overflow-hidden rounded-lg border border-surface-200 dark:border-surface-700">
-        <img :src="String(modelValue)" alt="图片预览" class="size-full object-cover" />
-        <Button icon="pi pi-times" rounded severity="danger" size="small" class="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100" aria-label="移除图片" @click="emit('update:modelValue', null)" />
+    <span v-else class="flex size-20 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-[var(--p-content-border-color)] text-[var(--p-text-muted-color)]"><i class="pi pi-image text-2xl" /></span>
+    <div class="min-w-0 flex-1">
+      <div class="truncate text-sm font-medium">{{ modelValue ? String(modelValue).split("/").at(-1) : "尚未选择图片" }}</div>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <Button :label="modelValue ? '更换图片' : '选择图片'" icon="pi pi-images" severity="secondary" outlined size="small" :fluid="false" @click="mediaVisible = true" />
+        <Button v-if="modelValue" label="移除" icon="pi pi-times" severity="danger" text size="small" :fluid="false" @click="emit('update:modelValue', null)" />
       </div>
-      <span v-else class="flex size-24 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-surface-300 text-muted-color dark:border-surface-600"><i class="pi pi-image text-2xl" /></span>
-      <div class="min-w-0 flex-1"><div class="truncate text-sm font-medium">{{ modelValue ? String(modelValue).split('/').at(-1) : '尚未选择图片' }}</div><div class="mt-1 text-xs text-muted-color">选择一张媒体库中的图片</div><Button class="mt-2" :label="modelValue ? '更换图片' : '打开图片管理器'" icon="pi pi-images" severity="secondary" variant="outlined" size="small" @click="mediaVisible = true" /></div>
     </div>
   </div>
-  <DatePicker v-else-if="isDateField(path)" :model-value="typeof modelValue === 'string' && modelValue ? new Date(`${modelValue}T00:00:00`) : null" date-format="yy-mm-dd" show-icon show-button-bar @update:model-value="emit('update:modelValue', formatDate($event))" />
-  <Select v-else-if="key === 'language'" :model-value="modelValue" :options="languageOptions" option-label="label" option-value="value" filter filter-by="label" checkmark class="w-full" @update:model-value="emit('update:modelValue', $event)">
+  <DatePicker v-else-if="isDateField(path)" :input-id="inputId" :model-value="typeof modelValue === 'string' && modelValue ? new Date(`${modelValue}T00:00:00`) : null" date-format="yy-mm-dd" show-icon show-button-bar @update:model-value="emit('update:modelValue', formatDate($event))" />
+  <Select v-else-if="key === 'language'" :input-id="inputId" :model-value="modelValue" :options="languageOptions" option-label="label" option-value="value" filter filter-by="label" checkmark class="w-full" @update:model-value="emit('update:modelValue', $event)">
     <template #value="slotProps"><span v-if="slotProps.value" class="flex items-center gap-2"><span>{{ languageOptions.find((item) => item.value === slotProps.value)?.flag }}</span>{{ languageOptions.find((item) => item.value === slotProps.value)?.label }}</span><span v-else>{{ slotProps.placeholder }}</span></template>
     <template #option="slotProps"><span class="flex items-center gap-2"><span>{{ slotProps.option.flag }}</span>{{ slotProps.option.label }}</span></template>
   </Select>
-  <Select v-else-if="key === 'timezone'" :model-value="modelValue" :options="timezoneOptions" option-label="label" option-value="value" filter filter-by="label" checkmark class="w-full" @update:model-value="emit('update:modelValue', $event)" />
-  <Select v-else-if="options" :model-value="modelValue" :options="displayChoices" option-label="label" option-value="value" @update:model-value="emit('update:modelValue', $event)" />
-  <ToggleSwitch v-else-if="typeof modelValue === 'boolean'" class="mt-3" :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)" />
-  <InputNumber v-else-if="typeof modelValue === 'number' || key === 'collapseAfter'" :model-value="modelValue as number | null" :max-fraction-digits="3" @update:model-value="emit('update:modelValue', $event)" />
-  <Textarea v-else-if="['html', 'content', 'description', 'bio', 'extraRobots', 'defaultDescription'].includes(key)" :model-value="modelValue as string | null" auto-resize rows="4" @update:model-value="emit('update:modelValue', $event ?? '')" />
+  <Select v-else-if="key === 'timezone'" :input-id="inputId" :model-value="modelValue" :options="timezoneOptions" option-label="label" option-value="value" filter filter-by="label" checkmark class="w-full" @update:model-value="emit('update:modelValue', $event)" />
+  <SelectButton
+    v-else-if="options && displayChoices.length <= 3"
+    :model-value="modelValue"
+    :options="displayChoices"
+    option-label="label"
+    option-value="value"
+    :allow-empty="false"
+    :aria-labelledby="inputId"
+    class="flex-wrap"
+    @update:model-value="emit('update:modelValue', $event)"
+  />
+  <Select v-else-if="options" :input-id="inputId" :model-value="modelValue" :options="displayChoices" option-label="label" option-value="value" @update:model-value="emit('update:modelValue', $event)" />
+  <ToggleSwitch v-else-if="typeof modelValue === 'boolean'" :input-id="inputId" :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)" />
+  <div v-else-if="range?.slider" class="flex items-center gap-4 pt-1">
+    <Slider
+      :model-value="sliderValue"
+      :min="range.min"
+      :max="range.max"
+      :step="range.step"
+      class="min-w-0 flex-1"
+      :aria-label="labels[key] ?? key"
+      @update:model-value="emit('update:modelValue', Array.isArray($event) ? $event[0] : $event)"
+    />
+    <span class="w-12 shrink-0 text-right font-mono text-sm tabular-nums">{{ range.percent ? `${Math.round(sliderValue * 100)}%` : sliderValue }}</span>
+  </div>
+  <InputNumber
+    v-else-if="typeof modelValue === 'number' || key === 'collapseAfter'"
+    :input-id="inputId"
+    :model-value="modelValue as number | null"
+    :min="range?.min"
+    :max="range?.max"
+    :step="range?.step ?? 1"
+    :suffix="range?.suffix"
+    :show-buttons="!!range"
+    :max-fraction-digits="3"
+    :placeholder="key === 'collapseAfter' ? '不折叠' : undefined"
+    @update:model-value="emit('update:modelValue', $event)"
+  />
+  <Textarea v-else-if="['html', 'content', 'description', 'bio', 'extraRobots', 'defaultDescription'].includes(key)" :id="inputId" :model-value="modelValue as string | null" auto-resize :rows="key === 'html' || key === 'extraRobots' ? 6 : 3" :class="{ 'font-mono text-sm': key === 'html' || key === 'extraRobots' }" @update:model-value="emit('update:modelValue', $event ?? '')" />
   <IconPicker v-else-if="key === 'icon'" :model-value="typeof modelValue === 'string' ? modelValue : ''" @update:model-value="emit('update:modelValue', $event)" />
-  <InputText v-else :type="key === 'email' ? 'email' : 'text'" :model-value="modelValue as string | null" :invalid="key === 'email' && !!modelValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(modelValue))" class="w-full" @update:model-value="emit('update:modelValue', $event ?? '')" />
-  <Dialog v-if="isImage" v-model:visible="mediaVisible" header="选择媒体" modal maximizable :style="{ width: 'min(72rem, 96vw)' }">
-    <MediaView v-if="mediaVisible" picker images-only @select="emit('update:modelValue', $event.url); mediaVisible = false" />
-  </Dialog>
-</template>
+  <InputText v-else :id="inputId" :type="key === 'email' ? 'email' : 'text'" :model-value="modelValue as string | null" :invalid="key === 'email' && !!modelValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(modelValue))" class="w-full" @update:model-value="emit('update:modelValue', $event ?? '')" />
 
-<style scoped>
-.settings-object { display: flex; flex-direction: column; gap: 0; }
-.settings-object :deep(.p-divider) { margin-block: 0.75rem; }
-</style>
+  <MediaPickerDialog v-if="isImage || imageCollection" v-model:visible="mediaVisible" header="选择图片" images-only @select="onMediaSelect($event.url)" />
+</template>

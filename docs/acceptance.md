@@ -39,7 +39,7 @@ Using isolated PostgreSQL on port 55433, API on 8087 and Astro on 4327:
   settings persisted. Public homepage/post/nested page/RSS/sitemap returned 200.
 - Admin build/type check and 4 HTTP tests passed.
 - Web `astro check`: 0 errors/warnings/hints; TypeScript check, 160 tests and SSR build passed.
-- .NET build: 0 errors/warnings; 80 unit and 42 integration tests passed.
+- .NET build: 0 errors/warnings; 97 unit and 48 integration tests passed.
 
 ## Remaining deployment gate
 

@@ -31,6 +31,7 @@ builder.Services.AddSingleton<PublicCache>();
 builder.Services.AddSingleton<IPublicCache>(sp => sp.GetRequiredService<PublicCache>());
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<WebUpstreamProbe>();
+builder.Services.AddSingleton<AdminEntrance>();
 builder.Services.AddHttpForwarder();
 
 builder.Services.ConfigureHttpJsonOptions(o => AppJson.Configure(o.SerializerOptions));
@@ -43,6 +44,8 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    // Walk the whole X-Forwarded-For chain (e.g. Cloudflare -> nginx -> app); every hop must be trusted.
+    o.ForwardLimit = null;
     // Loopback is trusted by default; add operator-configured proxies (IPs or CIDR ranges).
     foreach (var entry in runtime.TrustedProxies)
     {
@@ -102,10 +105,26 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy(AdminAuthEndpoints.LoginRateLimitPolicy, ctx => RateLimitPartition.GetFixedWindowLimiter(
         ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = runtime.LoginPermitsPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    // Coarse per-IP ceiling for the public API. Loopback (Astro SSR) and the signed-in admin are exempt.
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        runtime.ApiPermitsPerMinute == 0
+        || !ctx.Request.Path.StartsWithSegments("/api")
+        || ctx.Connection.RemoteIpAddress is not { } ip || IPAddress.IsLoopback(ip)
+        || ctx.User.Identity?.IsAuthenticated == true
+            ? RateLimitPartition.GetNoLimiter("exempt")
+            : RateLimitPartition.GetFixedWindowLimiter(ip.ToString(),
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = runtime.ApiPermitsPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
     o.OnRejected = async (ctx, ct) =>
     {
+        await ctx.HttpContext.RequestServices.GetRequiredService<ISecurityAlertRecorder>().RecordAsync(
+            "RateLimitExceeded", "Warning",
+            ctx.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            ctx.HttpContext.Request.Path,
+            "请求速率超过限制。", ct);
         ctx.HttpContext.Response.Headers.RetryAfter = "60";
-        await ApiErrors.WriteAsync(ctx.HttpContext, StatusCodes.Status429TooManyRequests, "rate_limited", "Too many attempts. Try again in a minute.");
+        await ApiErrors.WriteAsync(ctx.HttpContext, StatusCodes.Status429TooManyRequests, "rate_limited", "Too many requests. Try again in a minute.");
     };
 });
 
@@ -136,14 +155,9 @@ else
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
-app.Use((context, next) =>
-{
-    var headers = context.Response.Headers;
-    headers.XContentTypeOptions = "nosniff";
-    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    return next(context);
-});
+app.UseMiddleware<SecurityMiddleware>();
 app.UseMiddleware<SetupGateMiddleware>();
+app.UseMiddleware<AdminEntranceMiddleware>(); // before routing: it may hand hidden admin pages to the web proxy
 app.UseAdminStaticFiles(); // before routing: static files are only served when no endpoint matched
 app.UseRouting();
 app.UseAuthentication();
@@ -163,6 +177,7 @@ var secured = admin.MapGroup("").RequireAuthorization();
 secured.MapAdminAccountEndpoints();
 secured.MapAdminContentEndpoints();
 secured.MapAdminSystemEndpoints();
+secured.MapSecurityAlertEndpoints();
 
 app.MapApiFallback();
 app.MapUploads();

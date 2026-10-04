@@ -18,8 +18,14 @@ public interface IApplicationDbContext
     DbSet<PostDailyStat> PostDailyStats { get; }
     DbSet<PostViewDedupe> PostViewDedupes { get; }
     DbSet<SiteSettingsRecord> SiteSettings { get; }
+    DbSet<SecurityAlert> SecurityAlerts { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}
+
+public interface ISecurityAlertRecorder
+{
+    Task RecordAsync(string category, string severity, string sourceIp, string path, string message, CancellationToken cancellationToken = default);
 }
 
 public interface IClock
@@ -40,6 +46,13 @@ public interface IHtmlSanitizerService
 
     /// <summary>Strips HTML to plain text (for search over custom pages, excerpts).</summary>
     string ToPlainText(string html);
+}
+
+/// <summary>Server-side Cloudflare Turnstile check (siteverify).</summary>
+public interface ITurnstileVerifier
+{
+    /// <summary>True when Cloudflare accepts <paramref name="token"/> for <paramref name="secretKey"/>; false on rejection or when Cloudflare is unreachable.</summary>
+    Task<bool> VerifyAsync(string secretKey, string? token, string? remoteIp, CancellationToken ct);
 }
 
 public interface IPasswordHasher
