@@ -1,10 +1,13 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using CashewBlog.Application.Abstractions;
 using CashewBlog.Application.Common;
 using CashewBlog.Application.Setup;
 using CashewBlog.Infrastructure.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace CashewBlog.IntegrationTests.Infrastructure;
@@ -16,6 +19,7 @@ namespace CashewBlog.IntegrationTests.Infrastructure;
 public class CashewBlogFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string AdminPassword = "test-password-123";
+    public const string EntrancePath = "/cashew-door";
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "cashewblog-it-" + Guid.NewGuid().ToString("N")[..12]);
 
@@ -37,7 +41,7 @@ public class CashewBlogFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             var config = new AppConfig
             {
-                Admin = new AdminConfig { PasswordHash = new Argon2PasswordHasher().Hash(AdminPassword) },
+                Admin = new AdminConfig { PasswordHash = new Argon2PasswordHasher().Hash(AdminPassword), LoginPath = EntrancePath },
                 Database = Database.ToConfig(),
                 Storage = new StorageConfig { Root = UploadsDirectory, MaxUploadBytes = 5 * 1024 * 1024 },
             };
@@ -56,15 +60,20 @@ public class CashewBlogFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("CashewBlog:ReadyCheckWeb", "false");
         // Nothing listens here: proxied requests produce the 502 page.
         builder.UseSetting("CashewBlog:WebUpstream", "http://127.0.0.1:9");
+        builder.ConfigureTestServices(services => services.AddSingleton<ITurnstileVerifier, FakeTurnstileVerifier>());
     }
 
     public HttpClient CreateBrowserClient() =>
         CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, HandleCookies = true });
 
-    /// <summary>Client with cookies, a CSRF header and (optionally) an authenticated admin session.</summary>
-    public async Task<HttpClient> CreateAdminClientAsync(bool login = true)
+    /// <summary>
+    /// Client with cookies, a CSRF header and (optionally) an authenticated admin session. It opens the
+    /// login entrance first (the entrance cookie is required by the login API).
+    /// </summary>
+    public async Task<HttpClient> CreateAdminClientAsync(bool login = true, string entrance = EntrancePath)
     {
         var client = CreateBrowserClient();
+        await client.GetAsync(entrance);
         await RefreshCsrfAsync(client);
         if (login)
         {
@@ -103,4 +112,13 @@ public class CashewBlogFactory : WebApplicationFactory<Program>, IAsyncLifetime
 public sealed class SetupModeFactory : CashewBlogFactory
 {
     protected override bool Initialized => false;
+}
+
+/// <summary>Turnstile without Cloudflare: the token <see cref="PassToken"/> passes for any secret.</summary>
+public sealed class FakeTurnstileVerifier : ITurnstileVerifier
+{
+    public const string PassToken = "turnstile-pass";
+
+    public Task<bool> VerifyAsync(string secretKey, string? token, string? remoteIp, CancellationToken ct) =>
+        Task.FromResult(!string.IsNullOrEmpty(secretKey) && token == PassToken);
 }

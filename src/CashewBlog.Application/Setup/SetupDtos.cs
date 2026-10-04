@@ -25,15 +25,20 @@ public sealed record InitializeRequest(
     string? Timezone,
     string? Password,
     DatabaseTestRequest? Database,
-    SetupStorageRequest? Storage);
+    SetupStorageRequest? Storage,
+    SetupSecurityRequest? Security = null);
 
 public sealed record SetupStorageRequest(string? Root, long? MaxUploadBytes);
 
+/// <summary>Login entrance (generated when empty) and optional Turnstile keys, proven by a solved token.</summary>
+public sealed record SetupSecurityRequest(string? LoginPath, string? TurnstileSiteKey, string? TurnstileSecretKey, string? TurnstileToken);
+
+/// <summary><c>RedirectTo</c> is the login entrance.</summary>
 public sealed record InitializeResult(bool Initialized, string RedirectTo);
 
 public interface ISetupService
 {
     SetupStatusDto GetStatus();
     Task<DatabaseTestResult> TestDatabaseAsync(DatabaseTestRequest request, CancellationToken ct);
-    Task<InitializeResult> InitializeAsync(InitializeRequest request, CancellationToken ct);
+    Task<InitializeResult> InitializeAsync(InitializeRequest request, string? remoteIp, CancellationToken ct);
 }

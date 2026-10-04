@@ -10,6 +10,7 @@ public sealed record RuntimeOptions(
     string WebUpstream,
     IReadOnlyList<string> TrustedProxies,
     int LoginPermitsPerMinute,
+    int ApiPermitsPerMinute,
     bool BackgroundJobs,
     bool ReadyCheckWeb)
 {
@@ -32,6 +33,8 @@ public sealed record RuntimeOptions(
             (Get("WebUpstream", "CASHEWBLOG_WEB_UPSTREAM") ?? "http://127.0.0.1:4321").TrimEnd('/'),
             proxies,
             int.TryParse(Get("LoginRateLimit", "CASHEWBLOG_LOGIN_RATE_LIMIT"), out var permits) && permits > 0 ? permits : 5,
+            // 0 disables the public API limiter.
+            int.TryParse(Get("ApiRateLimit", "CASHEWBLOG_API_RATE_LIMIT"), out var api) && api >= 0 ? api : 300,
             !bool.TryParse(Get("BackgroundJobs", "CASHEWBLOG_BACKGROUND_JOBS"), out var jobs) || jobs,
             !bool.TryParse(Get("ReadyCheckWeb", "CASHEWBLOG_READY_CHECK_WEB"), out var web) || web);
     }

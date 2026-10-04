@@ -2,47 +2,62 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useConfirm } from "primevue/useconfirm";
-import MediaView from "./MediaView.vue";
-import type { MediaAssetDto } from "../api/types";
+import SelectButton from "primevue/selectbutton";
 import CodeEditor from "../components/CodeEditor.vue";
-import type { CustomPageDto, UpsertCustomPageRequest } from "../api/types";
+import { joinPageSource, splitPageSource } from "../custom-page-source";
+import type { CustomPageDto, PageLayout } from "../api/types";
 import { http } from "../api/http";
 import { attempt } from "../state";
 const route = useRoute(),
   router = useRouter(),
   confirm = useConfirm();
-const saved = ref(""),
-  mediaVisible = ref(false);
 const id = computed(() =>
   route.params.id === "new" ? null : String(route.params.id),
 );
 const busy = ref(false),
-  preview = ref(false);
-const model = reactive<UpsertCustomPageRequest>({
+  preview = ref(false),
+  saved = ref("");
+const layouts: { label: string; value: PageLayout }[] = [
+  { label: "标准", value: "default" },
+  { label: "加宽", value: "wide" },
+  { label: "全宽", value: "fullWidth" },
+];
+const model = reactive<{ title: string; slug: string; layout: PageLayout }>({
   title: "",
-  slug: null,
-  contentHtml: "<h1>新页面</h1>",
-  customCss: "",
+  slug: "",
   layout: "default",
 });
+/** HTML and the page's `<style>` blocks, edited as one document. */
+const source = ref("<h1>新页面</h1>");
+const snapshot = () => JSON.stringify([model.title, model.layout, source.value]);
+const dirty = computed(() => snapshot() !== saved.value);
+
+function apply(page: CustomPageDto) {
+  Object.assign(model, { title: page.title, slug: page.slug, layout: page.layout });
+  // The server sanitizes the HTML, so reload what was actually stored.
+  source.value = joinPageSource(page.contentHtml, page.customCss);
+  saved.value = snapshot();
+}
 async function load() {
   await attempt(async () => {
-    if (id.value)
-      Object.assign(
-        model,
-        await http.get<CustomPageDto>(`/api/admin/pages/${id.value}`),
-      );
-    saved.value = JSON.stringify(model);
+    if (id.value) apply(await http.get<CustomPageDto>(`/api/admin/pages/${id.value}`));
+    else saved.value = snapshot();
   });
 }
 async function save() {
   busy.value = true;
   await attempt(async () => {
+    const body = {
+      title: model.title,
+      // New pages get a slug generated from the title; afterwards it stays fixed so links keep working.
+      slug: id.value ? model.slug : null,
+      layout: model.layout,
+      ...splitPageSource(source.value),
+    };
     const page = id.value
-      ? await http.put<CustomPageDto>(`/api/admin/pages/${id.value}`, model)
-      : await http.post<CustomPageDto>("/api/admin/pages", model);
-    Object.assign(model, page);
-    saved.value = JSON.stringify(model);
+      ? await http.put<CustomPageDto>(`/api/admin/pages/${id.value}`, body)
+      : await http.post<CustomPageDto>("/api/admin/pages", body);
+    apply(page);
     await router.replace(`/admin/pages/${page.id}`);
   });
   busy.value = false;
@@ -56,25 +71,17 @@ function remove() {
     accept: () =>
       attempt(async () => {
         await http.del(`/api/admin/pages/${id.value}`);
-        saved.value = JSON.stringify(model);
+        saved.value = snapshot();
         await router.replace("/admin/pages");
       }),
   });
 }
-const previewHtml = computed(
-  () =>
-    `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'; font-src http: https: data:"><style>${(model.customCss ?? "").replace(/<\/style/gi, "")}</style>${model.contentHtml}`,
-);
-function selectMedia(asset: MediaAssetDto) {
-  const url = asset.url.replaceAll('"', "&quot;");
-  model.contentHtml +=
-    asset.kind === "image"
-      ? `\n<img src="${url}" alt="">`
-      : `\n<a href="${url}">附件</a>`;
-  mediaVisible.value = false;
-}
+const previewHtml = computed(() => {
+  const { contentHtml, customCss } = splitPageSource(source.value);
+  return `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'; font-src http: https: data:"><style>${(customCss ?? "").replace(/<\/style/gi, "")}</style>${contentHtml}`;
+});
 onBeforeRouteLeave(() => {
-  if (JSON.stringify(model) === saved.value) return true;
+  if (!dirty.value) return true;
   return new Promise<boolean>((resolve) =>
     confirm.require({
       header: "未保存修改",
@@ -90,9 +97,9 @@ onBeforeRouteLeave(() => {
 onMounted(load);
 </script>
 <template>
-  <Toolbar
+  <Toolbar class="!flex-nowrap"
     ><template #start
-      ><div class="flex items-center gap-1">
+      ><div class="flex shrink-0 items-center gap-1">
         <Button
           icon="pi pi-arrow-left"
           text
@@ -101,13 +108,6 @@ onMounted(load);
           aria-label="返回页面列表"
           title="返回页面列表"
           @click="router.push('/admin/pages')" /><Button
-          icon="pi pi-image"
-          text
-          rounded
-          severity="secondary"
-          aria-label="插入媒体"
-          title="插入媒体"
-          @click="mediaVisible = true" /><Button
           :icon="preview ? 'pi pi-eye-slash' : 'pi pi-eye'"
           text
           rounded
@@ -118,54 +118,77 @@ onMounted(load);
         /></div></template
     >
     <template #center
-      ><InputText
-        v-model="model.title"
-        maxlength="200"
-        placeholder="页面标题"
-        aria-label="标题"
-        class="w-full !border-transparent !bg-transparent !text-base !font-semibold"
-    /></template>
+      ><div class="min-w-0 flex-1">
+        <InputText
+          v-model="model.title"
+          maxlength="200"
+          placeholder="页面标题"
+          aria-label="标题"
+          class="w-full !border-transparent !bg-transparent !text-base !font-semibold"
+      /></div
+    ></template>
     <template #end
-      ><div class="flex flex-wrap items-center justify-end gap-2">
-        <ButtonGroup
-          ><Button
-            label="保存"
-            icon="pi pi-check"
-            size="small"
-            :loading="busy"
-            @click="save" /><Button
-            v-if="id"
-            label="删除"
-            icon="pi pi-trash"
-            size="small"
-            severity="danger"
-            :disabled="busy"
-            @click="remove"
-        /></ButtonGroup>
+      ><div class="flex shrink-0 items-center justify-end gap-2">
+        <span class="hidden text-xs text-[var(--p-text-muted-color)] sm:inline" role="status">{{
+          dirty ? "有未保存的修改" : "已保存"
+        }}</span>
+        <Button
+          v-if="id"
+          icon="pi pi-trash"
+          text
+          rounded
+          severity="danger"
+          aria-label="删除页面"
+          title="删除页面"
+          :disabled="busy"
+          @click="remove"
+        />
+        <Button label="保存" icon="pi pi-check" size="small" :loading="busy" @click="save" />
       </div></template
     ></Toolbar
-  ><iframe
-    v-if="preview"
-    title="页面预览"
-    sandbox=""
-    :srcdoc="previewHtml"
-    width="100%"
-    height="480"
-  /><Fluid v-else
-    ><Field label="Slug"
-      ><InputText v-model="model.slug" placeholder="留空自动生成" /></Field
-    ><Field label="布局"
-      ><Select
-        v-model="model.layout"
-        :options="['default', 'wide', 'fullWidth']" /></Field
-    ><Field label="HTML"
-      ><CodeEditor v-model="model.contentHtml" language="html" /></Field
-    ><Field label="CSS"
-      ><CodeEditor
-        :model-value="model.customCss ?? ''"
-        language="css"
-        @update:model-value="model.customCss = $event" /></Field></Fluid
-  ><Dialog v-model:visible="mediaVisible" modal maximizable header="插入媒体"
-    ><MediaView v-if="mediaVisible" picker @select="selectMedia"
-  /></Dialog>
+  >
+  <div class="mt-4 flex flex-col gap-4">
+    <div
+      class="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] px-4 py-3"
+    >
+      <div class="flex items-center gap-3">
+        <span id="page-layout-label" class="text-sm font-medium">布局</span>
+        <SelectButton
+          v-model="model.layout"
+          :options="layouts"
+          option-label="label"
+          option-value="value"
+          :allow-empty="false"
+          aria-labelledby="page-layout-label"
+        />
+      </div>
+      <div class="flex min-w-0 items-center gap-3 text-sm">
+        <span class="shrink-0 font-medium">页面地址</span>
+        <a
+          v-if="id && model.slug"
+          :href="`/${model.slug}/`"
+          target="_blank"
+          rel="noopener"
+          class="flex min-w-0 items-center gap-1 font-mono text-[var(--p-primary-color)] hover:underline"
+          ><span class="truncate">/{{ model.slug }}/</span><i class="pi pi-external-link shrink-0 text-xs" aria-hidden="true"
+        /></a>
+        <span v-else class="text-[var(--p-text-muted-color)]">保存后根据标题自动生成</span>
+      </div>
+    </div>
+    <p class="m-0 text-sm text-[var(--p-text-muted-color)]">
+      在同一文档中编写 HTML 与 <code>&lt;style&gt;</code>：样式只作用于本页面；脚本、iframe 和表单会在保存时被移除。
+    </p>
+    <div class="grid gap-4 lg:h-[max(28rem,calc(100dvh-22rem))]" :class="{ 'lg:grid-cols-2': preview }">
+      <div class="h-[28rem] min-h-0 overflow-hidden rounded-xl border border-[var(--p-content-border-color)] lg:h-full">
+        <CodeEditor v-model="source" label="页面 HTML 与 CSS" />
+      </div>
+      <iframe
+        v-if="preview"
+        title="页面预览"
+        sandbox=""
+        :srcdoc="previewHtml"
+        class="h-[28rem] w-full rounded-xl border border-[var(--p-content-border-color)] bg-white lg:h-full"
+      />
+    </div>
+  </div>
 </template>

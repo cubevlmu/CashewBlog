@@ -4,7 +4,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useConfirm } from "primevue/useconfirm";
 import Drawer from "primevue/drawer";
 import MarkdownEditor from "../components/MarkdownEditor.vue";
-import MediaView from "./MediaView.vue";
+import MediaPickerDialog from "../components/MediaPickerDialog.vue";
 import PostCoverField from "../components/PostCoverField.vue";
 import { markdownExcerpt } from "../editor/markdown-document";
 import type {
@@ -43,10 +43,8 @@ const model = reactive<UpsertPostRequest>({
   seoTitle: "",
   seoDescription: "",
 });
-const editor = ref<InstanceType<typeof MarkdownEditor>>(),
-  mediaVisible = ref(false),
+const coverVisible = ref(false),
   settingsVisible = ref(false),
-  coverMode = ref(false),
   coverUrl = ref(""),
   descriptionEdited = ref(false);
 const siteOrigin = window.location.origin;
@@ -190,22 +188,10 @@ watch(
     if (!descriptionEdited.value) model.description = markdownExcerpt(markdown);
   },
 );
-function selectMedia(asset: MediaAssetDto) {
-  if (coverMode.value) {
-    model.coverMediaId = asset.id;
-    coverUrl.value = asset.url;
-  } else {
-    const name = (asset.altText ?? asset.originalFileName).replace(
-      /[\[\]\\]/g,
-      "",
-    );
-    const text =
-      asset.kind === "image"
-        ? `![${name}](${asset.url})`
-        : `[${name}](${asset.url})`;
-    editor.value?.insert(text);
-  }
-  mediaVisible.value = false;
+function selectCover(asset: MediaAssetDto) {
+  model.coverMediaId = asset.id;
+  coverUrl.value = asset.url;
+  coverVisible.value = false;
 }
 async function confirmPublish() {
   await save("publish");
@@ -283,18 +269,6 @@ onBeforeUnmount(() => {
           title="预览"
           class="hidden sm:inline-flex"
           @click="preview" /><Button
-          icon="pi pi-image"
-          text
-          rounded
-          severity="secondary"
-          aria-label="插入媒体"
-          title="插入媒体"
-          class="hidden sm:inline-flex"
-          @click="
-            editor?.rememberSelection();
-            coverMode = false;
-            mediaVisible = true;
-          " /><Button
           icon="pi pi-sliders-h"
           text
           rounded
@@ -334,7 +308,6 @@ onBeforeUnmount(() => {
     ></Toolbar>
   <MarkdownEditor
     v-if="ready"
-    ref="editor"
     v-model="model.contentMarkdown"
     @error="failure = $event"
   />
@@ -388,10 +361,7 @@ onBeforeUnmount(() => {
         <Panel header="封面">
           <PostCoverField
             :src="coverUrl"
-            @choose="
-              coverMode = true;
-              mediaVisible = true;
-            "
+            @choose="coverVisible = true"
             @remove="
               model.coverMediaId = null;
               coverUrl = '';
@@ -552,11 +522,5 @@ onBeforeUnmount(() => {
       </div>
     </template>
   </Drawer>
-  <Dialog v-model:visible="mediaVisible" modal maximizable header="选择媒体"
-    ><MediaView
-      v-if="mediaVisible"
-      picker
-      :images-only="coverMode"
-      @select="selectMedia"
-  /></Dialog>
+  <MediaPickerDialog v-model:visible="coverVisible" header="选择封面" images-only @select="selectCover" />
 </template>

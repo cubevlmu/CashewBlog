@@ -12,6 +12,7 @@ import { Icon } from "astro-icon/components";
 import type { NavBarLink } from "@/types/navBarConfig";
 import LightDarkSwitch from "./LightDarkSwitch.svelte";
 import Search from "./Search.svelte";
+import CacheManagementDialog from "./CacheManagementDialog.svelte";
 
 const className = Astro.props.class;
 const { siteConfig, navLinks: links } = Astro.locals.site;
@@ -86,6 +87,7 @@ function isActive(link: NavBarLink): boolean {
 		<div class="flex-1"></div>
 		<Search client:only="svelte"></Search>
 		<LightDarkSwitch client:only="svelte"></LightDarkSwitch>
+		<CacheManagementDialog client:only="svelte" showLabel></CacheManagementDialog>
 	</div>
 </div>
 

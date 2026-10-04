@@ -27,6 +27,7 @@ const emit = defineEmits<{
   insert: [event: MouseEvent];
   actions: [anchor: HTMLElement | undefined];
   upload: [kind: "image" | "file"];
+  library: [];
 }>();
 
 // PrimeIcons has no text-format glyphs, so marks use styled letters.
@@ -52,6 +53,7 @@ const moreItems = computed<MenuItem[]>(() => [
         { separator: true },
         { label: "上传图片", icon: "pi pi-image", disabled: props.uploading, command: () => emit("upload", "image") },
         { label: "上传附件", icon: "pi pi-paperclip", disabled: props.uploading, command: () => emit("upload", "file") },
+        { label: "从媒体库插入", icon: "pi pi-images", command: () => emit("library") },
         { separator: true },
       ]
     : []),
@@ -100,6 +102,7 @@ const button = "min-h-11 min-w-11 sm:min-h-9 sm:min-w-9";
         <ButtonGroup v-if="!compact">
           <Button icon="pi pi-image" text severity="secondary" :class="button" :loading="uploading" :disabled="uploading" aria-label="上传图片" title="上传图片" @mousedown.prevent @click="emit('upload', 'image')" />
           <Button icon="pi pi-paperclip" text severity="secondary" :class="button" :disabled="uploading" aria-label="上传附件" title="上传附件" @mousedown.prevent @click="emit('upload', 'file')" />
+          <Button icon="pi pi-images" text severity="secondary" :class="button" aria-label="从媒体库插入" title="从媒体库插入" @mousedown.prevent @click="emit('library')" />
         </ButtonGroup>
         <Button icon="pi pi-plus" :label="compact ? undefined : '插入'" text severity="secondary" :class="button" aria-label="插入内容块" title="插入内容块 (输入 / 也可打开)" @mousedown.prevent @click="emit('insert', $event)" />
       </div>

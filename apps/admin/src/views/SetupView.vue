@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { computed, reactive, ref, watch } from "vue";
 import { http } from "../api/http";
 import { attempt, setup } from "../state";
-import type { InitializeRequest, DatabaseTestResult } from "../api/types";
-const router = useRouter();
+import type { InitializeRequest, InitializeResult, DatabaseTestResult } from "../api/types";
+import TurnstileWidget from "../components/TurnstileWidget.vue";
+import { rememberEntrance } from "../entrance";
 const defaults = setup.value!.defaults;
 const form = reactive<InitializeRequest>({
   siteName: "我的博客",
@@ -12,6 +12,7 @@ const form = reactive<InitializeRequest>({
   adminName: "博主",
   timezone: defaults.timezone,
   password: "",
+  security: { loginPath: "", turnstileSiteKey: "", turnstileSecretKey: "", turnstileToken: null },
   database: {
     host: "127.0.0.1",
     port: defaults.databasePort,
@@ -30,6 +31,14 @@ const step = ref(0),
   busy = ref(false),
   test = ref<DatabaseTestResult | null>(null);
 const stepLabels = ["站点", "管理员", "数据库", "存储", "初始化"];
+const turnstileEnabled = ref(false);
+const challenge = ref<InstanceType<typeof TurnstileWidget> | null>(null);
+const needsChallenge = computed(() => turnstileEnabled.value && !!form.security!.turnstileSiteKey?.trim());
+const securityReady = computed(() => !turnstileEnabled.value || !!(form.security!.turnstileSiteKey?.trim() && form.security!.turnstileSecretKey?.trim() && form.security!.turnstileToken));
+watch(() => [turnstileEnabled.value, form.security!.turnstileSiteKey, form.security!.turnstileSecretKey], () => {
+  form.security!.turnstileToken = null;
+  challenge.value?.reset();
+});
 watch(
   () => form.database,
   () => {
@@ -57,15 +66,23 @@ function next() {
   step.value++;
 }
 async function initialize() {
+  if (busy.value || !securityReady.value) return;
   busy.value = true;
   await attempt(async () => {
-    await http.post("/api/setup/initialize", form);
+    const result = await http.post<InitializeResult>("/api/setup/initialize", {
+      ...form,
+      security: { ...form.security, ...(!turnstileEnabled.value ? { turnstileSiteKey: null, turnstileSecretKey: null, turnstileToken: null } : {}) },
+    });
     form.password = "";
     confirmation.value = "";
     form.database.password = "";
+    form.security!.turnstileSecretKey = "";
+    rememberEntrance(result.redirectTo);
     setup.value = null;
-    await router.replace("/admin/login");
+    window.location.assign(result.redirectTo);
   });
+  form.security!.turnstileToken = null;
+  challenge.value?.reset();
   busy.value = false;
 }
 </script>
@@ -176,7 +193,20 @@ async function initialize() {
                     :min="1" /></Field
               ></StepPanel>
               <StepPanel :value="4"
-                ><Message severity="info"
+                ><Field label="登录入口"
+                  ><InputText v-model="form.security!.loginPath" placeholder="留空自动生成，如 /cashew-door" maxlength="65" />
+                  <small>使用 /xxxx 格式：4–64 位字母、数字、下划线或短横线。初始化后请保存登录地址。</small>
+                </Field>
+                <Field label="启用 Cloudflare Turnstile 人机验证">
+                  <ToggleSwitch v-model="turnstileEnabled" />
+                </Field>
+                <template v-if="turnstileEnabled">
+                  <Field label="Turnstile Site Key"><InputText v-model="form.security!.turnstileSiteKey" maxlength="200" required /></Field>
+                  <Field label="Turnstile Secret Key"><Password v-model="form.security!.turnstileSecretKey" :feedback="false" toggle-mask required :input-props="{ maxlength: 200, autocomplete: 'off' }" /></Field>
+                  <Message severity="info">请在 Cloudflare 为本站域名创建 Turnstile 小组件，并完成验证以确认密钥可用。</Message>
+                  <TurnstileWidget v-if="needsChallenge" ref="challenge" :site-key="form.security!.turnstileSiteKey!.trim()" @token="form.security!.turnstileToken = $event" />
+                </template>
+                <Message severity="info"
                   >即将为 {{ form.siteName }} 初始化数据库并保存配置。</Message
                 ></StepPanel
               >
@@ -195,7 +225,7 @@ async function initialize() {
                 type="submit"
                 :label="step === 4 ? '开始初始化' : '下一步'"
                 :loading="busy"
-                :disabled="step === 2 && !test?.ok" /></template
+                :disabled="(step === 2 && !test?.ok) || (step === 4 && !securityReady)" /></template
           ></Toolbar></form
       ></Fluid> </template
   ></Card>

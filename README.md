@@ -30,6 +30,12 @@ docker run -d -p 8080:8080 -v ./data:/data -v ./uploads:/uploads cashewblog
 （`VITE_PRIMEUI_LICENSE=...`，已被 git 忽略，模板见 `apps/admin/.env.example`），Docker 构建用
 `--build-arg VITE_PRIMEUI_LICENSE=...` 传入。缺少有效 key 时后台（仅后台）会显示授权提示。
 
+GitHub Actions 会在 Pull Request 中验证 Docker 构建；推送 `main` 时自动更新 `latest` Release，推送版本标签（例如 `v1.0.0`）时创建对应版本 Release。每个 Release 包含 `linux/amd64` 镜像包和 SHA-256 校验文件。
+下载后使用 `docker load < cashewblog-v1.0.0.tar.gz` 导入镜像。在仓库的 **Settings → Secrets and variables → Actions**
+中添加 `PRIMEUI_LICENSE`，工作流会把它作为构建参数传给后台。
+
+浏览器会缓存基础 CSS、JavaScript、字体和公开图片；公开 HTML 每次访问仍会在线校验。前台顶栏和后台工具栏的数据库图标可打开缓存管理，查看占用、请求持久化存储或清理缓存。
+
 首次访问 `http://localhost:8080/setup`，按向导填写站点信息、管理员密码、PostgreSQL 连接（数据库需提前创建）
 与上传目录。初始化后配置写入 `/data/config.json`（管理员密码以 Argon2id 哈希保存），之后升级时应用会在启动时
 自动执行数据库迁移。修改数据库连接请停机后编辑 `/data/config.json`。完整数据库备份请使用 `pg_dump`。

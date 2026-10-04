@@ -40,6 +40,10 @@ public static class DependencyInjection
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
+        services.AddHttpClient(CloudflareTurnstileVerifier.ClientName, c => c.Timeout = TimeSpan.FromSeconds(8));
+        services.AddSingleton<ITurnstileVerifier, CloudflareTurnstileVerifier>();
+        services.AddSingleton<LoginThrottle>();
+        services.AddSingleton<ISecurityAlertRecorder, SecurityAlertRecorder>();
         services.AddSingleton<IVisitorPepper, FileVisitorPepper>();
         services.AddSingleton<IMarkdownTextExtractor, MarkdigTextExtractor>();
         services.AddSingleton<IHtmlSanitizerService, CustomPageHtmlSanitizer>();

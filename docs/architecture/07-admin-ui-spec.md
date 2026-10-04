@@ -12,18 +12,19 @@ header breadcrumb can address them individually.
 ## Routes/menu
 
 ```text
-/admin/login
+/<configured-login-entrance>  (generated secret path; /admin/login is the unhidden fallback)
 /admin
 
 Dashboard
 
 Content
-├─ Posts
+├─ Posts          (menu only; expands to its sub-pages)
+│  ├─ All posts
+│  └─ Trash
 ├─ Categories
 ├─ Tags
 ├─ Series
-├─ Pages
-└─ Trash
+└─ Pages
 
 Media
 └─ Library
@@ -46,7 +47,9 @@ Settings
 
 ## Dashboard
 
-Widget grid with persisted position/size/visibility.
+Widget grid with persisted position/size/visibility. Layout mode shows a dashed edit bar
+(恢复默认 / 取消 / 保存布局); each widget has an eye toggle, hidden widgets stay dimmed in place and
+are listed as chips that restore them.
 
 Widgets:
 
@@ -136,42 +139,54 @@ Preview:
 
 ## Media Library
 
-Two top-level filters/tabs: Images / Attachments.
+A responsive card grid (thumbnail or file-type tile, filename, dimensions, size) with a toolbar:
+search, kind filter (全部 / 图片 / 附件) and upload. Selecting a card opens a details drawer with
+the preview, metadata, alt editing, copy URL and delete (references are listed if delete is blocked).
 
-Image card/list includes thumbnail, filename, dimensions, size, date, alt.
+Editor, cover and settings image fields share one picker dialog (`MediaPickerDialog`) that embeds
+the same grid in picker mode: search is focused on open, a card click selects and closes, and the
+image-only variant hides attachments and the kind filter.
 
-Actions:
+## Login
 
-- upload
-- edit alt
-- copy URL
-- select for editor/settings
-- delete
-- view references if delete is blocked
+Split screen: a hero panel (site banner image from `/api/site/bootstrap`, site name and a hitokoto
+quote) beside the sign-in form; on narrow screens only the brand header and form remain. The quote is
+a best-effort cross-origin GET (`credentials: "omit"`, no referrer, short timeout) with a local
+fallback, and the hero image loads with `referrerpolicy="no-referrer"`, so neither needs CORS or
+cookies from third parties.
 
 ## Custom Pages
 
-Use Monaco or equivalent text editor for HTML and CSS.
+One Monaco document holds the HTML and the page's `<style>` blocks; the admin splits them into
+`contentHtml` / `customCss` on save (the API and scoped-CSS rendering are unchanged). Monaco
+follows the admin light/dark theme.
 
 Screen:
 
 - Title
-- Slug
-- Layout
-- HTML editor
-- CSS editor
-- live preview
-- media picker
+- Layout (标准 / 加宽 / 全宽)
+- Page address: read-only; generated from the title on creation, then kept so links stay valid
+- single HTML + CSS editor
+- live preview (side by side on wide screens)
 
-No SEO/status/PV UI.
+No SEO/status/PV UI and no media picker (paste media URLs from the media library).
 
 ## Settings
 
 Settings should map to typed backend sections rather than arbitrary JSON editing.
 
+Layout: each section is a stack of PrimeVue Panels (titled groups with help text) holding a
+two-column field grid; a nested object with `enable` shows that switch in its panel header.
+Up to three choices render as a SelectButton, bounded numbers as sliders or steppers with units,
+keyword lists as chips. A sticky bar tracks unsaved changes (save / discard / reset to defaults)
+and leaving or switching sections with unsaved changes asks for confirmation.
+
 ### Appearance
 
-- theme seed/color options retained from Shirone
+- theme hue picked with a colour picker, hue slider or preset swatches; only the hue is stored
+  and every swatch/palette is computed with the public site's own Material 3 engine
+  (`@material/material-color-utilities`, same seed chroma/tone), so no approximate preview is shown
+- palette style select previews each style's primary/secondary/tertiary colours
 - default mode Light/Dark/System
 - allow public light/dark toggle
 - layout choices controlled by admin only

@@ -18,6 +18,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PostDailyStat> PostDailyStats => Set<PostDailyStat>();
     public DbSet<PostViewDedupe> PostViewDedupes => Set<PostViewDedupe>();
     public DbSet<SiteSettingsRecord> SiteSettings => Set<SiteSettingsRecord>();
+    public DbSet<SecurityAlert> SecurityAlerts => Set<SecurityAlert>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +29,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         ConfigureTaxonomy(modelBuilder);
         ConfigureContent(modelBuilder);
         ConfigureStats(modelBuilder);
+        ConfigureSecurity(modelBuilder);
     }
 
     private static void ConfigurePost(EntityTypeBuilder<Post> e)
@@ -169,6 +171,24 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(d => d.VisitorHash).HasMaxLength(64);
             e.HasOne<Post>().WithMany().HasForeignKey(d => d.PostId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(d => d.ExpiresAt);
+        });
+    }
+
+    private static void ConfigureSecurity(ModelBuilder b)
+    {
+        b.Entity<SecurityAlert>(e =>
+        {
+            e.ToTable("SecurityAlerts");
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Fingerprint).HasMaxLength(64).IsRequired();
+            e.HasIndex(a => a.Fingerprint).IsUnique();
+            e.Property(a => a.Category).HasMaxLength(64).IsRequired();
+            e.Property(a => a.Severity).HasMaxLength(16).IsRequired();
+            e.Property(a => a.SourceIp).HasMaxLength(64).IsRequired();
+            e.Property(a => a.Path).HasMaxLength(512).IsRequired();
+            e.Property(a => a.Message).HasMaxLength(512).IsRequired();
+            e.HasIndex(a => new { a.AcknowledgedAt, a.LastSeenAt });
+            e.HasIndex(a => a.LastSeenAt);
         });
     }
 }

@@ -7,6 +7,7 @@ using CashewBlog.Application.Common;
 using CashewBlog.Application.Settings;
 using CashewBlog.Application.Setup;
 using CashewBlog.Domain.Entities;
+using CashewBlog.Domain.Rules;
 using CashewBlog.Infrastructure.Configuration;
 using CashewBlog.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,7 @@ namespace CashewBlog.Infrastructure.Setup;
 public sealed class SetupService(
     JsonConfigStore config,
     IPasswordHasher hasher,
+    ITurnstileVerifier turnstile,
     IClock clock,
     ILogger<SetupService> logger) : ISetupService
 {
@@ -104,7 +106,7 @@ public sealed class SetupService(
         static DatabaseTestResult Fail(string code, string message) => new(false, code, message, null, null);
     }
 
-    public async Task<InitializeResult> InitializeAsync(InitializeRequest request, CancellationToken ct)
+    public async Task<InitializeResult> InitializeAsync(InitializeRequest request, string? remoteIp, CancellationToken ct)
     {
         await InitLock.WaitAsync(ct);
         try
@@ -158,7 +160,29 @@ public sealed class SetupService(
                 errors.Add("storage.root", $"Cannot create or access '{storageRoot}': {ex.Message}");
             }
 
+            var security = request.Security;
+            var (loginPath, loginPathError) = string.IsNullOrWhiteSpace(security?.LoginPath)
+                ? (LoginPathRules.Generate(), null)
+                : LoginPathRules.Normalize(security.LoginPath);
+            if (loginPathError is not null)
+            {
+                errors.Add("security.loginPath", loginPathError);
+            }
+
+            var turnstileKeys = new TurnstileConfig
+            {
+                SiteKey = security?.TurnstileSiteKey?.Trim() ?? "",
+                SecretKey = security?.TurnstileSecretKey?.Trim() ?? "",
+            };
+            var wantsTurnstile = turnstileKeys.SiteKey.Length > 0 || turnstileKeys.SecretKey.Length > 0;
+
             errors.ThrowIfAny();
+
+            // Turnstile keys are proven with a solved challenge before they can guard the login.
+            if (wantsTurnstile)
+            {
+                await AuthService.ValidateTurnstileKeysAsync(turnstile, turnstileKeys, null, security?.TurnstileToken, remoteIp, "security.turnstile", ct);
+            }
 
             // 2. Test the database.
             var test = await TestDatabaseAsync(request.Database!, ct);
@@ -183,13 +207,18 @@ public sealed class SetupService(
             // 4. Persist the config atomically; this flips the runtime to initialized.
             await config.SaveAsync(new AppConfig
             {
-                Admin = new AdminConfig { PasswordHash = hasher.Hash(request.Password!) },
+                Admin = new AdminConfig
+                {
+                    PasswordHash = hasher.Hash(request.Password!),
+                    LoginPath = loginPath,
+                    Turnstile = wantsTurnstile ? turnstileKeys : new TurnstileConfig(),
+                },
                 Database = db!,
                 Storage = new StorageConfig { Root = storageRootSetting.Length == 0 ? storageRoot : storageRootSetting, MaxUploadBytes = maxUpload },
             }, ct);
 
             logger.LogInformation("CashewBlog setup completed for {SiteUrl}", siteUrl);
-            return new InitializeResult(true, "/admin");
+            return new InitializeResult(true, loginPath);
         }
         finally
         {

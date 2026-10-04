@@ -13,7 +13,8 @@ RUN corepack enable
 WORKDIR /repo
 # PrimeUI license key for the admin SPA (PrimeVue 5). Pass it with
 #   docker build --build-arg VITE_PRIMEUI_LICENSE=... .
-# A local apps/admin/.env.local is copied below and used when the arg is omitted.
+# CI supplies this with the PRIMEUI_LICENSE repository secret. Local builds may use
+# apps/admin/.env.local (which is excluded from git).
 ARG VITE_PRIMEUI_LICENSE
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json apps/web/package.json
@@ -32,6 +33,7 @@ FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS api
 WORKDIR /repo
 COPY Directory.Build.props Directory.Packages.props CashewBlog.slnx ./
 COPY src src
+COPY apps/shared apps/shared
 # global.json (local SDK pin) is intentionally not copied: the image ships its own SDK.
 RUN dotnet publish src/CashewBlog.Api/CashewBlog.Api.csproj -c Release -o /out/api /p:UseAppHost=false
 

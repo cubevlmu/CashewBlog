@@ -5,7 +5,7 @@ namespace CashewBlog.Api.Hosting;
 /// <summary>
 /// Before setup: only the setup UI/API, admin static assets and health checks are served;
 /// other API calls get 503 <c>setup_required</c> and other pages redirect to /setup.
-/// After setup: setup endpoints (except status) return 404 and /setup redirects to /admin.
+/// After setup: setup endpoints (except status) return 404 and /setup redirects to the home page.
 /// </summary>
 public sealed class SetupGateMiddleware(RequestDelegate next, IConfigStore config)
 {
@@ -21,9 +21,10 @@ public sealed class SetupGateMiddleware(RequestDelegate next, IConfigStore confi
                 return;
             }
 
+            // To the home page, not /admin: the admin address must not be revealed.
             if (path.Equals("/setup", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/setup"))
             {
-                context.Response.Redirect("/admin");
+                context.Response.Redirect("/");
                 return;
             }
 
@@ -47,7 +48,8 @@ public sealed class SetupGateMiddleware(RequestDelegate next, IConfigStore confi
     }
 
     private static bool IsAllowedDuringSetup(PathString path) =>
-        path.StartsWithSegments("/api/setup")
+        path.Equals("/browser-cache-worker.js", StringComparison.Ordinal)
+        || path.StartsWithSegments("/api/setup")
         || path.StartsWithSegments("/setup")
         || path.StartsWithSegments("/health")
         || path.StartsWithSegments("/admin/assets")

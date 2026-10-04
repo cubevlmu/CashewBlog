@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using CashewBlog.Domain.Rules;
+
 namespace CashewBlog.Application.Setup;
 
 /// <summary>
@@ -14,6 +17,7 @@ public sealed class AppConfig
     public StorageConfig Storage { get; set; } = new();
 
     /// <summary>True when every value required to run is present.</summary>
+    [JsonIgnore]
     public bool IsComplete =>
         !string.IsNullOrWhiteSpace(Admin.PasswordHash)
         && !string.IsNullOrWhiteSpace(Database.Host)
@@ -24,6 +28,31 @@ public sealed class AppConfig
 public sealed class AdminConfig
 {
     public string PasswordHash { get; set; } = "";
+
+    /// <summary>Secret login entrance (e.g. <c>/k7x2mq9dfa</c>); empty = the unhidden <c>/admin/login</c>.</summary>
+    public string LoginPath { get; set; } = "";
+
+    public TurnstileConfig Turnstile { get; set; } = new();
+
+    [JsonIgnore]
+    public string EffectiveLoginPath => string.IsNullOrWhiteSpace(LoginPath) ? LoginPathRules.Default : LoginPath;
+
+    public AdminConfig With(string? passwordHash = null, string? loginPath = null, TurnstileConfig? turnstile = null) => new()
+    {
+        PasswordHash = passwordHash ?? PasswordHash,
+        LoginPath = loginPath ?? LoginPath,
+        Turnstile = turnstile ?? Turnstile,
+    };
+}
+
+/// <summary>Cloudflare Turnstile on the login form; enabled when both keys are set. The secret is never returned by the API.</summary>
+public sealed class TurnstileConfig
+{
+    public string SiteKey { get; set; } = "";
+    public string SecretKey { get; set; } = "";
+
+    [JsonIgnore]
+    public bool Enabled => !string.IsNullOrWhiteSpace(SiteKey) && !string.IsNullOrWhiteSpace(SecretKey);
 }
 
 public sealed class DatabaseConfig

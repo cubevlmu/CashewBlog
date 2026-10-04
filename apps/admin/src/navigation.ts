@@ -1,7 +1,7 @@
 import { settingsPages } from "./settings-sections";
 
 /** Menu leaf without further children of its own (settings sections). */
-export type NavigationLeaf = { label: string; path: string; icon?: string };
+export type NavigationLeaf = { label: string; path: string; icon?: string; description?: string };
 
 export type NavigationItem = NavigationLeaf & {
   icon: string;
@@ -31,7 +31,13 @@ export const groups: { label: string; items: NavigationItem[] }[] = [
         icon: "pi pi-file-edit",
         description: "记录想法，管理草稿与已发布的文章。",
         children: [
-          { label: "回收站", path: "/admin/trash", icon: "pi pi-trash" },
+          { label: "全部文章", path: "/admin/posts", icon: "pi pi-list" },
+          {
+            label: "回收站",
+            path: "/admin/trash",
+            icon: "pi pi-trash",
+            description: "已删除的文章保留 30 天，可恢复或永久删除。",
+          },
         ],
       },
       {
@@ -76,6 +82,12 @@ export const groups: { label: string; items: NavigationItem[] }[] = [
         description: "了解文章阅读量与近期访问趋势。",
       },
       {
+        label: "安全警报",
+        path: "/admin/security-alerts",
+        icon: "pi pi-shield",
+        description: "查看登录爆破、限流和异常探测等安全事件。",
+      },
+      {
         label: "站点设置",
         path: "/admin/settings",
         icon: "pi pi-cog",
@@ -84,6 +96,7 @@ export const groups: { label: string; items: NavigationItem[] }[] = [
           label: page.label,
           path: `/admin/settings/${page.value}`,
           icon: page.icon,
+          description: page.description,
         })),
       },
     ],
@@ -136,9 +149,15 @@ export function navigationTrail(path: string): NavigationCrumb[] {
   return [
     { label: "工作台", to: "/admin" },
     { label: group?.label ?? active.label },
-    ...(detail || child ? [{ label: active.label, to: active.path }] : []),
+    // A menu with sub-pages has no page of its own; its crumb leads to the first sub-page.
+    ...(detail || child ? [{ label: active.label, to: firstPage(active) === path ? undefined : firstPage(active) }] : []),
     { label: detail ?? child?.label ?? active.label },
   ];
+}
+
+/** Where a menu entry leads: its first sub-page, or its own page. */
+export function firstPage(item: NavigationItem) {
+  return item.children?.[0]?.path ?? item.path;
 }
 
 /** Heading for the current page: detail routes name themselves, lists use the menu label. */
@@ -155,4 +174,10 @@ export function pageTitle(path: string) {
 export function pageIcon(path: string) {
   const active = currentNavigation(path);
   return active.children?.find((item) => item.path === path)?.icon ?? active.icon;
+}
+
+/** Page subtitle; settings sections describe themselves instead of the whole settings area. */
+export function pageDescription(path: string) {
+  const active = currentNavigation(path);
+  return active.children?.find((item) => item.path === path)?.description ?? active.description;
 }

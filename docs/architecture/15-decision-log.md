@@ -10,6 +10,7 @@ This file is the compact source of truth for decisions aligned with the product 
 | Public frontend | Astro + Svelte, Shirone-derived, SSR |
 | Admin | Vue 3 + PrimeVue 5 |
 | Admin license | PrimeVue 5 ships under the PrimeUI Community/Commercial license; the key is supplied at build time via `VITE_PRIMEUI_LICENSE` (never committed) |
+| Admin login security | Configurable generated login entrance, per-IP rate limiting and lockout, optional Cloudflare Turnstile validation |
 | Admin navigation | PrimeVue Sidebar compounds with icon-collapse on desktop and offcanvas on mobile |
 | Settings sections | Real sub-routes `/admin/settings/<section>`; `/admin/settings` redirects to `general` |
 | Backend | ASP.NET Core + EF Core + PostgreSQL, Clean Architecture |
@@ -28,7 +29,7 @@ This file is the compact source of truth for decisions aligned with the product 
 | Views | 30-minute anonymous dedupe; Private/Draft excluded |
 | Media | Local filesystem, media library, originals + WebP + thumbnails, arbitrary attachments |
 | Referenced media delete | Block and show references |
-| Custom Pages | Generic HTML + scoped CSS + live preview; nested slugs; no state/SEO/PV |
+| Custom Pages | Generic HTML + scoped CSS (edited as one document) + live preview; slug generated from the title on creation and then fixed; no state/SEO/PV |
 | Custom Page scripts | No |
 | Footer scripts | Allowed, trusted admin HTML |
 | Navigation | Dynamic, admin-configured, two levels, parent can be clickable |

@@ -52,6 +52,12 @@ public static class Gateway
 
     public static void MapAdminSpa(this WebApplication app)
     {
+        app.MapGet("/browser-cache-worker.js", (HttpContext context) =>
+        {
+            context.Response.Headers.CacheControl = "no-cache";
+            context.Response.Headers["Service-Worker-Allowed"] = "/";
+            return Results.File(Path.Combine(AppContext.BaseDirectory, "browser-cache-worker.js"), "text/javascript");
+        }).ExcludeFromDescription();
         var index = Path.Combine(AdminRoot(app.Environment), "index.html");
 
         IResult ServeIndex(HttpContext context)
@@ -68,7 +74,12 @@ public static class Gateway
                 return Results.Text("CashewBlog admin UI is not built (expected wwwroot/admin/index.html).", "text/plain", statusCode: 404);
             }
 
-            context.Response.Headers.CacheControl = "no-cache";
+            if (string.IsNullOrEmpty(context.Response.Headers.CacheControl))
+            {
+                context.Response.Headers.CacheControl = "no-store";
+            }
+
+            context.Response.Headers.ContentSecurityPolicy = AdminCsp.Value;
             return Results.File(index, "text/html; charset=utf-8");
         }
 
