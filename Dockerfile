@@ -37,7 +37,7 @@ COPY apps/shared apps/shared
 # global.json (local SDK pin) is intentionally not copied: the image ships its own SDK.
 RUN dotnet publish src/CashewBlog.Api/CashewBlog.Api.csproj -c Release -o /out/api \
     /p:UseAppHost=false /p:DebugType=None /p:DebugSymbols=false \
-    /p:WarningsNotAsErrors=NU1902\;NU1903
+    /p:WarningsNotAsErrors=NU1902%3BNU1903
 
 # ---- 3. Runtime ---------------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION}-alpine AS runtime
