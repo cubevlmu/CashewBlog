@@ -62,7 +62,7 @@ Suggested stages:
 1. Node/pnpm build public `apps/web`.
 2. Node/pnpm build `apps/admin`.
 3. .NET SDK restore/build/publish.
-4. final runtime image with .NET runtime + Node runtime + required native image-processing libraries.
+4. final Alpine runtime image with .NET runtime + Node runtime + required native image-processing libraries.
 
 The admin build needs the PrimeUI license key (PrimeVue 5): pass it as
 `docker build --build-arg VITE_PRIMEUI_LICENSE=...`; a local `apps/admin/.env.local` is used when the
@@ -80,6 +80,10 @@ authenticated pages, setup, health, and upload writes are never stored by the wo
 provide a cache-management dialog to inspect usage, request persistent storage, or clear one/all buckets.
 
 Copy only production dependencies/build output into final stage.
+
+The release image uses Alpine for both runtimes. ICU, timezone data, `libstdc++`, Sharp's
+native image-processing library and `tini` remain installed because they are required at
+runtime. PostgreSQL is always external and is never included in the application image.
 
 ## Health
 

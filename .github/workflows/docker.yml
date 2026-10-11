@@ -38,6 +38,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Report image size
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          docker image inspect "cashewblog:${RELEASE_TAG}" --format 'Image size: {{.Size}} bytes'
+          docker history "cashewblog:${RELEASE_TAG}" --no-trunc --format 'table {{.Size}}\t{{.CreatedBy}}'
+
       - name: Export image package
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         env:

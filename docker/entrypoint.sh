@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Runs the two application processes of the CashewBlog image:
 #   - Astro SSR (Node) on 127.0.0.1:4321, reachable only through the gateway
 #   - ASP.NET gateway/API on :8080, the single public port
 # tini (PID 1) forwards signals here; SIGTERM/SIGINT stop both processes, and if
 # either one exits the other is stopped so the container restarts as a unit.
-set -euo pipefail
+set -eu
 
 export CASHEWBLOG_NODE_VERSION="$(node --version)"
 export CASHEWBLOG_ASTRO_VERSION="$(cat /app/astro-version 2>/dev/null || true)"
